@@ -12,6 +12,7 @@ import AdminCustomerSupport from "@/views/Admin/AdminCustomerSupport.vue";
 import AdminFeedback from "@/views/Admin/AdminFeedback.vue";
 import UserInfo from "@/views/user/userinfo.vue";
 import Homepage from "@/views/homepage.vue";
+import AdminMapManage from "@/views/Admin/AdminMapManage.vue";
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
@@ -67,6 +68,15 @@ const router = createRouter({
       },
     },
     {
+      path: "/adminmap-manage",
+      name: "AdminMapManage",
+      component: AdminMapManage,
+      meta: {
+        requiresAuth: true,
+        roles: ["admin"],
+      },
+    },
+    {
       path: "/help-center",
       name: "HelpCenter",
       component: HelpCenter,
@@ -88,15 +98,6 @@ const router = createRouter({
       path: "/admin-feedback",
       name: "AdminFeedback",
       component: AdminFeedback,
-      meta: {
-        requiresAuth: true,
-        roles: ["admin"],
-      },
-    },
-    {
-      path: "/admin-map-management",
-      name: "AdminMapManagement",
-      component: () => import("@/views/Admin/AdminMapManagement.vue"),
       meta: {
         requiresAuth: true,
         roles: ["admin"],

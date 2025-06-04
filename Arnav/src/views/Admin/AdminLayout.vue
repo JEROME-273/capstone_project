@@ -37,7 +37,7 @@
           </a>
         </li>
         <li :class="{ active: $route.name === 'AdminMapManagement' }">
-          <router-link to="/admin-map-management">
+          <router-link to="/adminmap-manage">
             <i class="bx bxs-map"></i>
             <span class="text">Map Management</span>
           </router-link>
