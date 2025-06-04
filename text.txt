@@ -1,0 +1,36 @@
+Location name                               | latitude          | longitude         | Category          | images
+CR 3                                        | lat = 121.304837  | long = 13.1089483 | CR       
+training Center 3                           | lat = 121.3052686 | long = 13.1088236 | Office
+parking araa 2                              | lat = 121.3052356 | long = 13.1088541 | parking
+parking area 3                              | lat = 121.3051112 | long = 13.1088407 | parking
+parking area 1                              | lat = 121.3049123 | long = 13.1087699 | parking
+CR 1                                        | lat = 121.304741  | long = 13.1089184 | CR
+Dormitory                                   | lat = 121.3042073 | long = 13.1087132 | Office
+CR 2                                        | lat = 121.3038323 | long = 13.1083196 | CR
+Aggregation                                 | lat = 121.3040161 | long = 13.1082286 | Office
+Calamansi Demo Area                         | lat = 121.3041048 | long = 13.1074028 | Plant Areas
+Indigenous Plant Production Area            | lat = 121.3048257 | long = 13.1072961 | Plant Areas
+Vegetable Production Area                   | lat = 121.3050587 | long = 13.1074372 | Plant Areas
+Native Chicken Production                   | lat = 121.3050203 | long = 13.1074859 | Animal Enclosure
+Free Range White Hybrid Pigs                | lat = 121.305155  | long = 13.1074653 | Animal Enclosure
+Natural Native Pig Farming                  | lat = 121.3052332 | long = 13.107679  | Animal Enclosure
+Vermiculture and organic fertilizer facilty | lat = 121.3053218 | long = 13.1078844 | Plant Areas
+Herb Garden                                 | lat = 121.3052015 | long = 13.1081222 | Plant Areas
+Butterfly Garden                            | lat = 121.3051342 | long = 13.1082287 | Animal Enclosure
+Flower Garden                               | lat = 121.3050731 | long = 13.1082925 | Plant Areas
+Beekeeing                                   | lat = 121.3048907 | long = 13.1083349 | Animal Enclosure
+Vegetable Nursery                           | lat = 121.3047397 | long = 13.1083142 | Plant Areas
+Edible Landscaping                          | lat = 121.3047918 | long = 13.1083774 | Plant Areas
+Agri Processing Center 1                    | lat = 121.3046781 | long = 13.1085553 | Food Production
+Tissue Culture Laboratory                   | lat = 121.3047983 | long = 13.1085603 | Office
+Agri Processing Center 2                    | lat = 121.3043506 | long = 13.1084775 | Food Production
+Provincial Agriculture Center               | lat = 121.3042751 | long = 13.1087486 | Office
+Oriental Mindoro Trading Center             | lat = 121.3047347 | long = 13.1089547 | Office
+Training Center 1                           | lat = 121.3047347 | long = 13.1089547 | Office
+Admin Office                                | lat = 121.305112  | long = 13.1086498 | Office
+Soil Laboratory                             | lat = 121.3057206 | long = 13.10853   | Office
+Pest Clinic                                 | lat = 121.3056295 | long = 13.1085552 | Office
+Farmers Innovation Center                   | lat = 121.3054114 | long = 13.1085152 | Office
+Training Center 2                           | lat = 121.3052698 | long = 13.1083782 | Office
+Green House                                 | lat = 121.3053793 | long = 13.1081613 | Plant Areas
+Net House Garden                            | lat = 121.3053793 | long = 13.1081613 | Plant Areas

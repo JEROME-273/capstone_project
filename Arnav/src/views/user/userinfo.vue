@@ -43,26 +43,86 @@
         </div>
       </div>
       <div class="space-y-4">
-        <!-- Personal Info Dropdown -->
+        <!-- Personal Info Button -->
         <div>
-          <div class="profile-link" @click="toggleDropdown('personal')">
+          <div class="profile-link" @click="openPersonalInfoModal">
             <div class="flex items-center">
               <i class="fas fa-user icon-section"></i>
               <span class="ml-4 text-lg">Personal Info</span>
             </div>
-            <i
-              class="fas fa-chevron-right icon-chevron"
-              :class="{ 'rotate-90': openDropdown === 'personal' }"></i>
+            <i class="fas fa-chevron-right icon-chevron"></i>
           </div>
-          <div v-if="openDropdown === 'personal'" class="dropdown-content">
-            <p><b>Email:</b> {{ email }}</p>
-            <p><b>First Name:</b> {{ firstName }}</p>
-            <p><b>Middle Name:</b> {{ middleName }}</p>
-            <p><b>Last Name:</b> {{ lastName }}</p>
-            <p><b>Gender:</b> {{ gender }}</p>
-            <p><b>Role:</b> {{ role }}</p>
-            <p><b>Type of Visit:</b> {{ typeofvisit }}</p>
-            <p><b>Joined:</b> {{ joinedDate }}</p>
+        </div>
+
+        <!-- Personal Info Modal -->
+        <div v-if="showPersonalInfoModal" class="modal-overlay">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2>Edit Personal Information</h2>
+              <button class="close-button" @click="closePersonalInfoModal">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <form @submit.prevent="updatePersonalInfo">
+                <div class="form-group">
+                  <label>Email:</label>
+                  <input v-model="editableInfo.email" type="email" disabled />
+                </div>
+                <div class="form-group">
+                  <label>First Name:</label>
+                  <input
+                    v-model="editableInfo.firstName"
+                    type="text"
+                    required />
+                </div>
+                <div class="form-group">
+                  <label>Middle Name:</label>
+                  <input v-model="editableInfo.middleName" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>Last Name:</label>
+                  <input v-model="editableInfo.lastName" type="text" required />
+                </div>
+                <div class="form-group">
+                  <label>Gender:</label>
+                  <select v-model="editableInfo.gender" required>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Role:</label>
+                  <input v-model="editableInfo.role" type="text" disabled />
+                </div>
+                <div class="form-group">
+                  <label>Type of Visit:</label>
+                  <input
+                    v-model="editableInfo.typeofvisit"
+                    type="text"
+                    disabled />
+                </div>
+                <div class="form-group">
+                  <label>Joined:</label>
+                  <input
+                    v-model="editableInfo.joinedDate"
+                    type="text"
+                    disabled />
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="cancel-button"
+                    @click="closePersonalInfoModal">
+                    Cancel
+                  </button>
+                  <button type="submit" class="save-button">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -152,6 +212,7 @@ import {
   where,
   orderBy,
   getDocs,
+  updateDoc,
 } from "firebase/firestore";
 import { signOut, updatePassword } from "firebase/auth";
 
@@ -171,10 +232,22 @@ export default {
       role: "",
       typeofvisit: "",
       recentDestination: "",
-      openDropdown: null, // 'personal', 'history', or 'settings'
+      openDropdown: null,
       newPassword: "",
       passwordUpdateMessage: "",
       recentDestinations: [],
+      showPersonalInfoModal: false,
+      editableInfo: {
+        email: "",
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        gender: "",
+        role: "",
+        typeofvisit: "",
+        joinedDate: "",
+      },
+      updateMessage: "",
     };
   },
   async mounted() {
@@ -236,6 +309,53 @@ export default {
         this.newPassword = "";
       } catch (error) {
         this.passwordUpdateMessage = "Error: " + error.message;
+      }
+    },
+    openPersonalInfoModal() {
+      this.editableInfo = {
+        email: this.email,
+        firstName: this.firstName,
+        middleName: this.middleName,
+        lastName: this.lastName,
+        gender: this.gender,
+        role: this.role,
+        typeofvisit: this.typeofvisit,
+        joinedDate: this.joinedDate,
+      };
+      this.showPersonalInfoModal = true;
+    },
+    closePersonalInfoModal() {
+      this.showPersonalInfoModal = false;
+      this.updateMessage = "";
+    },
+    async updatePersonalInfo() {
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("No user logged in");
+
+        const db = getFirestore();
+        const userRef = doc(db, "users", user.uid);
+
+        await updateDoc(userRef, {
+          firstName: this.editableInfo.firstName,
+          middleName: this.editableInfo.middleName,
+          lastName: this.editableInfo.lastName,
+          gender: this.editableInfo.gender,
+        });
+
+        // Update local state
+        this.firstName = this.editableInfo.firstName;
+        this.middleName = this.editableInfo.middleName;
+        this.lastName = this.editableInfo.lastName;
+        this.gender = this.editableInfo.gender;
+        this.userName = `${this.firstName} ${this.lastName}`;
+
+        this.updateMessage = "Profile updated successfully!";
+        setTimeout(() => {
+          this.closePersonalInfoModal();
+        }, 1500);
+      } catch (error) {
+        this.updateMessage = "Error updating profile: " + error.message;
       }
     },
   },
@@ -457,6 +577,138 @@ export default {
     padding: 0.75rem;
     font-size: 0.95rem;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.modal-body {
+  padding: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.modal-footer {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.cancel-button,
+.save-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cancel-button {
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.save-button {
+  background-color: #22c55e;
+  border: 1px solid #22c55e;
+  color: white;
+}
+
+/* Dark mode modal styles */
+body.dark-mode .modal-content {
+  background-color: #27272a;
+  color: #f3f4f6;
+}
+
+body.dark-mode .modal-header {
+  border-bottom-color: #374151;
+}
+
+body.dark-mode .form-group input,
+body.dark-mode .form-group select {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+body.dark-mode .form-group input:disabled {
+  background-color: #374151;
+}
+
+body.dark-mode .modal-footer {
+  border-top-color: #374151;
+}
+
+body.dark-mode .cancel-button {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
 }
 </style>
 

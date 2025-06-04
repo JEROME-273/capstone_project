@@ -158,7 +158,7 @@ import { auth } from "@/firebase/config";
 const sheetY = ref(0);
 const isExpanded = ref(false);
 const isDragging = ref(false);
-const startY = ref(0);
+const startY = ref(0);f
 const currentY = ref(0);
 const sheetHeight = ref(0);
 const minSheetHeight = ref(100); // Minimum height when collapsed
