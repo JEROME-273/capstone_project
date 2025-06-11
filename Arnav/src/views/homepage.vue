@@ -61,7 +61,7 @@
           <input
             type="text"
             class="locapp-search-input"
-            placeholder="Search location"
+            placeholder="Search locations, categories, descriptions..."
             v-model="searchQuery"
             @focus="expandSheet" />
           <button
@@ -72,29 +72,138 @@
           </button>
         </div>
 
+        <!-- Search Results -->
+        <div
+          v-if="searchQuery && searchResults.length > 0"
+          class="locapp-section">
+          <div class="locapp-section-header">
+            <h2 class="locapp-title">Search Results</h2>
+            <span class="search-count">{{ searchResults.length }} found</span>
+          </div>
+          <div class="locapp-locations-grid">
+            <div
+              class="locapp-location-card"
+              v-for="location in searchResults"
+              :key="location.id"
+              @click="goToLocation(location)">
+              <div class="location-image">
+                <img
+                  :src="
+                    location.imageUrl || '/placeholder.svg?height=80&width=80'
+                  "
+                  :alt="location.name"
+                  class="location-img" />
+                <button
+                  @click.stop="showLocationDetails(location)"
+                  class="location-info-btn-image"
+                  aria-label="View location details">
+                  <i class="fas fa-info-circle"></i>
+                </button>
+              </div>
+              <div class="location-info">
+                <h3 class="location-name">{{ location.name }}</h3>
+                <p class="location-description">{{ location.description }}</p>
+                <div class="location-coordinates">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span
+                    >{{ location.coordinates.x.toFixed(4) }},
+                    {{ location.coordinates.y.toFixed(4) }}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Search Results -->
+        <div
+          v-if="searchQuery && searchResults.length === 0"
+          class="locapp-section">
+          <div class="empty-search-state">
+            <i class="fas fa-search"></i>
+            <h3>No locations found</h3>
+            <p>Try searching with different keywords or check the spelling</p>
+            <button @click="clearSearch" class="clear-search-btn">
+              <i class="fas fa-times"></i>
+              Clear Search
+            </button>
+          </div>
+        </div>
+
         <!-- Categories -->
         <div class="locapp-section">
           <div class="locapp-section-header">
             <h2 class="locapp-title">Categories</h2>
-            <button class="locapp-view-all">View All</button>
+            <button
+              class="locapp-view-all"
+              @click="showAllCategories = !showAllCategories">
+              {{ showAllCategories ? "Show Less" : "View All" }}
+            </button>
           </div>
           <div class="locapp-category-list">
             <button
               class="locapp-category-btn"
               v-for="category in categories"
-              :key="category"
-              @click="selectCategory(category)"
-              :class="{ active: selectedCategory === category }">
-              <i :class="['fas', 'fa-' + getCategoryIcon(category)]"></i>
-              {{ category }}
+              :key="category.key"
+              @click="selectCategory(category.key)"
+              :class="{ active: selectedCategory === category.key }">
+              <i :class="['fas', 'fa-' + category.icon]"></i>
+              {{ category.name }}
             </button>
+          </div>
+        </div>
+
+        <!-- Admin Locations by Category -->
+        <div
+          v-if="selectedCategory && filteredAdminLocations.length > 0"
+          class="locapp-section">
+          <div class="locapp-section-header">
+            <h2 class="locapp-title">
+              {{ getCategoryDisplayName(selectedCategory) }} Locations
+            </h2>
+            <button class="locapp-view-all" @click="selectedCategory = null">
+              Show All Categories
+            </button>
+          </div>
+          <div class="locapp-locations-grid">
+            <div
+              class="locapp-location-card"
+              v-for="location in filteredAdminLocations"
+              :key="location.id"
+              @click="goToLocation(location)">
+              <div class="location-image">
+                <img
+                  :src="
+                    location.imageUrl || '/placeholder.svg?height=80&width=80'
+                  "
+                  :alt="location.name"
+                  class="location-img" />
+                <button
+                  @click.stop="showLocationDetails(location)"
+                  class="location-info-btn-image"
+                  aria-label="View location details">
+                  <i class="fas fa-info-circle"></i>
+                </button>
+              </div>
+              <div class="location-info">
+                <h3 class="location-name">{{ location.name }}</h3>
+                <p class="location-description">{{ location.description }}</p>
+                <div class="location-coordinates">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span
+                    >{{ location.coordinates.x.toFixed(4) }},
+                    {{ location.coordinates.y.toFixed(4) }}</span
+                  >
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Saved Places -->
         <div class="locapp-section">
           <div class="locapp-section-header">
-            <h2 class="locapp-title">Saved Places</h2>
+            <h2 class="locapp-title">My Saved Places</h2>
             <button class="locapp-view-all">View All</button>
           </div>
           <div
@@ -102,7 +211,7 @@
             v-for="place in savedPlaces"
             :key="place.id"
             @click="goToPlace(place)">
-            <i class="fas fa-map-marker-alt locapp-icon"></i>
+            <i class="fas fa-bookmark locapp-icon"></i>
             <div class="locapp-place-text">
               <div class="locapp-place-name">{{ place.name }}</div>
               <div class="locapp-place-address">
@@ -138,6 +247,62 @@
         </div>
       </div>
     </div>
+
+    <!-- Location Details Modal -->
+    <div
+      v-if="showLocationModal && selectedLocationDetails"
+      class="location-modal">
+      <div class="location-modal-content">
+        <div class="location-modal-header">
+          <h2>{{ selectedLocationDetails.name }}</h2>
+          <button @click="closeLocationModal" class="close-modal-btn">×</button>
+        </div>
+
+        <div class="location-modal-body">
+          <div class="location-modal-image">
+            <img
+              :src="
+                selectedLocationDetails.imageUrl ||
+                '/placeholder.svg?height=200&width=400'
+              "
+              :alt="selectedLocationDetails.name"
+              class="modal-img" />
+            <div class="modal-type-badge">
+              {{ formatCategoryName(selectedLocationDetails.type) }}
+            </div>
+          </div>
+
+          <div class="location-details">
+            <div class="detail-section">
+              <h3>Description</h3>
+              <p>
+                {{
+                  selectedLocationDetails.description ||
+                  "No description available."
+                }}
+              </p>
+            </div>
+          </div>
+
+          <div class="location-modal-actions">
+            <button
+              @click="goToLocation(selectedLocationDetails)"
+              class="navigate-btn">
+              <i class="fas fa-directions"></i>
+              Navigate Here
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Loading locations...</p>
+    </div>
   </div>
 </template>
 
@@ -161,26 +326,37 @@ const isDragging = ref(false);
 const startY = ref(0);
 const currentY = ref(0);
 const sheetHeight = ref(0);
-const minSheetHeight = ref(100); // Minimum height when collapsed
-const maxSheetHeight = ref(0); // Will be set based on window height
+const minSheetHeight = ref(100);
+const maxSheetHeight = ref(0);
 
 // App state
 const searchQuery = ref("");
 const selectedCategory = ref(null);
-const categories = ref([
-  "Offices",
-  "Parking",
-  "Comfort Room",
-  "Food",
-  "Plants",
-  "Animals",
-]);
+const showAllCategories = ref(false);
 const savedPlaces = ref([]);
-
+const adminLocations = ref([]);
+const isLoading = ref(true);
 const isDarkMode = ref(false);
-
 const showAddPlaceModal = ref(false);
 const newPlaceName = ref("");
+
+const showLocationModal = ref(false);
+const selectedLocationDetails = ref(null);
+
+// Categories with enhanced mapping
+const categories = ref([
+  { key: "office", name: "Offices", icon: "building" },
+  { key: "parking", name: "Parking", icon: "parking" },
+  { key: "cr", name: "Comfort Room", icon: "restroom" },
+  { key: "food_production", name: "Food", icon: "utensils" },
+  { key: "plant_areas", name: "Plants", icon: "leaf" },
+  { key: "animal_enclosure", name: "Animals", icon: "paw" },
+  { key: "entrance", name: "Entrance", icon: "door-open" },
+  { key: "exit", name: "Exit", icon: "door-closed" },
+  { key: "landmark", name: "Landmarks", icon: "monument" },
+  { key: "junction", name: "Junctions", icon: "map-signs" },
+  { key: "destination", name: "Destinations", icon: "map-marker-alt" },
+]);
 
 // Computed properties
 const sheetStyle = computed(() => {
@@ -196,15 +372,75 @@ const sheetStyle = computed(() => {
   };
 });
 
+const filteredAdminLocations = computed(() => {
+  if (!selectedCategory.value) return [];
+
+  let filtered = adminLocations.value.filter(
+    (location) => location.type === selectedCategory.value
+  );
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      (location) =>
+        location.name.toLowerCase().includes(query) ||
+        location.description.toLowerCase().includes(query)
+    );
+  }
+
+  return filtered;
+});
+
+const searchFilteredLocations = computed(() => {
+  if (!searchQuery.value) return adminLocations.value;
+
+  const query = searchQuery.value.toLowerCase();
+  return adminLocations.value.filter(
+    (location) =>
+      location.name.toLowerCase().includes(query) ||
+      location.description.toLowerCase().includes(query) ||
+      location.type.toLowerCase().includes(query)
+  );
+});
+
+const searchResults = computed(() => {
+  if (!searchQuery.value) return [];
+
+  const query = searchQuery.value.toLowerCase();
+  return adminLocations.value.filter(
+    (location) =>
+      location.name.toLowerCase().includes(query) ||
+      location.description.toLowerCase().includes(query) ||
+      formatCategoryName(location.type).toLowerCase().includes(query)
+  );
+});
+
 // Lifecycle hooks
 onMounted(async () => {
   updateSheetDimensions();
   window.addEventListener("resize", updateSheetDimensions);
-
-  // Initialize sheet position
   sheetY.value = window.innerHeight * 0.6;
 
-  // Fetch userAreas from Firestore
+  await loadData();
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateSheetDimensions);
+});
+
+// Data loading methods
+async function loadData() {
+  isLoading.value = true;
+  try {
+    await Promise.all([loadUserSavedPlaces(), loadAdminLocations()]);
+  } catch (error) {
+    console.error("Error loading data:", error);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function loadUserSavedPlaces() {
   const user = auth.currentUser;
   if (user) {
     const db = getFirestore();
@@ -227,28 +463,63 @@ onMounted(async () => {
       });
     });
   }
-});
+}
 
-onUnmounted(() => {
-  window.removeEventListener("resize", updateSheetDimensions);
-});
+async function loadAdminLocations() {
+  try {
+    const db = getFirestore();
+    const waypointsRef = collection(db, "waypoints");
+    const q = query(waypointsRef, orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
 
-// Methods
+    adminLocations.value = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      adminLocations.value.push({
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        coordinates: data.coordinates,
+        altitude: data.altitude,
+        imageUrl: data.imageUrl,
+        createdAt: data.createdAt?.toDate() || new Date(),
+      });
+    });
+
+    console.log(`Loaded ${adminLocations.value.length} admin locations`);
+  } catch (error) {
+    console.error("Error loading admin locations:", error);
+  }
+}
+
+// Utility methods
 function updateSheetDimensions() {
   maxSheetHeight.value = window.innerHeight * 0.9;
   sheetHeight.value = window.innerHeight * 0.9;
 }
 
-function getCategoryIcon(category) {
-  const icons = {
-    Offices: "building",
-    Parking: "parking",
-    "Comfort Room": "toilet",
-    Food: "utensils",
-    Plants: "leaf",
-    Animals: "paw",
-  };
-  return icons[category] || "map-marker-alt";
+function getCategoryIcon(categoryKey) {
+  const category = categories.value.find((cat) => cat.key === categoryKey);
+  return category ? category.icon : "map-marker-alt";
+}
+
+function getCategoryDisplayName(categoryKey) {
+  const category = categories.value.find((cat) => cat.key === categoryKey);
+  return category ? category.name : formatCategoryName(categoryKey);
+}
+
+function formatCategoryName(categoryKey) {
+  return categoryKey
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function getCategoryCount(categoryKey) {
+  return adminLocations.value.filter(
+    (location) => location.type === categoryKey
+  ).length;
 }
 
 function toggleSheet() {
@@ -292,8 +563,6 @@ function onDrag(event) {
     : event.touches[0].clientY;
 
   const diff = currentY.value - startY.value;
-
-  // Calculate new position with constraints
   const newY = Math.min(
     Math.max(sheetY.value + diff, 0),
     window.innerHeight * 0.8
@@ -306,7 +575,6 @@ function endDrag() {
   if (!isDragging.value) return;
   isDragging.value = false;
 
-  // Determine whether to snap to expanded or collapsed state
   const threshold = window.innerHeight * 0.3;
   isExpanded.value = sheetY.value < threshold;
   animateSheet();
@@ -315,93 +583,24 @@ function endDrag() {
 function selectCategory(category) {
   selectedCategory.value =
     selectedCategory.value === category ? null : category;
+  if (selectedCategory.value) {
+    expandSheet();
+  }
 }
 
 function clearSearch() {
   searchQuery.value = "";
 }
 
-// Prompt for area name and save the area
-async function addNewPlace() {
-  // Prompt for area name
-  const areaName = prompt("Enter a name for this place:");
-  if (!areaName || !areaName.trim()) {
-    alert("Please enter a name for this place.");
-    return;
-  }
-
-  // Get current user
-  const user = auth.currentUser;
-  if (!user) {
-    alert("You must be logged in to save a place.");
-    return;
-  }
-
-  // Get current location
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-
-      // Save to Firestore
-      try {
-        const db = getFirestore();
-        const areaData = {
-          userId: user.uid,
-          userName: user.email || "User",
-          name: areaName,
-          latitude,
-          longitude,
-          timestamp: new Date(),
-        };
-        await addDoc(collection(db, "userAreas"), areaData);
-        alert("Place saved successfully!");
-        // Reload saved places
-        await loadSavedPlaces();
-      } catch (error) {
-        alert("Error saving place: " + error.message);
-      }
-    },
-    (error) => {
-      alert("Error getting location: " + error.message);
-    }
-  );
-}
-
-// Helper to reload saved places
-async function loadSavedPlaces() {
-  const user = auth.currentUser;
-  if (user) {
-    const db = getFirestore();
-    const userAreasRef = collection(db, "userAreas");
-    const q = query(
-      userAreasRef,
-      where("userId", "==", user.uid),
-      orderBy("timestamp", "desc")
-    );
-    const querySnapshot = await getDocs(q);
-    savedPlaces.value = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      savedPlaces.value.push({
-        id: doc.id,
-        name: data.name,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timestamp: data.timestamp?.toDate() || new Date(),
-      });
-    });
-  }
+function goToLocation(location) {
+  console.log("Going to admin location:", location.name);
+  // Implement navigation to location coordinates
+  // You can integrate with your map to show the location
 }
 
 function goToPlace(place) {
-  // Implementation for navigating to place
-  console.log("Going to place:", place.name);
+  console.log("Going to saved place:", place.name);
+  // Implement navigation to user saved place
 }
 
 function toggleDarkMode() {
@@ -459,7 +658,7 @@ async function saveNewPlace() {
         await addDoc(collection(db, "userAreas"), areaData);
         alert("Place saved successfully!");
         closeAddPlaceModal();
-        await loadSavedPlaces();
+        await loadUserSavedPlaces();
       } catch (error) {
         alert("Error saving place: " + error.message);
       }
@@ -469,12 +668,232 @@ async function saveNewPlace() {
     }
   );
 }
+
+function showLocationDetails(location) {
+  selectedLocationDetails.value = location;
+  showLocationModal.value = true;
+}
+
+function closeLocationModal() {
+  showLocationModal.value = false;
+  selectedLocationDetails.value = null;
+}
 </script>
 
 <style scoped>
 @import "@/assets/allstyle.css";
 
-/* Additional styles for smooth sheet behavior */
+/* Enhanced styles for location display */
+.locapp-locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.locapp-location-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #f0f0f0;
+}
+
+.locapp-location-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.location-image {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.location-img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+
+.location-info-btn-image {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(34, 197, 94, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+  font-size: 14px;
+}
+
+.location-info-btn-image:hover {
+  background: rgba(34, 197, 94, 1);
+  transform: scale(1.1);
+}
+
+.location-info {
+  text-align: left;
+}
+
+.location-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #1f2937;
+}
+
+.location-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.location-coordinates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.location-coordinates i {
+  color: #22c55e;
+}
+
+.locapp-locations-list {
+  margin-top: 12px;
+}
+
+.location-icon-wrapper {
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 8px;
+  margin-right: 12px;
+}
+
+.location-icon-wrapper .locapp-icon {
+  color: #22c55e;
+  font-size: 18px;
+}
+
+.locapp-place-category {
+  font-size: 12px;
+  color: #22c55e;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.locapp-place-coordinates {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.category-count {
+  background: #22c55e;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.location-count {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: normal;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  color: #22c55e;
+  margin-bottom: 16px;
+}
+
+.loading-overlay p {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Dark mode enhancements */
+body.dark-mode .locapp-location-card {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+body.dark-mode .location-name {
+  color: #f9fafb !important;
+}
+
+body.dark-mode .location-description {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .location-coordinates {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .locapp-place-category {
+  color: #34d399 !important;
+}
+
+body.dark-mode .loading-overlay {
+  background: rgba(31, 41, 55, 0.9) !important;
+}
+
+body.dark-mode .loading-overlay p {
+  color: #d1d5db !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .locapp-locations-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .locapp-location-card {
+    padding: 12px;
+  }
+
+  .location-img {
+    height: 100px;
+  }
+}
+
+/* Additional sheet styles */
 .locapp-sheet {
   position: fixed;
   bottom: 0;
@@ -484,7 +903,7 @@ async function saveNewPlace() {
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  height: 90vh; /* Set a fixed height */
+  height: 90vh;
   will-change: transform;
   touch-action: none;
 }
@@ -510,11 +929,6 @@ async function saveNewPlace() {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Prevent content scrolling when dragging */
-.locapp-sheet.dragging .locapp-content {
-  pointer-events: none;
-}
-
 .darkmode-btn {
   background: none;
   border: none;
@@ -528,14 +942,17 @@ body.dark-mode {
   background: #18181b !important;
   color: #f3f4f6 !important;
 }
+
 body.dark-mode .locapp-navbar,
 body.dark-mode .locapp-sheet {
   background: #23272f !important;
   color: #f3f4f6 !important;
 }
+
 body.dark-mode .locapp-handle {
   background: #444 !important;
 }
+
 body.dark-mode .locapp-content {
   background: #23272f !important;
   color: #f3f4f6 !important;
@@ -557,6 +974,7 @@ body.dark-mode .farm-name {
   justify-content: center;
   z-index: 2000;
 }
+
 .add-place-content {
   background: #fff;
   padding: 24px 20px;
@@ -566,6 +984,7 @@ body.dark-mode .farm-name {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
+
 .add-place-input {
   width: 100%;
   padding: 10px;
@@ -574,11 +993,13 @@ body.dark-mode .farm-name {
   border-radius: 4px;
   font-size: 15px;
 }
+
 .add-place-buttons {
   display: flex;
   justify-content: space-between;
   gap: 10px;
 }
+
 .save-place-btn,
 .cancel-place-btn {
   flex: 1;
@@ -588,10 +1009,12 @@ body.dark-mode .farm-name {
   font-size: 15px;
   cursor: pointer;
 }
+
 .save-place-btn {
   background: #22c55e;
   color: #fff;
 }
+
 .cancel-place-btn {
   background: #eee;
   color: #333;
@@ -600,6 +1023,364 @@ body.dark-mode .farm-name {
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 12px; /* Adjust the space between buttons */
+  gap: 12px;
+}
+
+.search-count {
+  font-size: 14px;
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.empty-search-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-search-state i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-search-state h3 {
+  margin: 0 0 8px 0;
+  color: #374151;
+}
+
+.empty-search-state p {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.clear-search-btn {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+  background: #e5e7eb;
+}
+
+.clear-search-btn i {
+  margin-right: 6px;
+}
+
+/* Dark mode for search elements */
+body.dark-mode .search-count {
+  color: #34d399 !important;
+}
+
+body.dark-mode .empty-search-state h3 {
+  color: #f9fafb !important;
+}
+
+body.dark-mode .empty-search-state p {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .clear-search-btn {
+  background: #4b5563 !important;
+  border-color: #6b7280 !important;
+  color: #f9fafb !important;
+}
+
+body.dark-mode .clear-search-btn:hover {
+  background: #374151 !important;
+}
+
+.location-info-btn-image {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(34, 197, 94, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+  font-size: 14px;
+}
+
+.location-info-btn-image:hover {
+  background: rgba(34, 197, 94, 1);
+  transform: scale(1.1);
+}
+
+body.dark-mode .location-info-btn-image {
+  background: rgba(34, 197, 94, 0.9) !important;
+}
+
+body.dark-mode .location-info-btn-image:hover {
+  background: rgba(34, 197, 94, 1) !important;
+}
+
+.location-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
+}
+
+.location-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.location-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.location-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.location-modal-body {
+  padding: 24px;
+}
+
+.location-modal-image {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.modal-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+
+.modal-type-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(34, 197, 94, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.detail-section p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.detail-value {
+  color: #6b7280;
+  text-align: right;
+}
+
+.location-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.navigate-btn,
+.copy-coords-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.navigate-btn {
+  background: #22c55e;
+  color: white;
+}
+
+.navigate-btn:hover {
+  background: #16a34a;
+}
+
+.copy-coords-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.copy-coords-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Dark mode styles for modal */
+body.dark-mode .location-modal-content {
+  background: #374151 !important;
+}
+
+body.dark-mode .location-modal-header {
+  border-bottom-color: #4b5563 !important;
+}
+
+body.dark-mode .location-modal-header h2 {
+  color: #f9fafb !important;
+}
+
+body.dark-mode .close-modal-btn {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .close-modal-btn:hover {
+  background: #4b5563 !important;
+  color: #f9fafb !important;
+}
+
+body.dark-mode .detail-section h3 {
+  color: #f9fafb !important;
+}
+
+body.dark-mode .detail-section p {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .detail-label {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .detail-value {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .detail-item {
+  border-bottom-color: #4b5563 !important;
+}
+
+body.dark-mode .copy-coords-btn {
+  background: #4b5563 !important;
+  color: #e5e7eb !important;
+  border-color: #6b7280 !important;
+}
+
+body.dark-mode .copy-coords-btn:hover {
+  background: #374151 !important;
+}
+
+body.dark-mode .location-info-btn {
+  background: rgba(55, 65, 81, 0.9) !important;
+}
+
+body.dark-mode .location-info-btn:hover {
+  background: rgba(55, 65, 81, 1) !important;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+  .location-modal {
+    padding: 10px;
+  }
+
+  .location-modal-content {
+    max-height: 95vh;
+  }
+
+  .location-modal-header {
+    padding: 16px 20px;
+  }
+
+  .location-modal-body {
+    padding: 20px;
+  }
+
+  .location-modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-img {
+    height: 150px;
+  }
 }
 </style>
