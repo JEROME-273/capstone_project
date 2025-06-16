@@ -18,7 +18,7 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      redirect: "/home",
+      redirect: "/homepage",
     },
     {
       path: "/loading",

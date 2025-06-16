@@ -296,6 +296,12 @@
       </div>
     </div>
 
+    <!-- AR Navigation Component -->
+    <ARNavigation
+      :destination="arDestination"
+      :is-active="isARActive"
+      @stop-navigation="handleStopNavigation" />
+
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="loading-spinner">
@@ -318,6 +324,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { auth } from "@/firebase/config";
+import ARNavigation from "@/components/ARNavigation.vue";
 
 // Sheet state
 const sheetY = ref(0);
@@ -342,6 +349,10 @@ const newPlaceName = ref("");
 
 const showLocationModal = ref(false);
 const selectedLocationDetails = ref(null);
+
+// AR Navigation state
+const isARActive = ref(false);
+const arDestination = ref(null);
 
 // Categories with enhanced mapping
 const categories = ref([
@@ -592,12 +603,6 @@ function clearSearch() {
   searchQuery.value = "";
 }
 
-function goToLocation(location) {
-  console.log("Going to admin location:", location.name);
-  // Implement navigation to location coordinates
-  // You can integrate with your map to show the location
-}
-
 function goToPlace(place) {
   console.log("Going to saved place:", place.name);
   // Implement navigation to user saved place
@@ -677,6 +682,19 @@ function showLocationDetails(location) {
 function closeLocationModal() {
   showLocationModal.value = false;
   selectedLocationDetails.value = null;
+}
+
+// AR Navigation methods
+function goToLocation(location) {
+  console.log("Starting AR navigation to:", location.name);
+  arDestination.value = location;
+  isARActive.value = true;
+  closeLocationModal();
+}
+
+function handleStopNavigation() {
+  isARActive.value = false;
+  arDestination.value = null;
 }
 </script>
 
