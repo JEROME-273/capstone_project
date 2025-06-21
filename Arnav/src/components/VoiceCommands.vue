@@ -29,150 +29,154 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "VoiceCommands",
-  props: {
-    lang: {
-      type: String,
-      default: "en-US",
-    },
+<script setup>
+import { ref, onMounted, onUnmounted } from "vue";
+
+// Props
+const props = defineProps({
+  lang: {
+    type: String,
+    default: "en-US",
   },
-  data() {
-    return {
-      recognition: null,
-      isListening: false,
-      transcript: "",
-      error: null,
-      showHelp: false,
-      commandPatterns: [
-        { pattern: /where am i/i, command: "whereAmI" },
-        { pattern: /(how far|distance|eta)/i, command: "distance" },
-        {
-          pattern: /(next instruction|what next|next direction)/i,
-          command: "nextInstruction",
-        },
-        { pattern: /(end|stop|cancel) navigation/i, command: "endNavigation" },
-        { pattern: /(repeat|say again|what was that)/i, command: "repeat" },
-      ],
-    };
+});
+
+// Emits
+const emit = defineEmits(["command", "error"]);
+
+// Data
+const recognition = ref(null);
+const isListening = ref(false);
+const transcript = ref("");
+const error = ref(null);
+const showHelp = ref(false);
+const commandPatterns = [
+  { pattern: /where am i/i, command: "whereAmI" },
+  { pattern: /(how far|distance|eta)/i, command: "distance" },
+  {
+    pattern: /(next instruction|what next|next direction)/i,
+    command: "nextInstruction",
   },
-  mounted() {
-    this.initSpeechRecognition();
-  },
-  methods: {
-    initSpeechRecognition() {
-      // Check if browser supports speech recognition
-      let SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+  { pattern: /(end|stop|cancel) navigation/i, command: "endNavigation" },
+  { pattern: /(repeat|say again|what was that)/i, command: "repeat" },
+];
 
-      if (SpeechRecognition) {
-        this.recognition = new SpeechRecognition();
-        this.setupRecognition();
-      } else {
-        this.error = "Speech recognition is not supported in this browser.";
-        console.error(this.error);
-      }
-    },
+// Lifecycle
+onMounted(() => {
+  initSpeechRecognition();
+});
 
-    setupRecognition() {
-      if (!this.recognition) return;
+onUnmounted(() => {
+  if (recognition.value) {
+    recognition.value.abort();
+  }
+});
 
-      this.recognition.continuous = false;
-      this.recognition.interimResults = true;
-      this.recognition.lang = this.lang;
+// Methods
+function initSpeechRecognition() {
+  // Check if browser supports speech recognition
+  let SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      this.recognition.onstart = () => {
-        this.isListening = true;
-        this.transcript = "";
-      };
+  if (SpeechRecognition) {
+    recognition.value = new SpeechRecognition();
+    setupRecognition();
+  } else {
+    error.value = "Speech recognition is not supported in this browser.";
+    console.error(error.value);
+  }
+}
 
-      this.recognition.onresult = (event) => {
-        const result = event.results[0];
-        this.transcript = result[0].transcript;
+function setupRecognition() {
+  if (!recognition.value) return;
 
-        if (result.isFinal) {
-          this.processCommand(this.transcript);
-          this.stopListening();
-        }
-      };
+  recognition.value.continuous = false;
+  recognition.value.interimResults = true;
+  recognition.value.lang = props.lang;
 
-      this.recognition.onerror = (event) => {
-        this.error = `Error: ${event.error}`;
-        this.$emit("error", this.error);
-        this.stopListening();
-      };
+  recognition.value.onstart = () => {
+    isListening.value = true;
+    transcript.value = "";
+  };
 
-      this.recognition.onend = () => {
-        this.isListening = false;
-      };
-    },
+  recognition.value.onresult = (event) => {
+    const result = event.results[0];
+    transcript.value = result[0].transcript;
 
-    toggleVoiceCommands() {
-      if (this.isListening) {
-        this.stopListening();
-      } else {
-        this.startListening();
-      }
-    },
-
-    startListening() {
-      if (!this.recognition) {
-        this.initSpeechRecognition();
-      }
-
-      if (this.recognition) {
-        try {
-          this.recognition.start();
-        } catch (error) {
-          console.error("Error starting recognition:", error);
-        }
-      }
-    },
-
-    stopListening() {
-      if (this.recognition && this.isListening) {
-        try {
-          this.recognition.stop();
-        } catch (error) {
-          console.error("Error stopping recognition:", error);
-        }
-      }
-    },
-
-    processCommand(text) {
-      // Check if help was requested
-      if (/help|commands|what can (i|you) say/i.test(text)) {
-        this.showHelp = true;
-        return;
-      }
-
-      // Match command patterns
-      let matchedCommand = "unknown";
-      let matchFound = false;
-
-      for (const { pattern, command } of this.commandPatterns) {
-        if (pattern.test(text)) {
-          matchedCommand = command;
-          matchFound = true;
-          break;
-        }
-      }
-
-      // Emit the matched command
-      this.$emit("command", matchedCommand, text);
-    },
-
-    toggleHelp() {
-      this.showHelp = !this.showHelp;
-    },
-  },
-  beforeUnmount() {
-    if (this.recognition) {
-      this.recognition.abort();
+    if (result.isFinal) {
+      processCommand(transcript.value);
+      stopListening();
     }
-  },
-};
+  };
+
+  recognition.value.onerror = (event) => {
+    error.value = `Error: ${event.error}`;
+    emit("error", error.value);
+    stopListening();
+  };
+
+  recognition.value.onend = () => {
+    isListening.value = false;
+  };
+}
+
+function toggleVoiceCommands() {
+  if (isListening.value) {
+    stopListening();
+  } else {
+    startListening();
+  }
+}
+
+function startListening() {
+  if (!recognition.value) {
+    initSpeechRecognition();
+  }
+
+  if (recognition.value) {
+    try {
+      recognition.value.start();
+    } catch (error) {
+      console.error("Error starting recognition:", error);
+    }
+  }
+}
+
+function stopListening() {
+  if (recognition.value && isListening.value) {
+    try {
+      recognition.value.stop();
+    } catch (error) {
+      console.error("Error stopping recognition:", error);
+    }
+  }
+}
+
+function processCommand(text) {
+  // Check if help was requested
+  if (/help|commands|what can (i|you) say/i.test(text)) {
+    showHelp.value = true;
+    return;
+  }
+
+  // Match command patterns
+  let matchedCommand = "unknown";
+  let matchFound = false;
+
+  for (const { pattern, command } of commandPatterns) {
+    if (pattern.test(text)) {
+      matchedCommand = command;
+      matchFound = true;
+      break;
+    }
+  }
+
+  // Emit the matched command
+  emit("command", matchedCommand, text);
+}
+
+function toggleHelp() {
+  showHelp.value = !showHelp.value;
+}
 </script>
 
 <style scoped>

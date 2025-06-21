@@ -64,12 +64,38 @@
             placeholder="Search locations, categories, descriptions..."
             v-model="searchQuery"
             @focus="expandSheet" />
+
+          <!-- Voice Search Button -->
+          <button
+            @click="toggleVoiceSearch"
+            class="voice-search-btn"
+            :class="{ listening: isVoiceSearchListening }"
+            aria-label="Voice search">
+            <span v-if="isVoiceSearchListening" class="pulse"></span>
+            <i class="fas fa-microphone"></i>
+          </button>
+
           <button
             class="locapp-search-clear"
             v-if="searchQuery"
             @click="clearSearch">
             <i class="fas fa-times"></i>
           </button>
+        </div>
+
+        <!-- Voice Search Status -->
+        <div v-if="isVoiceSearchListening" class="voice-search-status">
+          <div class="voice-indicator">
+            <div class="voice-animation">
+              <span class="voice-bar"></span>
+              <span class="voice-bar"></span>
+              <span class="voice-bar"></span>
+              <span class="voice-bar"></span>
+            </div>
+            <span class="voice-text"
+              >Listening... {{ voiceSearchTranscript }}</span
+            >
+          </div>
         </div>
 
         <!-- Search Results -->
@@ -350,6 +376,11 @@ const newPlaceName = ref("");
 const showLocationModal = ref(false);
 const selectedLocationDetails = ref(null);
 
+// Voice Search state
+const voiceSearchRecognition = ref(null);
+const isVoiceSearchListening = ref(false);
+const voiceSearchTranscript = ref("");
+
 // AR Navigation state
 const isARActive = ref(false);
 const arDestination = ref(null);
@@ -432,12 +463,111 @@ onMounted(async () => {
   window.addEventListener("resize", updateSheetDimensions);
   sheetY.value = window.innerHeight * 0.6;
 
+  // Initialize voice search
+  initializeVoiceSearch();
+
   await loadData();
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", updateSheetDimensions);
+  cleanupVoiceSearch();
 });
+
+// Voice Search methods
+function initializeVoiceSearch() {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    voiceSearchRecognition.value = new SpeechRecognition();
+    setupVoiceSearchRecognition();
+  } else {
+    console.warn("Speech recognition not supported in this browser");
+  }
+}
+
+function setupVoiceSearchRecognition() {
+  if (!voiceSearchRecognition.value) return;
+
+  voiceSearchRecognition.value.continuous = false;
+  voiceSearchRecognition.value.interimResults = true;
+  voiceSearchRecognition.value.lang = "en-US";
+
+  voiceSearchRecognition.value.onstart = () => {
+    isVoiceSearchListening.value = true;
+    voiceSearchTranscript.value = "";
+    expandSheet(); // Expand sheet when voice search starts
+  };
+
+  voiceSearchRecognition.value.onresult = (event) => {
+    const result = event.results[0];
+    voiceSearchTranscript.value = result[0].transcript;
+
+    if (result.isFinal) {
+      handleVoiceSearchResult(voiceSearchTranscript.value);
+      stopVoiceSearch();
+    }
+  };
+
+  voiceSearchRecognition.value.onerror = (event) => {
+    console.error("Voice search error:", event.error);
+    stopVoiceSearch();
+  };
+
+  voiceSearchRecognition.value.onend = () => {
+    isVoiceSearchListening.value = false;
+  };
+}
+
+function toggleVoiceSearch() {
+  if (isVoiceSearchListening.value) {
+    stopVoiceSearch();
+  } else {
+    startVoiceSearch();
+  }
+}
+
+function startVoiceSearch() {
+  if (voiceSearchRecognition.value) {
+    try {
+      voiceSearchRecognition.value.start();
+    } catch (error) {
+      console.error("Error starting voice search:", error);
+    }
+  }
+}
+
+function stopVoiceSearch() {
+  if (voiceSearchRecognition.value && isVoiceSearchListening.value) {
+    try {
+      voiceSearchRecognition.value.stop();
+    } catch (error) {
+      console.error("Error stopping voice search:", error);
+    }
+  }
+}
+
+function handleVoiceSearchResult(text) {
+  console.log("Voice search result:", text);
+  searchQuery.value = text;
+
+  // If we have results, show them
+  if (searchResults.value.length > 0) {
+    // Optional: Auto-select first result if only one match
+    if (searchResults.value.length === 1) {
+      setTimeout(() => {
+        showLocationDetails(searchResults.value[0]);
+      }, 500);
+    }
+  }
+}
+
+function cleanupVoiceSearch() {
+  if (voiceSearchRecognition.value) {
+    voiceSearchRecognition.value.abort();
+  }
+}
 
 // Data loading methods
 async function loadData() {
@@ -701,6 +831,218 @@ function handleStopNavigation() {
 <style scoped>
 @import "@/assets/allstyle.css";
 
+/* Voice Search Styles */
+.voice-search-btn {
+  background: none;
+  border: none;
+  color: #22c55e;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  margin-left: 8px;
+}
+
+.voice-search-btn:hover {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.voice-search-btn.listening {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.voice-search-btn .pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(34, 197, 94, 0.3);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
+
+.voice-search-status {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.voice-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voice-animation {
+  display: flex;
+  align-items: flex-end;
+  height: 20px;
+  gap: 2px;
+}
+
+.voice-bar {
+  background-color: #22c55e;
+  width: 3px;
+  border-radius: 2px;
+  animation: voice-wave 0.5s infinite alternate;
+}
+
+.voice-bar:nth-child(1) {
+  height: 8px;
+  animation-duration: 0.4s;
+}
+
+.voice-bar:nth-child(2) {
+  height: 12px;
+  animation-duration: 0.3s;
+}
+
+.voice-bar:nth-child(3) {
+  height: 16px;
+  animation-duration: 0.5s;
+}
+
+.voice-bar:nth-child(4) {
+  height: 10px;
+  animation-duration: 0.2s;
+}
+
+@keyframes voice-wave {
+  0% {
+    transform: scaleY(0.5);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.voice-text {
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Dark mode voice search styles */
+body.dark-mode .voice-search-btn {
+  color: #34d399 !important;
+}
+
+body.dark-mode .voice-search-btn:hover {
+  background: rgba(52, 211, 153, 0.1) !important;
+}
+
+body.dark-mode .voice-search-btn.listening {
+  background: rgba(52, 211, 153, 0.1) !important;
+  color: #10b981 !important;
+}
+
+body.dark-mode .voice-search-status {
+  background: rgba(52, 211, 153, 0.1) !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+body.dark-mode .voice-bar {
+  background-color: #34d399 !important;
+}
+
+body.dark-mode .voice-text {
+  color: #10b981 !important;
+}
+
+/* Enhanced search bar layout */
+.locapp-search {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.locapp-search:focus-within {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.locapp-search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 16px;
+  margin-left: 8px;
+}
+
+.locapp-search-clear {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.locapp-search-clear:hover {
+  background: rgba(107, 114, 128, 0.1);
+  color: #374151;
+}
+
+/* Dark mode search styles */
+body.dark-mode .locapp-search {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+body.dark-mode .locapp-search-input {
+  color: #f9fafb !important;
+}
+
+body.dark-mode .locapp-search-input::placeholder {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .locapp-search:focus-within {
+  border-color: #34d399 !important;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1) !important;
+}
+
 /* Enhanced styles for location display */
 .locapp-locations-grid {
   display: grid;
@@ -779,6 +1121,7 @@ function handleStopNavigation() {
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -908,6 +1251,11 @@ body.dark-mode .loading-overlay p {
 
   .location-img {
     height: 100px;
+  }
+
+  .voice-search-btn {
+    font-size: 16px;
+    padding: 6px;
   }
 }
 

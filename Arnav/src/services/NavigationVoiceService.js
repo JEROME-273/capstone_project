@@ -1,4 +1,4 @@
-import VoiceService from "./VoiceService";
+import VoiceService from "./VoiceService.js";
 
 /**
  * Navigation Voice Service for turn-by-turn guidance

@@ -14,112 +14,116 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "VoiceSearch",
-  props: {
-    lang: {
-      type: String,
-      default: "en-US",
-    },
+<script setup>
+import { ref, onMounted, onUnmounted } from "vue";
+
+// Props
+const props = defineProps({
+  lang: {
+    type: String,
+    default: "en-US",
   },
-  data() {
-    return {
-      recognition: null,
-      isListening: false,
-      transcript: "",
-      error: null,
-    };
-  },
-  mounted() {
-    this.initSpeechRecognition();
-  },
-  methods: {
-    initSpeechRecognition() {
-      // Check if browser supports speech recognition
-      let SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+});
 
-      if (SpeechRecognition) {
-        this.recognition = new SpeechRecognition();
-        this.setupRecognition();
-      } else {
-        this.error = "Speech recognition is not supported in this browser.";
-        console.error(this.error);
-      }
-    },
+// Emits
+const emit = defineEmits(["result", "error"]);
 
-    setupRecognition() {
-      if (!this.recognition) return;
+// Data
+const recognition = ref(null);
+const isListening = ref(false);
+const transcript = ref("");
+const error = ref(null);
 
-      this.recognition.continuous = false;
-      this.recognition.interimResults = true;
-      this.recognition.lang = this.lang;
+// Lifecycle
+onMounted(() => {
+  initSpeechRecognition();
+});
 
-      this.recognition.onstart = () => {
-        this.isListening = true;
-        this.transcript = "";
-      };
+onUnmounted(() => {
+  if (recognition.value) {
+    recognition.value.abort();
+  }
+});
 
-      this.recognition.onresult = (event) => {
-        const result = event.results[0];
-        this.transcript = result[0].transcript;
+// Methods
+function initSpeechRecognition() {
+  // Check if browser supports speech recognition
+  let SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if (result.isFinal) {
-          this.$emit("result", this.transcript);
-          this.stopListening();
-        }
-      };
+  if (SpeechRecognition) {
+    recognition.value = new SpeechRecognition();
+    setupRecognition();
+  } else {
+    error.value = "Speech recognition is not supported in this browser.";
+    console.error(error.value);
+  }
+}
 
-      this.recognition.onerror = (event) => {
-        this.error = `Error: ${event.error}`;
-        this.$emit("error", this.error);
-        this.stopListening();
-      };
+function setupRecognition() {
+  if (!recognition.value) return;
 
-      this.recognition.onend = () => {
-        this.isListening = false;
-      };
-    },
+  recognition.value.continuous = false;
+  recognition.value.interimResults = true;
+  recognition.value.lang = props.lang;
 
-    toggleVoiceRecognition() {
-      if (this.isListening) {
-        this.stopListening();
-      } else {
-        this.startListening();
-      }
-    },
+  recognition.value.onstart = () => {
+    isListening.value = true;
+    transcript.value = "";
+  };
 
-    startListening() {
-      if (!this.recognition) {
-        this.initSpeechRecognition();
-      }
+  recognition.value.onresult = (event) => {
+    const result = event.results[0];
+    transcript.value = result[0].transcript;
 
-      if (this.recognition) {
-        try {
-          this.recognition.start();
-        } catch (error) {
-          console.error("Error starting recognition:", error);
-        }
-      }
-    },
-
-    stopListening() {
-      if (this.recognition && this.isListening) {
-        try {
-          this.recognition.stop();
-        } catch (error) {
-          console.error("Error stopping recognition:", error);
-        }
-      }
-    },
-  },
-  beforeUnmount() {
-    if (this.recognition) {
-      this.recognition.abort();
+    if (result.isFinal) {
+      emit("result", transcript.value);
+      stopListening();
     }
-  },
-};
+  };
+
+  recognition.value.onerror = (event) => {
+    error.value = `Error: ${event.error}`;
+    emit("error", error.value);
+    stopListening();
+  };
+
+  recognition.value.onend = () => {
+    isListening.value = false;
+  };
+}
+
+function toggleVoiceRecognition() {
+  if (isListening.value) {
+    stopListening();
+  } else {
+    startListening();
+  }
+}
+
+function startListening() {
+  if (!recognition.value) {
+    initSpeechRecognition();
+  }
+
+  if (recognition.value) {
+    try {
+      recognition.value.start();
+    } catch (error) {
+      console.error("Error starting recognition:", error);
+    }
+  }
+}
+
+function stopListening() {
+  if (recognition.value && isListening.value) {
+    try {
+      recognition.value.stop();
+    } catch (error) {
+      console.error("Error stopping recognition:", error);
+    }
+  }
+}
 </script>
 
 <style scoped>

@@ -66,40 +66,41 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "NavigationSettings",
-  props: {
-    initialSettings: {
-      type: Object,
-      default: () => ({
-        voiceGuidanceEnabled: true,
-        voiceVolume: 1,
-        showArrows: true,
-        distanceUnit: "metric",
-      }),
-    },
-  },
-  data() {
-    return {
-      showSettings: false,
-      settings: { ...this.initialSettings },
-    };
-  },
-  methods: {
-    toggleSettings() {
-      this.showSettings = !this.showSettings;
-    },
+<script setup>
+import { ref, reactive } from "vue";
 
-    closeSettings() {
-      this.showSettings = false;
-    },
-
-    updateSettings() {
-      this.$emit("update:settings", { ...this.settings });
-    },
+// Props
+const props = defineProps({
+  initialSettings: {
+    type: Object,
+    default: () => ({
+      voiceGuidanceEnabled: true,
+      voiceVolume: 1,
+      showArrows: true,
+      distanceUnit: "metric",
+    }),
   },
-};
+});
+
+// Emits
+const emit = defineEmits(["update:settings"]);
+
+// Data
+const showSettings = ref(false);
+const settings = reactive({ ...props.initialSettings });
+
+// Methods
+function toggleSettings() {
+  showSettings.value = !showSettings.value;
+}
+
+function closeSettings() {
+  showSettings.value = false;
+}
+
+function updateSettings() {
+  emit("update:settings", { ...settings });
+}
 </script>
 
 <style scoped>

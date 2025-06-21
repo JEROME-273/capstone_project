@@ -15,29 +15,29 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "VoiceGuidanceStatus",
-  props: {
-    isSpeaking: {
-      type: Boolean,
-      default: false,
-    },
-    enabled: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  computed: {
-    statusText() {
-      if (!this.enabled) {
-        return "Voice guidance is disabled";
-      }
+<script setup>
+import { computed } from "vue";
 
-      return this.isSpeaking ? "Speaking..." : "Voice guidance ready";
-    },
+// Props
+const props = defineProps({
+  isSpeaking: {
+    type: Boolean,
+    default: false,
   },
-};
+  enabled: {
+    type: Boolean,
+    default: true,
+  },
+});
+
+// Computed
+const statusText = computed(() => {
+  if (!props.enabled) {
+    return "Voice guidance is disabled";
+  }
+
+  return props.isSpeaking ? "Speaking..." : "Voice guidance ready";
+});
 </script>
 
 <style scoped>
@@ -108,11 +108,10 @@ export default {
 
 @keyframes sound {
   0% {
-    height: 3px;  
+    height: 3px;
   }
   100% {
     height: 15px;
   }
 }
 </style>
-   
