@@ -248,7 +248,7 @@
               <button
                 v-if="isEditMode"
                 type="button"
-                @click="deleteWaypoint"
+                @click="confirmDeleteWaypoint(editingWaypoint)"
                 class="btn-danger">
                 <i class="bx bx-trash"></i>
                 Delete
@@ -370,7 +370,7 @@
                 <button @click="editWaypoint(wp)" class="btn-edit">
                   <i class="bx bx-edit"></i>
                 </button>
-                <button @click="deleteWaypoint(wp.id)" class="btn-delete">
+                <button @click="confirmDeleteWaypoint(wp)" class="btn-delete">
                   <i class="bx bx-trash"></i>
                 </button>
               </div>
@@ -398,7 +398,7 @@
             <div v-for="path in paths" :key="path.id" class="path-card">
               <div class="path-header">
                 <h3>{{ path.name }}</h3>
-                <button @click="deletePath(path.id)" class="btn-delete">
+                <button @click="confirmDeletePath(path)" class="btn-delete">
                   <i class="bx bx-trash"></i>
                 </button>
               </div>
@@ -507,18 +507,36 @@
           </div>
         </div>
 
-        <!-- Toast Messages -->
-        <div v-if="toast.show" :class="['toast', toast.type]">
-          <i
-            :class="
-              toast.type === 'success'
-                ? 'bx bx-check-circle'
-                : 'bx bx-error-circle'
-            "></i>
-          <span>{{ toast.message }}</span>
-          <button @click="hideToast" class="toast-close">
-            <i class="bx bx-x"></i>
-          </button>
+        <!-- Confirmation Modal -->
+        <div
+          v-if="showConfirmModal"
+          class="modal-overlay"
+          @click="cancelDelete">
+          <div class="modal-content confirmation-modal" @click.stop>
+            <div class="modal-header">
+              <h3>
+                <i class="bx bx-error-circle text-danger"></i>
+                Confirm Deletion
+              </h3>
+            </div>
+            <div class="modal-body">
+              <p>{{ confirmationMessage }}</p>
+              <div class="warning-note">
+                <i class="bx bx-info-circle"></i>
+                <span>This action cannot be undone.</span>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button @click="cancelDelete" class="btn-secondary">
+                <i class="bx bx-x"></i>
+                Cancel
+              </button>
+              <button @click="proceedWithDelete" class="btn-danger">
+                <i class="bx bx-trash"></i>
+                Delete {{ deleteType }}
+              </button>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -538,7 +556,11 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { useToast } from "vue-toastification";
 import AdminLayout from "../Admin/AdminLayout.vue";
+
+// Initialize toast
+const toast = useToast();
 
 // Firebase configuration
 const firebaseConfig = {
@@ -582,7 +604,7 @@ const activeTab = ref("list");
 const waypoints = ref([]);
 const paths = ref([]);
 const searchQuery = ref("");
-const selectedCategory = ref(""); // New reactive variable for category filter
+const selectedCategory = ref("");
 const isEditMode = ref(false);
 const editingWaypoint = ref(null);
 const saving = ref(false);
@@ -592,12 +614,11 @@ const showPathModal = ref(false);
 const isAuthenticated = ref(false);
 const isLoading = ref(true);
 
-// Toast system
-const toast = ref({
-  show: false,
-  type: "success",
-  message: "",
-});
+// Confirmation modal state
+const showConfirmModal = ref(false);
+const confirmationMessage = ref("");
+const deleteType = ref("");
+const pendingDeleteAction = ref(null);
 
 // Form data
 const waypoint = ref({
@@ -639,6 +660,35 @@ const filteredWaypoints = computed(() => {
   return filtered;
 });
 
+// Confirmation functions
+const confirmDeleteWaypoint = (waypointToDelete) => {
+  confirmationMessage.value = `Are you sure you want to delete the waypoint "${waypointToDelete.name}"? This will permanently remove all associated data including coordinates, images, and connections.`;
+  deleteType.value = "Waypoint";
+  pendingDeleteAction.value = () => deleteWaypoint(waypointToDelete.id);
+  showConfirmModal.value = true;
+};
+
+const confirmDeletePath = (pathToDelete) => {
+  confirmationMessage.value = `Are you sure you want to delete the path "${pathToDelete.name}"? This will permanently remove the navigation path and all its waypoint connections.`;
+  deleteType.value = "Path";
+  pendingDeleteAction.value = () => deletePath(pathToDelete.id);
+  showConfirmModal.value = true;
+};
+
+const proceedWithDelete = () => {
+  if (pendingDeleteAction.value) {
+    pendingDeleteAction.value();
+  }
+  cancelDelete();
+};
+
+const cancelDelete = () => {
+  showConfirmModal.value = false;
+  confirmationMessage.value = "";
+  deleteType.value = "";
+  pendingDeleteAction.value = null;
+};
+
 // New utility functions
 const formatCategoryName = (category) => {
   return category
@@ -660,7 +710,7 @@ const clearFilters = () => {
 // Firebase operations
 const loadWaypoints = async () => {
   if (!isAuthenticated.value) {
-    showToast("Please wait for authentication...", "error");
+    toast.error("Please wait for authentication...");
     return;
   }
 
@@ -675,16 +725,16 @@ const loadWaypoints = async () => {
   } catch (error) {
     console.error("Error loading waypoints:", error);
     if (error.code === "permission-denied") {
-      showToast("Access denied. Please check your permissions.", "error");
+      toast.error("Access denied. Please check your permissions.");
     } else {
-      showToast("Failed to load waypoints. Please try again.", "error");
+      toast.error("Failed to load waypoints. Please try again.");
     }
   }
 };
 
 const loadPaths = async () => {
   if (!isAuthenticated.value) {
-    showToast("Please wait for authentication...", "error");
+    toast.error("Please wait for authentication...");
     return;
   }
 
@@ -699,9 +749,9 @@ const loadPaths = async () => {
   } catch (error) {
     console.error("Error loading paths:", error);
     if (error.code === "permission-denied") {
-      showToast("Access denied. Please check your permissions.", "error");
+      toast.error("Access denied. Please check your permissions.");
     } else {
-      showToast("Failed to load paths. Please try again.", "error");
+      toast.error("Failed to load paths. Please try again.");
     }
   }
 };
@@ -721,7 +771,7 @@ const initializeAuth = () => {
           console.log("Anonymous sign-in successful");
         } catch (error) {
           console.error("Anonymous sign-in failed:", error);
-          showToast("Authentication failed. Please refresh the page.", "error");
+          toast.error("Authentication failed. Please refresh the page.");
         }
       }
       isLoading.value = false;
@@ -753,11 +803,11 @@ const handleSubmit = async () => {
         doc(db, "waypoints", editingWaypoint.value.id),
         waypointData
       );
-      showToast("Waypoint updated successfully!", "success");
+      toast.success(`Waypoint "${waypoint.value.name}" updated successfully!`);
     } else {
       waypointData.createdAt = new Date();
       await addDoc(collection(db, "waypoints"), waypointData);
-      showToast("Waypoint created successfully!", "success");
+      toast.success(`Waypoint "${waypoint.value.name}" created successfully!`);
     }
 
     await loadWaypoints();
@@ -765,7 +815,7 @@ const handleSubmit = async () => {
     activeTab.value = "list";
   } catch (error) {
     console.error("Error saving waypoint:", error);
-    showToast("Failed to save waypoint", "error");
+    toast.error(`Failed to save waypoint "${waypoint.value.name}"`);
   } finally {
     saving.value = false;
   }
@@ -777,21 +827,24 @@ const editWaypoint = (wp) => {
   waypoint.value = { ...wp };
   imagePreview.value = wp.imageUrl || "";
   activeTab.value = "add";
+  toast.info(`Editing waypoint: ${wp.name}`);
 };
 
 const deleteWaypoint = async (id) => {
-  if (id && confirm("Are you sure you want to delete this waypoint?")) {
-    try {
-      await deleteDoc(doc(db, "waypoints", id));
-      await loadWaypoints();
-      showToast("Waypoint deleted successfully!", "success");
-      if (isEditMode.value && editingWaypoint.value?.id === id) {
-        resetForm();
-      }
-    } catch (error) {
-      console.error("Error deleting waypoint:", error);
-      showToast("Failed to delete waypoint", "error");
+  try {
+    const waypointToDelete = waypoints.value.find((wp) => wp.id === id);
+    const waypointName = waypointToDelete ? waypointToDelete.name : "Unknown";
+
+    await deleteDoc(doc(db, "waypoints", id));
+    await loadWaypoints();
+    toast.success(`Waypoint "${waypointName}" deleted successfully!`);
+
+    if (isEditMode.value && editingWaypoint.value?.id === id) {
+      resetForm();
     }
+  } catch (error) {
+    console.error("Error deleting waypoint:", error);
+    toast.error("Failed to delete waypoint");
   }
 };
 
@@ -807,25 +860,26 @@ const savePath = async () => {
     await addDoc(collection(db, "paths"), pathData);
     await loadPaths();
     closePathModal();
-    showToast("Path created successfully!", "success");
+    toast.success(`Path "${pathForm.value.name}" created successfully!`);
   } catch (error) {
     console.error("Error saving path:", error);
-    showToast("Failed to create path", "error");
+    toast.error(`Failed to create path "${pathForm.value.name}"`);
   } finally {
     saving.value = false;
   }
 };
 
 const deletePath = async (id) => {
-  if (confirm("Are you sure you want to delete this path?")) {
-    try {
-      await deleteDoc(doc(db, "paths", id));
-      await loadPaths();
-      showToast("Path deleted successfully!", "success");
-    } catch (error) {
-      console.error("Error deleting path:", error);
-      showToast("Failed to delete path", "error");
-    }
+  try {
+    const pathToDelete = paths.value.find((p) => p.id === id);
+    const pathName = pathToDelete ? pathToDelete.name : "Unknown";
+
+    await deleteDoc(doc(db, "paths", id));
+    await loadPaths();
+    toast.success(`Path "${pathName}" deleted successfully!`);
+  } catch (error) {
+    console.error("Error deleting path:", error);
+    toast.error("Failed to delete path");
   }
 };
 
@@ -835,7 +889,7 @@ const handleFileUpload = async (event) => {
   if (!file) return;
 
   if (file.size > 10 * 1024 * 1024) {
-    showToast("File size must be less than 10MB", "error");
+    toast.error("File size must be less than 10MB");
     return;
   }
 
@@ -868,10 +922,10 @@ const handleFileUpload = async (event) => {
     }
 
     waypoint.value.imageUrl = data.secure_url;
-    showToast("Image uploaded successfully!", "success");
+    toast.success("Image uploaded successfully!");
   } catch (error) {
     console.error("Error uploading image:", error);
-    showToast(`Failed to upload image: ${error.message}`, "error");
+    toast.error(`Failed to upload image: ${error.message}`);
     // Keep the preview but clear the URL
     waypoint.value.imageUrl = "";
   } finally {
@@ -925,7 +979,7 @@ const handleFileDrop = (event) => {
       const fakeEvent = { target: { files: [file] } };
       handleFileUpload(fakeEvent);
     } else {
-      showToast("Please drop an image file", "error");
+      toast.error("Please drop an image file");
     }
   }
 };
@@ -938,15 +992,15 @@ const getCurrentLocation = () => {
         waypoint.value.coordinates.x = position.coords.latitude;
         waypoint.value.coordinates.y = position.coords.longitude;
         waypoint.value.altitude = position.coords.altitude;
-        showToast("Location updated successfully!", "success");
+        toast.success("Location updated successfully!");
       },
       (error) => {
         console.error("Error getting location:", error);
-        showToast("Unable to get current location", "error");
+        toast.error("Unable to get current location");
       }
     );
   } else {
-    showToast("Geolocation is not supported", "error");
+    toast.error("Geolocation is not supported");
   }
 };
 
@@ -967,6 +1021,7 @@ const resetForm = () => {
 const removeImage = () => {
   imagePreview.value = "";
   waypoint.value.imageUrl = "";
+  toast.info("Image removed");
 };
 
 const closePathModal = () => {
@@ -984,24 +1039,13 @@ const getWaypointName = (id) => {
   return wp ? wp.name : "Unknown";
 };
 
-const showToast = (message, type = "success") => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 4000);
-};
-
-const hideToast = () => {
-  toast.value.show = false;
-};
-
 // Initialize
 onMounted(async () => {
   try {
     await initializeAuth();
   } catch (error) {
     console.error("Error initializing:", error);
-    showToast("Failed to initialize application", "error");
+    toast.error("Failed to initialize application");
     isLoading.value = false;
   }
 });
@@ -1009,4 +1053,60 @@ onMounted(async () => {
 
 <style scoped>
 @import "@/assets/adminmap.css";
+
+/* Additional styles for confirmation modal */
+.confirmation-modal {
+  max-width: 500px;
+}
+
+.modal-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.modal-body p {
+  margin-bottom: 15px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.warning-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 14px;
+}
+
+.text-danger {
+  color: #dc3545;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 20px;
+}
 </style>

@@ -45,7 +45,7 @@
       </ul>
       <ul class="side-menu">
         <li>
-          <a href="#" @click="$emit('logout')" class="logout">
+          <a href="#" @click="logout" class="logout">
             <i class="bx bxs-log-out-circle"></i>
             <span class="text">Logout</span>
           </a>
@@ -66,16 +66,29 @@
         <slot />
       </main>
     </section>
+
+    <!-- Logout Confirmation Modal -->
+    <div v-if="showLogoutConfirm" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-message">Are you sure you want to logout?</div>
+        <div class="modal-actions">
+          <button class="modal-btn logout" @click="confirmLogout">Yes, logout</button>
+          <button class="modal-btn cancel" @click="showLogoutConfirm = false">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from "vue";
+import { getAuth, signOut } from "firebase/auth";
 
 export default {
   name: "AdminLayout",
   setup() {
     const isDarkMode = ref(false);
+    const showLogoutConfirm = ref(false);
 
     const toggleTheme = () => {
       isDarkMode.value = !isDarkMode.value;
@@ -97,6 +110,7 @@ export default {
     return {
       isDarkMode,
       toggleTheme,
+      showLogoutConfirm,
     };
   },
   methods: {
@@ -107,6 +121,22 @@ export default {
         sidebar.classList.toggle("close");
         content.classList.toggle("close");
       }
+    },
+    logout() {
+      this.showLogoutConfirm = true;
+    },
+    confirmLogout() {
+      const auth = getAuth();
+      signOut(auth)
+        .then(() => {
+          this.showLogoutConfirm = false;
+          // Redirect to login or home page
+          this.$router.push("/register");
+        })
+        .catch((error) => {
+          this.showLogoutConfirm = false;
+          alert("Logout failed: " + error.message);
+        });
     },
   },
 };
@@ -136,9 +166,7 @@ export default {
   --card-bg: #2d2d2d;
   --border-color: #404040;
 }
-</style>
 
-<style scoped>
 .admin-layout {
   display: flex;
   min-height: 100vh;
@@ -258,6 +286,49 @@ nav .bx-menu {
 
 main {
   padding: 20px;
+}
+
+/* Logout Confirmation Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal {
+  background: var(--bg-secondary, #fff);
+  padding: 24px 32px;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(44,62,80,0.15);
+  min-width: 280px;
+  text-align: center;
+}
+.modal-message {
+  margin-bottom: 18px;
+  font-size: 1.1rem;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.modal-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.modal-btn.logout {
+  background: #e53e3e;
+  color: #fff;
+}
+.modal-btn.cancel {
+  background: #ccc;
+  color: #222;
 }
 
 @media (max-width: 768px) {
