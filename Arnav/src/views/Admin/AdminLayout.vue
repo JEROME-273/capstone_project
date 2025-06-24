@@ -30,11 +30,12 @@
             <span class="text">Feedback</span>
           </router-link>
         </li>
-        <li>
-          <a href="#">
+        <li :class="{ active: $route.name === 'AdminAnalytics' }">
+          <router-link to="/admin-analytics">
             <i class="bx bxs-bar-chart-alt-2"></i>
+
             <span class="text">Analytics</span>
-          </a>
+          </router-link>
         </li>
         <li :class="{ active: $route.name === 'AdminMapManagement' }">
           <router-link to="/adminmap-manage">
@@ -72,8 +73,12 @@
       <div class="modal">
         <div class="modal-message">Are you sure you want to logout?</div>
         <div class="modal-actions">
-          <button class="modal-btn logout" @click="confirmLogout">Yes, logout</button>
-          <button class="modal-btn cancel" @click="showLogoutConfirm = false">Cancel</button>
+          <button class="modal-btn logout" @click="confirmLogout">
+            Yes, logout
+          </button>
+          <button class="modal-btn cancel" @click="showLogoutConfirm = false">
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -291,8 +296,11 @@ main {
 /* Logout Confirmation Modal Styles */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.4);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,7 +310,7 @@ main {
   background: var(--bg-secondary, #fff);
   padding: 24px 32px;
   border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(44,62,80,0.15);
+  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.15);
   min-width: 280px;
   text-align: center;
 }

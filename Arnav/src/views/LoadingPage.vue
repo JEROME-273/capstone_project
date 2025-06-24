@@ -12,26 +12,42 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const showButton = ref(false);
 const router = useRouter();
-
-onMounted(() => {
-  setTimeout(() => {
-    showButton.value = true;
-  }, 3000);
-});
+const auth = getAuth();
 
 const goToRegister = () => {
   router.push("/register");
 };
+
+onMounted(() => {
+  // Check if user is already authenticated
+  const authListener = onAuthStateChanged(auth, (user) => {
+    if (user && user.emailVerified) {
+      // User is authenticated, redirect them
+      router.push("/homepage");
+    } else {
+      // Show continue button after delay for unauthenticated users
+      setTimeout(() => {
+        showButton.value = true;
+      }, 3000);
+    }
+  });
+
+  // Cleanup listener on component unmount
+  return () => {
+    authListener();
+  };
+});
 </script>
 
 <style scoped>
 html,
 body {
   height: 100%;
-  overflow: hidden; /* Prevent scrolling */
+  overflow: hidden;
 }
 
 body {

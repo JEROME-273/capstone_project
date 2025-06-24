@@ -132,8 +132,17 @@
                   required />
               </div>
               <div class="aum-form-actions">
-                <button type="submit" class="aum-btn primary">
-                  {{ editingUser ? "Update User" : "Register User" }}
+                <button
+                  type="submit"
+                  class="aum-btn primary"
+                  :disabled="isCreatingUser">
+                  {{
+                    isCreatingUser
+                      ? "Creating..."
+                      : editingUser
+                      ? "Update User"
+                      : "Register User"
+                  }}
                 </button>
                 <button
                   type="button"
@@ -157,6 +166,7 @@ import {
   createUserWithEmailAndPassword,
   updateEmail,
   signOut,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -181,6 +191,8 @@ export default {
       userFilter: "all",
       statusFilter: "all",
       editingUser: null,
+      isCreatingUser: false,
+      currentAdminUser: null, // Store current admin user
       userForm: {
         firstName: "",
         lastName: "",
@@ -215,6 +227,10 @@ export default {
       return filtered;
     },
   },
+  created() {
+    // Store the current admin user info
+    this.currentAdminUser = getAuth().currentUser;
+  },
   methods: {
     async fetchUsers() {
       const db = getFirestore();
@@ -234,12 +250,16 @@ export default {
         console.error("Error fetching users:", e);
       }
     },
+
     async saveUser() {
       const db = getFirestore();
       const auth = getAuth();
+
+      this.isCreatingUser = true;
+
       try {
         if (this.editingUser) {
-          // Update
+          // Update existing user
           const userRef = doc(db, "users", this.editingUser.uid);
           await updateDoc(userRef, {
             firstName: this.userForm.firstName,
@@ -253,14 +273,36 @@ export default {
           if (this.userForm.email !== this.editingUser.email) {
             await updateEmail(auth.currentUser, this.userForm.email);
           }
+          alert("User updated successfully!");
         } else {
-          // Register
+          // Create new user WITHOUT automatically signing them in
+          console.log("Creating new user without auto-login...");
+
+          // Store current admin credentials
+          const currentUser = auth.currentUser;
+          const adminEmail = currentUser.email;
+
+          // Get admin password from localStorage or prompt (you might want to implement a better way)
+          const adminPassword = prompt(
+            "Please enter your admin password to continue creating the user:"
+          );
+          if (!adminPassword) {
+            alert("Admin password required to create users.");
+            return;
+          }
+
+          // Create the new user (this will sign them in automatically)
           const userCredential = await createUserWithEmailAndPassword(
             auth,
             this.userForm.email,
             this.userForm.password
           );
-          await setDoc(doc(db, "users", userCredential.user.uid), {
+
+          const newUserId = userCredential.user.uid;
+          console.log("New user created with UID:", newUserId);
+
+          // Save user data to Firestore - admin-created accounts are pre-verified
+          const userData = {
             firstName: this.userForm.firstName,
             lastName: this.userForm.lastName,
             middleName: this.userForm.middleName,
@@ -268,16 +310,66 @@ export default {
             gender: this.userForm.gender,
             typeofvisit: this.userForm.typeofvisit,
             role: this.userForm.role,
-            emailVerified: false,
+            emailVerified: true, // Admin-created accounts are pre-verified
             createdAt: new Date(),
-          });
+            createdBy: "admin",
+            adminCreated: true,
+          };
+
+          await setDoc(doc(db, "users", newUserId), userData);
+          console.log("User document saved successfully");
+
+          // IMPORTANT: Sign out the newly created user and sign the admin back in
+          await signOut(auth);
+          console.log("Signed out new user");
+
+          // Sign the admin back in
+          await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+          console.log("Admin signed back in");
+
+          alert("User created successfully with verified email!");
         }
+
         this.resetForm();
-        this.fetchUsers();
+        await this.fetchUsers();
       } catch (e) {
         console.error("Error saving user:", e);
+
+        // Handle specific errors
+        if (e.code === "auth/wrong-password") {
+          alert("Incorrect admin password. User creation cancelled.");
+        } else if (e.code === "auth/email-already-in-use") {
+          alert("Email is already in use. Please use a different email.");
+        } else {
+          alert(
+            `Error ${this.editingUser ? "updating" : "creating"} user: ${
+              e.message
+            }`
+          );
+        }
+
+        // If there was an error during user creation, make sure admin is still signed in
+        try {
+          const currentUser = getAuth().currentUser;
+          if (
+            !currentUser ||
+            currentUser.email !== this.currentAdminUser?.email
+          ) {
+            // Admin got logged out, try to restore session
+            const adminData = JSON.parse(localStorage.getItem("user") || "{}");
+            if (adminData.email) {
+              console.log("Attempting to restore admin session...");
+              // You might want to redirect to login or handle this differently
+            }
+          }
+        } catch (restoreError) {
+          console.error("Error restoring admin session:", restoreError);
+        }
+      } finally {
+        this.isCreatingUser = false;
       }
     },
+
     editUser(user) {
       this.editingUser = user;
       this.userForm = { ...user, password: "" };
@@ -291,8 +383,10 @@ export default {
         try {
           await deleteDoc(doc(db, "users", user.uid));
           this.fetchUsers();
+          alert("User deleted successfully!");
         } catch (e) {
           console.error("Error deleting user:", e);
+          alert(`Error deleting user: ${e.message}`);
         }
       }
     },
@@ -303,8 +397,12 @@ export default {
           emailVerified: !user.emailVerified,
         });
         this.fetchUsers();
+        alert(
+          `User ${user.emailVerified ? "unverified" : "verified"} successfully!`
+        );
       } catch (e) {
         console.error("Error toggling user status:", e);
+        alert(`Error updating user status: ${e.message}`);
       }
     },
     resetForm() {
@@ -336,59 +434,9 @@ export default {
         this.$router.push("/register");
       });
     },
-    onWindowResize() {
-      if (!this.isARActive && this.camera && this.renderer) {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-      }
-    },
-    updateNavigation() {
-      try {
-        if (!this.selectedDestination) return;
-
-        // Calculate distance to destination
-        this.distanceToDestination = Math.round(this.calculateDistance());
-
-        // Update arrow and marker positions
-        if (this.arrow && this.destinationMarker) {
-          // Update arrow direction
-          const direction = this.calculateDirection();
-
-          // Create a new matrix for the arrow
-          const matrix = new THREE.Matrix4();
-          const position = new THREE.Vector3(0, 0, -1);
-          const target = position.clone().add(direction);
-          const up = new THREE.Vector3(0, 1, 0);
-
-          matrix.lookAt(position, target, up);
-
-          // Apply the matrix to the arrow
-          this.arrow.quaternion.setFromRotationMatrix(matrix);
-          this.arrow.position.copy(position);
-
-          // Update destination marker position
-          const markerPosition = direction.multiplyScalar(
-            this.distanceToDestination / 1000
-          );
-          this.destinationMarker.position.copy(markerPosition);
-        }
-      } catch (error) {
-        console.error("Error updating navigation:", error);
-      }
-    },
   },
   mounted() {
     this.fetchUsers();
-  },
-  beforeUnmount() {
-    if (this.arSession) {
-      this.arSession.end();
-    }
-    if (this.renderer) {
-      this.renderer.setAnimationLoop(null);
-    }
-    window.removeEventListener("resize", this.onWindowResize);
   },
 };
 </script>
@@ -485,7 +533,6 @@ export default {
   background: var(--table-row-hover);
 }
 
-/* Column hover effect */
 .aum-table th:hover::after,
 .aum-table td:hover::after {
   content: "";
@@ -500,14 +547,12 @@ export default {
   z-index: 1;
 }
 
-/* Ensure content stays above the highlight */
 .aum-table td > *,
 .aum-table th > * {
   position: relative;
   z-index: 2;
 }
 
-/* Adjust specific column styles */
 .aum-table td .aum-badge,
 .aum-table td .aum-status,
 .aum-table td .aum-action {
@@ -614,6 +659,11 @@ export default {
   border: none;
   cursor: pointer;
   transition: all 0.3s ease;
+}
+
+.aum-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .aum-btn.primary {

@@ -2,7 +2,7 @@
   <div class="container-bg">
     <div class="profile-card">
       <div class="profile-header">
-        <router-link to="/home">
+        <router-link to="/homepage">
           <i class="fas fa-arrow-left icon-back"></i>
         </router-link>
         <h1 class="profile-title">My Profile</h1>

@@ -43,7 +43,7 @@ import {
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, updateDoc, getDoc } from "firebase/firestore";
 
 export default {
   name: "VerifyEmail",
@@ -56,6 +56,7 @@ export default {
       user: null,
       auth: null,
       db: null,
+      userDoc: null,
     };
   },
 
@@ -68,33 +69,89 @@ export default {
   },
 
   methods: {
-    checkAuthState() {
+    async checkAuthState() {
       this.loading = true;
 
       onAuthStateChanged(this.auth, async (user) => {
         if (user) {
           this.user = user;
 
-          // Force refresh to get the latest user data
-          await user.reload();
+          try {
+            // Get user document from Firestore
+            const userDocRef = doc(this.db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
-          // Check if email is verified
-          if (user.emailVerified) {
-            this.verified = true;
-            this.message = "Your email has been verified successfully!";
-
-            // Update Firestore document
-            try {
-              await updateDoc(doc(this.db, "users", user.uid), {
-                emailVerified: true,
-              });
-              console.log("Updated email verification status in Firestore");
-            } catch (error) {
-              console.error("Error updating verification status:", error);
+            if (userDocSnap.exists()) {
+              this.userDoc = userDocSnap.data();
+              console.log("User document:", this.userDoc);
+              console.log(
+                "Firestore emailVerified:",
+                this.userDoc.emailVerified
+              );
+              console.log("Firebase Auth emailVerified:", user.emailVerified);
+              console.log("Admin created:", this.userDoc.adminCreated);
             }
-          } else {
-            this.verified = false;
-            this.message = `We've sent a verification email to ${user.email}. Please check your inbox and spam folder.`;
+
+            // Force refresh to get the latest user data from Firebase Auth
+            await user.reload();
+
+            // Check verification status - prioritize Firestore for admin-created accounts
+            const isFirestoreVerified = this.userDoc?.emailVerified === true;
+            const isAuthVerified = user.emailVerified;
+            const isAdminCreated = this.userDoc?.adminCreated === true;
+
+            console.log("Verification check:", {
+              isFirestoreVerified,
+              isAuthVerified,
+              isAdminCreated,
+            });
+
+            // User is considered verified if either method says verified
+            if (isAuthVerified || isFirestoreVerified) {
+              this.verified = true;
+
+              if (isAdminCreated) {
+                this.message =
+                  "Your account has been verified by an administrator. Welcome!";
+              } else {
+                this.message = "Your email has been verified successfully!";
+              }
+
+              // Ensure both Firebase Auth and Firestore are in sync
+              if (isFirestoreVerified && !isAuthVerified) {
+                console.log("Syncing verification status...");
+                await updateDoc(userDocRef, {
+                  emailVerified: true,
+                  verificationSyncedAt: new Date(),
+                });
+              }
+
+              // Auto-redirect after 2 seconds if verified
+              setTimeout(() => {
+                this.goToHome();
+              }, 2000);
+            } else {
+              this.verified = false;
+              if (isAdminCreated) {
+                this.message = `Your account was created by an administrator. You can continue to the app or verify your email at ${user.email} for additional security.`;
+              } else {
+                this.message = `We've sent a verification email to ${user.email}. Please check your inbox and spam folder.`;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking user document:", error);
+            // Fallback to Firebase Auth verification only
+            if (user.emailVerified) {
+              this.verified = true;
+              this.message = "Your email has been verified successfully!";
+
+              setTimeout(() => {
+                this.goToHome();
+              }, 2000);
+            } else {
+              this.verified = false;
+              this.message = `We've sent a verification email to ${user.email}. Please check your inbox and spam folder.`;
+            }
           }
         } else {
           // No user is signed in
@@ -138,14 +195,29 @@ export default {
         // Reload user to get fresh data from Firebase
         await this.user.reload();
 
-        if (this.user.emailVerified) {
+        // Also check Firestore document
+        const userDocRef = doc(this.db, "users", this.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        let firestoreVerified = false;
+        if (userDocSnap.exists()) {
+          firestoreVerified = userDocSnap.data().emailVerified === true;
+        }
+
+        if (this.user.emailVerified || firestoreVerified) {
           this.verified = true;
           this.message = "Your email has been verified successfully!";
 
-          // Update Firestore document
-          await updateDoc(doc(this.db, "users", this.user.uid), {
+          // Update Firestore document to ensure consistency
+          await updateDoc(userDocRef, {
             emailVerified: true,
+            lastVerificationCheck: new Date(),
           });
+
+          // Auto-redirect after verification
+          setTimeout(() => {
+            this.goToHome();
+          }, 1500);
         } else {
           this.message =
             "Your email is not verified yet. Please check your inbox and click the verification link.";
@@ -159,6 +231,10 @@ export default {
     },
 
     goToHome() {
+      console.log(
+        "Redirecting to home - auth middleware will handle role-based routing"
+      );
+      // Simply redirect to home - the auth middleware will handle role-based redirection
       this.$router.push("/");
     },
 

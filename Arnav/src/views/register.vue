@@ -393,7 +393,7 @@ export default {
       }
     },
 
-    // Handle Sign In with Firebase
+    // Handle Sign In with Firebase - UPDATED
     async login() {
       this.loading = true;
 
@@ -407,22 +407,33 @@ export default {
 
         const user = userCredential.user;
 
-        // Check if email is verified
-        if (!user.emailVerified) {
-          this.showToast(
-            "Please verify your email before logging in.",
-            "error"
-          );
-          // Redirect to verification page
-          this.$router.push("/verify-email");
-          return;
-        }
-
-        // Get user data from Firestore to check role
+        // Get user data from Firestore
         const userDoc = await getDoc(doc(this.db, "users", user.uid));
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
+
+          // Check verification status - either Firebase Auth OR Firestore
+          const isAuthVerified = user.emailVerified;
+          const isFirestoreVerified = userData.emailVerified === true;
+          const isAdminCreated = userData.adminCreated === true;
+
+          console.log("Login verification check:", {
+            isAuthVerified,
+            isFirestoreVerified,
+            isAdminCreated,
+            userRole: userData.role,
+          });
+
+          // If not verified by either method, redirect to verification
+          if (!isAuthVerified && !isFirestoreVerified) {
+            this.showToast(
+              "Please verify your email before logging in.",
+              "error"
+            );
+            this.$router.push("/verify-email");
+            return;
+          }
 
           // Store user data in localStorage for session management
           localStorage.setItem(
@@ -433,6 +444,8 @@ export default {
               firstName: userData.firstName,
               lastName: userData.lastName,
               role: userData.role,
+              emailVerified: isAuthVerified || isFirestoreVerified,
+              adminCreated: isAdminCreated,
             })
           );
 
@@ -446,6 +459,11 @@ export default {
               this.$router.push("/");
             }
           }, 1000);
+        } else {
+          this.showToast(
+            "User data not found. Please contact support.",
+            "error"
+          );
         }
       } catch (error) {
         let errorMessage = "Login failed. Please try again.";

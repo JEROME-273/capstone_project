@@ -3,15 +3,6 @@
     <template #nav>
       <div class="admin-nav-bar">
         <a href="#" class="nav-link">Dashboard Overview</a>
-
-        <form action="#" class="admin-nav-search">
-          <div class="form-input">
-            <input type="search" placeholder="Search..." />
-            <button type="submit" class="search-btn">
-              <i class="bx bx-search"></i>
-            </button>
-          </div>
-        </form>
         <div class="theme-toggle">
           <label for="switch-mode" class="switch-mode"></label>
         </div>
@@ -27,10 +18,7 @@
               <li><a class="active" href="#">Dashboard</a></li>
             </ul>
           </div>
-          <a href="#" class="btn-download">
-            <i class="bx bxs-cloud-download"></i>
-            <span class="text">Download Report</span>
-          </a>
+          <!-- Download Report button removed -->
         </div>
 
         <ul class="box-info">
@@ -136,16 +124,6 @@
                   <option value="verified">Verified</option>
                   <option value="unverified">Unverified</option>
                 </select>
-              </div>
-              <div class="search-group">
-                <input
-                  type="text"
-                  v-model="searchQuery"
-                  placeholder="Search users..."
-                  class="search-input" />
-                <button class="search-btn">
-                  <i class="bx bx-search"></i>
-                </button>
               </div>
             </div>
 
@@ -403,7 +381,6 @@ export default {
       sidebarOpen: true,
       userFilter: "all",
       statusFilter: "all",
-      searchQuery: "",
       currentPage: 1,
       itemsPerPage: 10,
       totalPages: 1,
@@ -1001,20 +978,6 @@ export default {
   border-radius: 4px;
   background: var(--input-bg);
   color: var(--text-primary);
-}
-
-.search-group {
-  display: flex;
-  gap: 10px;
-}
-
-.search-btn {
-  padding: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  color: var(--text-primary);
-  cursor: pointer;
 }
 
 .table-container {

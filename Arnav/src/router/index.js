@@ -13,12 +13,15 @@ import AdminFeedback from "@/views/Admin/AdminFeedback.vue";
 import UserInfo from "@/views/user/userinfo.vue";
 import Homepage from "@/views/homepage.vue";
 import AdminMapManage from "@/views/Admin/AdminMapManage.vue";
+import AdminAnalytics from "@/views/Admin/AdminAnalytics.vue";
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
     {
       path: "/",
-      redirect: "/homepage",
+      name: "homepage",
+      component: Homepage,
+      meta: { requiresAuth: true },
     },
     {
       path: "/loading",
@@ -44,8 +47,17 @@ const router = createRouter({
       name: "AdminDashboard",
       component: AdminDashboard,
       meta: {
-        requiresAuth: true, // Requires authentication
-        roles: ["admin"], // Requires admin role
+        requiresAuth: true,
+        roles: ["admin"],
+      },
+    },
+    {
+      path: "/admin-analytics",
+      name: "AdminAnalytics",
+      component: AdminAnalytics,
+      meta: {
+        requiresAuth: true,
+        roles: ["admin"],
       },
     },
     {
@@ -107,6 +119,10 @@ const router = createRouter({
       path: "/userinfo",
       name: "UserInfo",
       component: UserInfo,
+      meta: {
+        requiresAuth: true,
+        roles: ["user", "admin"],
+      },
     },
     {
       path: "/homepage",
