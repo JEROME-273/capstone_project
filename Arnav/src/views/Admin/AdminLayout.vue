@@ -135,6 +135,7 @@ export default {
       signOut(auth)
         .then(() => {
           this.showLogoutConfirm = false;
+          localStorage.removeItem("user");
           // Redirect to login or home page
           this.$router.push("/register");
         })

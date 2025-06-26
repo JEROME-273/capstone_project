@@ -190,18 +190,17 @@
           </div>
         </div>
       </div>
-      <div class="profile-link logout-link mt-6" @click="logout">
-        <div class="flex items-center text-red-500">
-          <i class="fas fa-sign-out-alt icon-logout"></i>
-          <span class="ml-4 text-lg">Log out</span>
-        </div>
-        <i class="fas fa-chevron-right icon-chevron"></i>
+
+      <!-- Logout using AuthManager component -->
+      <div class="logout-container">
+        <AuthManager />
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import AuthManager from "@/components/AuthManager.vue";
 import { auth } from "@/firebase/config";
 import {
   getFirestore,
@@ -214,10 +213,13 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { signOut, updatePassword } from "firebase/auth";
+import { updatePassword } from "firebase/auth";
 
 export default {
   name: "UserInfo",
+  components: {
+    AuthManager,
+  },
   data() {
     return {
       userName: "",
@@ -289,14 +291,6 @@ export default {
   methods: {
     toggleTheme() {
       document.body.classList.toggle("dark-mode");
-    },
-    async logout() {
-      try {
-        await signOut(auth);
-        this.$router.push("/register"); // or your login route
-      } catch (error) {
-        alert("Sign out failed: " + error.message);
-      }
     },
     toggleDropdown(section) {
       this.openDropdown = this.openDropdown === section ? null : section;
@@ -496,14 +490,11 @@ export default {
   color: #9ca3af; /* text-gray-400 */
 }
 
-/* Logout link styling */
-.logout-link {
+/* Logout container styling */
+.logout-container {
   margin-top: 1.5rem;
-}
-
-/* Logout icon styling */
-.icon-logout {
-  font-size: 1.25rem;
+  display: flex;
+  justify-content: center;
 }
 
 /* Placeholder for user icon if no profile image */

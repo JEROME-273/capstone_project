@@ -1,194 +1,116 @@
 <template>
-  <div class="admin-layout" :class="{ 'dark-mode': isDarkMode }">
-    <section id="sidebar">
-      <router-link to="/admin-dashboard" class="brand">
-        <i class="bx bxs-smile"></i>
-        <span class="text">AR Path Admin</span>
-      </router-link>
-      <ul class="side-menu top">
-        <li :class="{ active: $route.name === 'AdminDashboard' }">
-          <router-link to="/admin-dashboard">
-            <i class="bx bxs-dashboard"></i>
-            <span class="text">Dashboard</span>
-          </router-link>
-        </li>
-        <li :class="{ active: $route.name === 'AdminUserManagement' }">
-          <router-link to="/admin-user-management">
-            <i class="bx bxs-user-detail"></i>
-            <span class="text">User Management</span>
-          </router-link>
-        </li>
-        <li :class="{ active: $route.name === 'AdminCustomerSupport' }">
-          <router-link to="/admin-customer-support">
-            <i class="bx bxs-help-circle"></i>
-            <span class="text">Customer Support</span>
-          </router-link>
-        </li>
-        <li :class="{ active: $route.name === 'AdminFeedback' }">
-          <router-link to="/admin-feedback">
-            <i class="bx bxs-message-dots"></i>
-            <span class="text">Feedback</span>
-          </router-link>
-        </li>
-        <li :class="{ active: $route.name === 'AdminAnalytics' }">
-          <router-link to="/admin-analytics">
-            <i class="bx bxs-bar-chart-alt-2"></i>
-            <span class="text">Analytics</span>
-          </router-link>
-        </li>
-        <li :class="{ active: $route.name === 'AdminMapManagement' }">
-          <router-link to="/adminmap-manage">
-            <i class="bx bxs-map"></i>
-            <span class="text">Map Management</span>
-          </router-link>
-        </li>
-      </ul>
-      <ul class="side-menu">
-        <li>
-          <a href="#" @click="logout" class="logout">
-            <i class="bx bxs-log-out-circle"></i>
-            <span class="text">Logout</span>
-          </a>
-        </li>
-      </ul>
-    </section>
+  <AdminLayout>
+    <template #nav>
+      <a href="#" class="nav-link">Analytics Dashboard</a>
+    </template>
 
-    <section id="content">
-      <nav>
-        <i class="bx bx-menu" @click="toggleSidebar"></i>
-        <div class="theme-toggle">
-          <i
-            :class="isDarkMode ? 'bx bx-sun' : 'bx bx-moon'"
-            @click="toggleTheme"></i>
-        </div>
-        <a href="#" class="nav-link">Analytics Dashboard</a>
-      </nav>
-
-      <main>
-        <div class="analytics-dashboard">
-          <div class="dashboard-header">
-            <h1>Analytics Dashboard</h1>
-            <div class="date-filter">
-              <select v-model="selectedPeriod" @change="fetchAllData">
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last year</option>
-                <option value="all">All time</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">👥</div>
-              <div class="stat-content">
-                <h3>Total Users</h3>
-                <p class="stat-number">{{ totalUsers }}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">✅</div>
-              <div class="stat-content">
-                <h3>Verified Users</h3>
-                <p class="stat-number">{{ verifiedUsers }}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📊</div>
-              <div class="stat-content">
-                <h3>Active Sessions</h3>
-                <p class="stat-number">{{ activeSessions }}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🎯</div>
-              <div class="stat-content">
-                <h3>Popular Destination</h3>
-                <p class="stat-text">{{ popularDestination }}</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="charts-grid">
-            <!-- Visit Types Bar Chart -->
-            <div class="chart-container">
-              <h3>Visit Types Distribution</h3>
-              <canvas ref="visitTypesChart"></canvas>
-            </div>
-
-            <!-- User Verification Pie Chart -->
-            <div class="chart-container">
-              <h3>User Verification Status</h3>
-              <canvas ref="verificationChart"></canvas>
-            </div>
-
-            <!-- User Registration Trend Line Chart -->
-            <div class="chart-container large">
-              <h3>User Registration Trend</h3>
-              <canvas ref="registrationTrendChart"></canvas>
-            </div>
-
-            <!-- Gender Distribution Doughnut Chart -->
-            <div class="chart-container">
-              <h3>Gender Distribution</h3>
-              <canvas ref="genderChart"></canvas>
-            </div>
-
-            <!-- Popular Destinations Bar Chart -->
-            <div class="chart-container">
-              <h3>Popular Destinations</h3>
-              <canvas ref="destinationsChart"></canvas>
-            </div>
-
-            <!-- Monthly Active Users Area Chart -->
-            <div class="chart-container large">
-              <h3>Monthly Active Users</h3>
-              <canvas ref="monthlyActiveChart"></canvas>
-            </div>
-
-            <!-- User Roles Distribution -->
-            <div class="chart-container">
-              <h3>User Roles</h3>
-              <canvas ref="rolesChart"></canvas>
-            </div>
-
-            <!-- Device Usage Polar Chart -->
-            <div class="chart-container">
-              <h3>Device Usage</h3>
-              <canvas ref="deviceChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Loading Overlay -->
-          <div v-if="loading" class="loading-overlay">
-            <div class="loading-spinner"></div>
-            <p>Loading analytics data...</p>
-          </div>
-        </div>
-      </main>
-    </section>
-
-    <!-- Logout Confirmation Modal -->
-    <div v-if="showLogoutConfirm" class="modal-overlay">
-      <div class="modal">
-        <div class="modal-message">Are you sure you want to logout?</div>
-        <div class="modal-actions">
-          <button class="modal-btn logout" @click="confirmLogout">
-            Yes, logout
-          </button>
-          <button class="modal-btn cancel" @click="showLogoutConfirm = false">
-            Cancel
-          </button>
+    <div class="analytics-dashboard">
+      <div class="dashboard-header">
+        <h1>Analytics Dashboard</h1>
+        <div class="date-filter">
+          <select v-model="selectedPeriod" @change="fetchAllData">
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
+            <option value="all">All time</option>
+          </select>
         </div>
       </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-content">
+            <h3>Total Users</h3>
+            <p class="stat-number">{{ totalUsers }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <h3>Verified Users</h3>
+            <p class="stat-number">{{ verifiedUsers }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-content">
+            <h3>Active Sessions</h3>
+            <p class="stat-number">{{ activeSessions }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-content">
+            <h3>Popular Destination</h3>
+            <p class="stat-text">{{ popularDestination }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Visit Types Bar Chart -->
+        <div class="chart-container">
+          <h3>Visit Types Distribution</h3>
+          <canvas ref="visitTypesChart"></canvas>
+        </div>
+
+        <!-- User Verification Pie Chart -->
+        <div class="chart-container">
+          <h3>User Verification Status</h3>
+          <canvas ref="verificationChart"></canvas>
+        </div>
+
+        <!-- User Registration Trend Line Chart -->
+        <div class="chart-container large">
+          <h3>User Registration Trend</h3>
+          <canvas ref="registrationTrendChart"></canvas>
+        </div>
+
+        <!-- Gender Distribution Doughnut Chart -->
+        <div class="chart-container">
+          <h3>Gender Distribution</h3>
+          <canvas ref="genderChart"></canvas>
+        </div>
+
+        <!-- Popular Destinations Bar Chart -->
+        <div class="chart-container">
+          <h3>Popular Destinations</h3>
+          <canvas ref="destinationsChart"></canvas>
+        </div>
+
+        <!-- Monthly Active Users Area Chart -->
+        <div class="chart-container large">
+          <h3>Monthly Active Users</h3>
+          <canvas ref="monthlyActiveChart"></canvas>
+        </div>
+
+        <!-- User Roles Distribution -->
+        <div class="chart-container">
+          <h3>User Roles</h3>
+          <canvas ref="rolesChart"></canvas>
+        </div>
+
+        <!-- Device Usage Polar Chart -->
+        <div class="chart-container">
+          <h3>Device Usage</h3>
+          <canvas ref="deviceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div v-if="loading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Loading analytics data...</p>
+      </div>
     </div>
-  </div>
+  </AdminLayout>
 </template>
 
 <script>
 import { ref, onMounted } from "vue";
-import { getAuth, signOut } from "firebase/auth";
+import AdminLayout from "./AdminLayout.vue";
 import {
   getFirestore,
   collection,
@@ -202,32 +124,8 @@ import Chart from "chart.js/auto";
 
 export default {
   name: "AdminAnalytics",
-  setup() {
-    const isDarkMode = ref(false);
-    const showLogoutConfirm = ref(false);
-
-    const toggleTheme = () => {
-      isDarkMode.value = !isDarkMode.value;
-      localStorage.setItem("adminTheme", isDarkMode.value ? "dark" : "light");
-    };
-
-    onMounted(() => {
-      const savedTheme = localStorage.getItem("adminTheme");
-      if (savedTheme) {
-        isDarkMode.value = savedTheme === "dark";
-      } else {
-        // Check system preference
-        isDarkMode.value = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-      }
-    });
-
-    return {
-      isDarkMode,
-      toggleTheme,
-      showLogoutConfirm,
-    };
+  components: {
+    AdminLayout,
   },
 
   data() {
@@ -269,33 +167,6 @@ export default {
   },
 
   methods: {
-    toggleSidebar() {
-      const sidebar = document.getElementById("sidebar");
-      const content = document.getElementById("content");
-      if (sidebar && content) {
-        sidebar.classList.toggle("close");
-        content.classList.toggle("close");
-      }
-    },
-
-    logout() {
-      this.showLogoutConfirm = true;
-    },
-
-    confirmLogout() {
-      const auth = getAuth();
-      signOut(auth)
-        .then(() => {
-          this.showLogoutConfirm = false;
-          localStorage.removeItem("user");
-          this.$router.push("/register");
-        })
-        .catch((error) => {
-          this.showLogoutConfirm = false;
-          alert("Logout failed: " + error.message);
-        });
-    },
-
     async fetchAllData() {
       this.loading = true;
       try {
@@ -897,156 +768,11 @@ export default {
 };
 </script>
 
-<style>
-@import "https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css";
-
-:root {
-  --bg-primary: #f8f9fa;
-  --bg-secondary: #fff;
-  --text-primary: #2c3e50;
-  --text-secondary: #666;
-  --hover-bg: #f0f2f5;
-  --shadow: 0 4px 24px rgba(44, 62, 80, 0.1), 0 1.5px 6px rgba(44, 62, 80, 0.08);
-  --card-bg: #f3f4f6;
-  --border-color: #d0d0d0;
-}
-
-.dark-mode {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
-  --hover-bg: #3d3d3d;
-  --shadow: rgba(0, 0, 0, 0.3);
-  --card-bg: #2d2d2d;
-  --border-color: #404040;
-}
-
-.admin-layout {
-  display: flex;
-  min-height: 100vh;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-#sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 260px;
-  background: var(--bg-secondary);
-  z-index: 100;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px var(--shadow);
-}
-
-#sidebar.close {
-  width: 60px;
-}
-
-#sidebar .brand {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  color: var(--text-primary);
-  text-decoration: none;
-}
-
-#sidebar .brand i {
-  font-size: 24px;
-  margin-right: 10px;
-}
-
-#sidebar .brand .text {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-#sidebar.close .text {
-  display: none;
-}
-
-#sidebar .side-menu {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-#sidebar .side-menu li {
-  margin: 8px 0;
-}
-
-#sidebar .side-menu li a {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.3s ease;
-}
-
-#sidebar .side-menu li a:hover,
-#sidebar .side-menu li.active a {
-  background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-#sidebar .side-menu li a i {
-  font-size: 20px;
-  margin-right: 10px;
-}
-
-#content {
-  margin-left: 260px;
-  width: calc(100% - 260px);
-  transition: all 0.3s ease;
-}
-
-#content.close {
-  margin-left: 60px;
-  width: calc(100% - 60px);
-}
-
-nav {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  background: var(--bg-secondary);
-  box-shadow: 0 0 10px var(--shadow);
-}
-
-nav .bx-menu {
-  font-size: 24px;
-  cursor: pointer;
-  margin-right: 20px;
-  color: var(--text-primary);
-}
-
-.theme-toggle {
-  margin-left: auto;
-  margin-right: 20px;
-}
-
-.theme-toggle i {
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--text-primary);
-  transition: transform 0.3s ease;
-}
-
-.theme-toggle i:hover {
-  transform: rotate(30deg);
-}
-
+<style scoped>
 .nav-link {
   color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
-}
-
-main {
-  padding: 0;
 }
 
 .analytics-dashboard {
@@ -1192,72 +918,7 @@ main {
   font-size: 1.1rem;
 }
 
-/* Logout Confirmation Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal {
-  background: var(--bg-secondary);
-  padding: 24px 32px;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.15);
-  min-width: 280px;
-  text-align: center;
-}
-
-.modal-message {
-  margin-bottom: 18px;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-
-.modal-btn {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.modal-btn.logout {
-  background: #e53e3e;
-  color: #fff;
-}
-
-.modal-btn.cancel {
-  background: #ccc;
-  color: #222;
-}
-
 @media (max-width: 768px) {
-  #sidebar {
-    width: 60px;
-  }
-  #sidebar .brand .text,
-  #sidebar .side-menu li a span {
-    display: none;
-  }
-  #content {
-    margin-left: 60px;
-    width: calc(100% - 60px);
-  }
-
   .charts-grid {
     grid-template-columns: 1fr;
   }

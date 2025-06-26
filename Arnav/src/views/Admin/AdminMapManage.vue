@@ -788,6 +788,19 @@ const loadData = async () => {
 const handleSubmit = async () => {
   saving.value = true;
   try {
+    // Check for duplicate name (case-insensitive)
+    const duplicate = waypoints.value.some(
+      (wp) =>
+        wp.name.trim().toLowerCase() ===
+          waypoint.value.name.trim().toLowerCase() &&
+        (!isEditMode.value || wp.id !== editingWaypoint.value?.id)
+    );
+    if (duplicate) {
+      toast.error("A waypoint with this name already exists!");
+      saving.value = false;
+      return;
+    }
+
     const waypointData = {
       name: waypoint.value.name,
       description: waypoint.value.description,
@@ -992,7 +1005,7 @@ const getCurrentLocation = () => {
         waypoint.value.coordinates.x = position.coords.latitude;
         waypoint.value.coordinates.y = position.coords.longitude;
         waypoint.value.altitude = position.coords.altitude;
-        toast.success("Location updated successfully!");
+        toast.success("Location added successfully!");
       },
       (error) => {
         console.error("Error getting location:", error);

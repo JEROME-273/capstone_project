@@ -32,7 +32,7 @@ const logout = async () => {
   try {
     await signOut(auth);
     localStorage.removeItem("user");
-    router.push("/");
+    router.push("register");
   } catch (error) {
     console.error("Error signing out:", error);
   }
