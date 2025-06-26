@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { authMiddleware } from "../middleware/auth-middleware";
-import HomeView from "../views/HomeView.vue";
+// import HomeView from "../views/HomeView.vue";
 import register from "@/views/register.vue";
 import LoadingPage from "@/views/LoadingPage.vue";
 import AdminDashboard from "@/views/Admin/AdminDashboard.vue";
@@ -33,15 +33,15 @@ const router = createRouter({
       name: "loadingPage",
       component: LoadingPage,
     },
-    {
-      path: "/home",
-      name: "home",
-      component: HomeView,
-      meta: {
-        requiresAuth: true,
-        roles: ["user", "admin"],
-      },
-    },
+    // {
+    //   path: "/home",
+    //   name: "home",
+    //   component: HomeView,
+    //   meta: {
+    //     requiresAuth: true,
+    //     roles: ["user", "admin"],
+    //   },
+    // },
     {
       path: "/register",
       name: "register",
