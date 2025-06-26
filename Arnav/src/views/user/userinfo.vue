@@ -168,23 +168,71 @@
               :class="{ 'rotate-90': openDropdown === 'settings' }"></i>
           </div>
           <div v-if="openDropdown === 'settings'" class="dropdown-content">
-            <form @submit.prevent="updatePassword">
-              <label for="newPassword"><b>New Password:</b></label>
-              <input
-                id="newPassword"
-                v-model="newPassword"
-                type="password"
-                required
-                style="margin: 0 0.5rem 0 0.5rem" />
-              <button type="submit">Update Password</button>
+            <form @submit.prevent="updatePassword" class="password-form">
+              <div class="form-group">
+                <label for="oldPassword"><b>Current Password:</b></label>
+                <div class="password-input-container">
+                  <input
+                    id="oldPassword"
+                    v-model="oldPassword"
+                    :type="showOldPassword ? 'text' : 'password'"
+                    placeholder="Enter current password"
+                    @blur="validateOldPassword"
+                    required />
+
+                  <i
+                    v-if="oldPasswordValid"
+                    class="password-check-icon fas fa-check"></i>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="newPassword"><b>New Password:</b></label>
+                <div class="password-input-container">
+                  <input
+                    id="newPassword"
+                    v-model="newPassword"
+                    :type="showNewPassword ? 'text' : 'password'"
+                    placeholder="Enter new password"
+                    minlength="6"
+                    required />
+                  <i
+                    @click="toggleNewPassword"
+                    :class="[
+                      'password-toggle-icon',
+                      showNewPassword ? 'fas fa-eye-slash' : 'fas fa-eye',
+                    ]"></i>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="confirmPassword"
+                  ><b>Confirm New Password:</b></label
+                >
+                <div class="password-input-container">
+                  <input
+                    id="confirmPassword"
+                    v-model="confirmPassword"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    placeholder="Confirm new password"
+                    required />
+                  <i
+                    @click="toggleConfirmPassword"
+                    :class="[
+                      'password-toggle-icon',
+                      showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye',
+                    ]"></i>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="update-password-btn"
+                :disabled="isUpdatingPassword">
+                {{ isUpdatingPassword ? "Updating..." : "Update Password" }}
+              </button>
             </form>
-            <p
-              v-if="passwordUpdateMessage"
-              :style="{
-                color: passwordUpdateMessage.includes('success')
-                  ? 'green'
-                  : 'red',
-              }">
+            <p v-if="passwordUpdateMessage" :class="passwordMessageClass">
               {{ passwordUpdateMessage }}
             </p>
           </div>
@@ -213,7 +261,11 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { updatePassword } from "firebase/auth";
+import {
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "firebase/auth";
 
 export default {
   name: "UserInfo",
@@ -235,8 +287,15 @@ export default {
       typeofvisit: "",
       recentDestination: "",
       openDropdown: null,
+      oldPassword: "",
       newPassword: "",
+      confirmPassword: "",
       passwordUpdateMessage: "",
+      isUpdatingPassword: false,
+      showOldPassword: false,
+      showNewPassword: false,
+      showConfirmPassword: false,
+      oldPasswordValid: false,
       recentDestinations: [],
       showPersonalInfoModal: false,
       editableInfo: {
@@ -251,6 +310,14 @@ export default {
       },
       updateMessage: "",
     };
+  },
+  computed: {
+    passwordMessageClass() {
+      if (!this.passwordUpdateMessage) return "";
+      return this.passwordUpdateMessage.includes("successfully")
+        ? "success-message"
+        : "error-message";
+    },
   },
   async mounted() {
     const user = auth.currentUser;
@@ -295,14 +362,113 @@ export default {
     toggleDropdown(section) {
       this.openDropdown = this.openDropdown === section ? null : section;
     },
-    async updatePassword() {
+
+    // Password visibility toggles
+    toggleOldPassword() {
+      this.showOldPassword = !this.showOldPassword;
+    },
+
+    toggleNewPassword() {
+      this.showNewPassword = !this.showNewPassword;
+    },
+
+    toggleConfirmPassword() {
+      this.showConfirmPassword = !this.showConfirmPassword;
+    },
+
+    // Validate old password
+    async validateOldPassword() {
+      if (!this.oldPassword) {
+        this.oldPasswordValid = false;
+        return;
+      }
+
       try {
         const user = auth.currentUser;
-        await updatePassword(user, this.newPassword);
-        this.passwordUpdateMessage = "Password updated successfully!";
-        this.newPassword = "";
+        if (!user) return;
+
+        const credential = EmailAuthProvider.credential(
+          user.email,
+          this.oldPassword
+        );
+        await reauthenticateWithCredential(user, credential);
+        this.oldPasswordValid = true;
       } catch (error) {
-        this.passwordUpdateMessage = "Error: " + error.message;
+        this.oldPasswordValid = false;
+      }
+    },
+    async updatePassword() {
+      // Clear previous messages
+      this.passwordUpdateMessage = "";
+
+      // Validate passwords match
+      if (this.newPassword !== this.confirmPassword) {
+        this.passwordUpdateMessage = "New passwords do not match!";
+        return;
+      }
+
+      // Check password length
+      if (this.newPassword.length < 6) {
+        this.passwordUpdateMessage =
+          "New password must be at least 6 characters long!";
+        return;
+      }
+
+      // Check if new password is different from old password
+      if (this.oldPassword === this.newPassword) {
+        this.passwordUpdateMessage =
+          "New password must be different from current password!";
+        return;
+      }
+
+      this.isUpdatingPassword = true;
+
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error("No user logged in");
+        }
+
+        // Create credential for reauthentication
+        const credential = EmailAuthProvider.credential(
+          user.email,
+          this.oldPassword
+        );
+
+        // Reauthenticate user with old password
+        await reauthenticateWithCredential(user, credential);
+
+        // Update to new password
+        await updatePassword(user, this.newPassword);
+
+        // Success - clear form and show message
+        this.oldPassword = "";
+        this.newPassword = "";
+        this.confirmPassword = "";
+        this.oldPasswordValid = false;
+        this.passwordUpdateMessage = "Password updated successfully!";
+
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => {
+          this.passwordUpdateMessage = "";
+        }, 3000);
+      } catch (error) {
+        console.error("Password update error:", error);
+
+        // Handle specific errors
+        if (error.code === "auth/wrong-password") {
+          this.passwordUpdateMessage = "Current password is incorrect!";
+        } else if (error.code === "auth/weak-password") {
+          this.passwordUpdateMessage = "New password is too weak!";
+        } else if (error.code === "auth/requires-recent-login") {
+          this.passwordUpdateMessage =
+            "Please log out and log back in, then try again.";
+        } else {
+          this.passwordUpdateMessage =
+            "Error updating password: " + error.message;
+        }
+      } finally {
+        this.isUpdatingPassword = false;
       }
     },
     openPersonalInfoModal() {
@@ -700,6 +866,146 @@ body.dark-mode .cancel-button {
   background-color: #374151;
   border-color: #4b5563;
   color: #f3f4f6;
+}
+
+/* Password Form Styles */
+.password-form {
+  max-width: 100%;
+}
+
+.password-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.password-form .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-form .form-group input {
+  width: 100%;
+  padding: 0.75rem 3rem 0.75rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.password-form .form-group input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.password-toggle-icon {
+  position: absolute;
+  right: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.password-toggle-icon:hover {
+  color: #374151;
+}
+
+.password-check-icon {
+  position: absolute;
+  right: 40px;
+  color: #22c55e;
+  font-size: 1rem;
+  z-index: 2;
+}
+
+.update-password-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.update-password-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.update-password-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.success-message {
+  color: #16a34a !important;
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+.error-message {
+  color: #dc2626 !important;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+/* Dark mode password form styles */
+body.dark-mode .password-form .form-group label {
+  color: #f3f4f6;
+}
+
+body.dark-mode .password-form .form-group input {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+body.dark-mode .password-form .form-group input:focus {
+  border-color: #22c55e;
+}
+
+body.dark-mode .password-toggle-icon {
+  color: #9ca3af;
+}
+
+body.dark-mode .password-toggle-icon:hover {
+  color: #f3f4f6;
+}
+
+body.dark-mode .password-check-icon {
+  color: #22c55e;
+}
+
+body.dark-mode .success-message {
+  color: #22c55e !important;
+  background-color: #064e3b;
+  border-color: #065f46;
+}
+
+body.dark-mode .error-message {
+  color: #f87171 !important;
+  background-color: #7f1d1d;
+  border-color: #991b1b;
 }
 </style>
 

@@ -19,13 +19,18 @@ const router = createRouter({
   routes: [
     {
       path: "/",
+      name: "loading",
+      component: LoadingPage,
+    },
+    {
+      path: "/homepage",
       name: "homepage",
       component: Homepage,
       meta: { requiresAuth: true },
     },
     {
       path: "/loading",
-      name: "loading",
+      name: "loadingPage",
       component: LoadingPage,
     },
     {

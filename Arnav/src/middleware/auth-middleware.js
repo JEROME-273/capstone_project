@@ -1,4 +1,4 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 // Authentication middleware
@@ -6,16 +6,16 @@ export const authMiddleware = (to, from, next) => {
   const auth = getAuth();
   const db = getFirestore();
 
-  let called = false; // <-- Add this flag
+  let called = false;
 
   return new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (called) return; // <-- Prevent multiple calls
+      if (called) return;
       called = true;
-      unsubscribe(); // <-- Unsubscribe immediately
+      unsubscribe();
 
       // Allow access to loading page without authentication
-      if (to.path === "/") {
+      if (to.path === "/" || to.path === "/loading") {
         next();
         resolve();
         return;
@@ -31,14 +31,14 @@ export const authMiddleware = (to, from, next) => {
             if (userData.role === "admin") {
               next({ path: "/admin-dashboard" });
             } else {
-              next({ path: "/" });
+              next({ path: "/homepage" });
             }
           } else {
-            next({ path: "/" });
+            next({ path: "/homepage" });
           }
         } catch (error) {
           console.error("Error getting user data:", error);
-          next({ path: "/" });
+          next({ path: "/homepage" });
         }
         resolve();
         return;
@@ -58,7 +58,16 @@ export const authMiddleware = (to, from, next) => {
           const userDoc = await getDoc(doc(db, "users", user.uid));
 
           if (!userDoc.exists()) {
-            // User document doesn't exist, redirect to register
+            // User document doesn't exist, sign out and redirect to register
+            try {
+              await signOut(auth);
+              console.log("User signed out due to missing Firestore document");
+            } catch (signOutError) {
+              console.error(
+                "Error signing out user in middleware:",
+                signOutError
+              );
+            }
             next({ path: "/register" });
             resolve();
             return;
@@ -92,7 +101,7 @@ export const authMiddleware = (to, from, next) => {
             // If trying to access admin dashboard and user is not admin
             if (to.path === "/admin-dashboard" && userData.role !== "admin") {
               // Redirect regular users to home page
-              next({ path: "/" });
+              next({ path: "/homepage" });
               resolve();
               return;
             }

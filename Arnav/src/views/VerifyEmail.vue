@@ -235,11 +235,19 @@ export default {
         "Redirecting to home - auth middleware will handle role-based routing"
       );
       // Simply redirect to home - the auth middleware will handle role-based redirection
-      this.$router.push("/");
+      this.$router.push("/homepage");
     },
 
-    goToLogin() {
-      this.$router.push("/register");
+    async goToLogin() {
+      try {
+        // Sign out the user first to avoid auth middleware redirection
+        await signOut(this.auth);
+        this.$router.push("/register");
+      } catch (error) {
+        console.error("Error signing out:", error);
+        // If sign out fails, still try to redirect
+        this.$router.push("/register");
+      }
     },
   },
 };
