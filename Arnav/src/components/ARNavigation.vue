@@ -158,6 +158,8 @@
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // Props
 const props = defineProps({
@@ -227,6 +229,10 @@ const commandPatterns = [
 let scene, camera, renderer, arrowModel, markerModel;
 let animationId = null;
 const loader = new GLTFLoader();
+
+// Navigation tracking
+const navigationStartTime = ref(null);
+const hasLoggedArrival = ref(false);
 
 // Computed properties
 const voiceStatusText = computed(() => {
@@ -412,6 +418,52 @@ function announceDistance(distance, type = "destination") {
 function announceArrival() {
   lastInstruction.value = "You have arrived at your destination.";
   queueAnnouncement(lastInstruction.value);
+
+  // Log successful arrival
+  if (!hasLoggedArrival.value) {
+    logSuccessfulArrival();
+    hasLoggedArrival.value = true;
+  }
+}
+
+// Log successful arrival to Firebase for analytics
+async function logSuccessfulArrival() {
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    const db = getFirestore();
+
+    if (
+      !currentUser ||
+      !destinationLocation.value ||
+      !navigationStartTime.value
+    ) {
+      return;
+    }
+
+    const arrivalTime = new Date();
+    const navigationDuration = arrivalTime - navigationStartTime.value;
+
+    await addDoc(collection(db, "arrivalAnalytics"), {
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      destinationName: destinationLocation.value.name,
+      destinationCoordinates: {
+        lat: destinationLocation.value.lat,
+        lng: destinationLocation.value.lng,
+      },
+      startTime: navigationStartTime.value,
+      arrivalTime: arrivalTime,
+      navigationDuration: navigationDuration, // in milliseconds
+      successful: true,
+      finalDistance: distanceToDestination.value,
+      timestamp: arrivalTime,
+    });
+
+    console.log("Successful arrival logged to analytics");
+  } catch (error) {
+    console.error("Error logging arrival:", error);
+  }
 }
 
 // Settings methods
@@ -551,6 +603,10 @@ async function startARNavigation() {
       lng: props.destination.coordinates.y,
       name: props.destination.name,
     };
+
+    // Reset tracking variables
+    navigationStartTime.value = new Date();
+    hasLoggedArrival.value = false;
 
     isARNavigationActive.value = true;
 
@@ -1043,6 +1099,8 @@ function stopARNavigation() {
   announcementQueue.value = [];
   isProcessingQueue.value = false;
   lastInstruction.value = "";
+  navigationStartTime.value = null;
+  hasLoggedArrival.value = false;
 
   // Emit stop event to parent
   emit("stop-navigation");
