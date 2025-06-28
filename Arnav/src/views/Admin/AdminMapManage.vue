@@ -558,6 +558,7 @@ import {
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useToast } from "vue-toastification";
 import AdminLayout from "../Admin/AdminLayout.vue";
+import NotificationService from "@/services/NotificationService";
 
 // Initialize toast
 const toast = useToast();
@@ -819,7 +820,22 @@ const handleSubmit = async () => {
       toast.success(`Waypoint "${waypoint.value.name}" updated successfully!`);
     } else {
       waypointData.createdAt = new Date();
-      await addDoc(collection(db, "waypoints"), waypointData);
+      const docRef = await addDoc(collection(db, "waypoints"), waypointData);
+
+      // Create notification for new waypoint
+      try {
+        await NotificationService.createWaypointNotification({
+          id: docRef.id,
+          name: waypoint.value.name,
+          type: waypoint.value.type,
+          description: waypoint.value.description,
+        });
+        console.log("Notification created for new waypoint");
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Don't fail the waypoint creation if notification fails
+      }
+
       toast.success(`Waypoint "${waypoint.value.name}" created successfully!`);
     }
 

@@ -1,3 +1,33 @@
+/* CSS Variables for consistent theming */
+:root {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
+  --primary-color: #3b82f6;
+  --primary-hover: #60a5fa;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+    0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
 .map-management {
   max-width: 1400px;
   margin: 0 auto;
@@ -40,9 +70,9 @@
 
 .action-btn:hover,
 .action-btn.active {
-  border-color: #007bff;
-  color: #007bff;
-  background: rgba(0, 123, 255, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
 }
 
 /* Stats Grid */
@@ -71,7 +101,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--primary-hover)
+  );
   color: white;
   font-size: 24px;
 }
@@ -185,7 +219,7 @@
 
 .search-box input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--primary-color);
 }
 
 /* Category Filter */
@@ -222,7 +256,7 @@
 
 .category-filter select:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--primary-color);
 }
 
 /* Clear Filters Button */
@@ -265,7 +299,7 @@
 }
 
 .filter-info i {
-  color: #007bff;
+  color: var(--primary-color);
 }
 
 .filter-info strong {
@@ -314,7 +348,7 @@
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--primary-color);
 }
 
 /* File Upload */
@@ -358,7 +392,11 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #007bff, #0056b3);
+  background: linear-gradient(
+    90deg,
+    var(--primary-color),
+    var(--primary-hover)
+  );
   animation: progress 2s ease-in-out infinite;
 }
 
@@ -385,8 +423,8 @@
 }
 
 .file-upload-area:hover {
-  border-color: #007bff;
-  background: rgba(0, 123, 255, 0.05);
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .file-upload-area.drag-over {
@@ -451,7 +489,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #007bff;
+  color: var(--primary-color);
   font-weight: 500;
   margin-top: 8px;
 }
@@ -478,12 +516,16 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--primary-hover)
+  );
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0056b3, #004085);
+  background: linear-gradient(135deg, var(--primary-hover), #1d4ed8);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
@@ -584,8 +626,8 @@
 }
 
 .waypoint-card:hover {
-  border-color: #007bff;
-  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
   transform: translateY(-2px);
 }
 
@@ -1025,7 +1067,7 @@
 
 .loading-spinner {
   font-size: 48px;
-  color: #007bff;
+  color: var(--primary-color);
   margin-bottom: 20px;
 }
 

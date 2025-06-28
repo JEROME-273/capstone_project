@@ -56,12 +56,15 @@
     <section id="content">
       <nav>
         <i class="bx bx-menu" @click="toggleSidebar"></i>
-        <div class="theme-toggle">
-          <i
-            :class="isDarkMode ? 'bx bx-sun' : 'bx bx-moon'"
-            @click="toggleTheme"></i>
-        </div>
         <slot name="nav"></slot>
+        <div class="nav-actions">
+          <NotificationBell />
+          <div class="theme-toggle">
+            <i
+              :class="isDarkMode ? 'bx bx-sun' : 'bx bx-moon'"
+              @click="toggleTheme"></i>
+          </div>
+        </div>
       </nav>
       <main>
         <slot />
@@ -88,9 +91,13 @@
 <script>
 import { ref, onMounted } from "vue";
 import { getAuth, signOut } from "firebase/auth";
+import NotificationBell from "@/components/NotificationBell.vue";
 
 export default {
   name: "AdminLayout",
+  components: {
+    NotificationBell,
+  },
   setup() {
     const isDarkMode = ref(false);
     const showLogoutConfirm = ref(false);
@@ -158,8 +165,16 @@ export default {
   --text-secondary: #666;
   --hover-bg: #f0f2f5;
   --shadow: 0 4px 24px rgba(44, 62, 80, 0.1), 0 1.5px 6px rgba(44, 62, 80, 0.08);
-  --card-bg: #f3f4f6;
+  --card-bg: #fff;
   --border-color: #d0d0d0;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --shadow-light: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .dark-mode {
@@ -171,6 +186,14 @@ export default {
   --shadow: rgba(0, 0, 0, 0.3);
   --card-bg: #2d2d2d;
   --border-color: #404040;
+  --primary-color: #3b82f6;
+  --primary-hover: #60a5fa;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --shadow-light: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+    0 4px 6px -4px rgb(0 0 0 / 0.3);
 }
 
 .admin-layout {
@@ -274,20 +297,35 @@ nav .bx-menu {
   color: var(--text-primary);
 }
 
-.theme-toggle {
+.nav-actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
   margin-right: 20px;
+  position: relative;
 }
 
 .theme-toggle i {
   font-size: 24px;
   cursor: pointer;
-  color: var(--text-primary);
-  transition: transform 0.3s ease;
+  color: var(--primary-color);
+  transition: all 0.3s ease;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid transparent;
 }
 
 .theme-toggle i:hover {
-  transform: rotate(30deg);
+  transform: rotate(30deg) scale(1.1);
+  color: var(--primary-hover);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 main {

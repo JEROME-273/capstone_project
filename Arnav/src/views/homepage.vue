@@ -10,6 +10,8 @@
         <span class="farm-name">Demo Farm</span>
       </div>
       <div class="navbar-actions">
+        <!-- Notification Bell -->
+        <NotificationBell />
         <button
           class="darkmode-btn"
           @click="toggleDarkMode"
@@ -351,6 +353,7 @@ import {
 } from "firebase/firestore";
 import { auth } from "@/firebase/config";
 import ARNavigation from "@/components/ARNavigation.vue";
+import NotificationBell from "@/components/NotificationBell.vue";
 
 // Sheet state
 const sheetY = ref(0);

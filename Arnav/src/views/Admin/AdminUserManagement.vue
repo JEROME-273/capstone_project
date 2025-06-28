@@ -1,34 +1,62 @@
 <template>
   <AdminLayout @logout="logout">
     <template #nav>
-      <a href="#" class="nav-link">User Management</a>
+      <div class="admin-nav-bar">
+        <a href="#" class="nav-link">USER MANAGEMENT</a>
+      </div>
     </template>
     <div>
-      <div class="admin-user-management">
-        <div class="aum-container">
-          <!-- User List Section -->
-          <div class="aum-users">
-            <div class="aum-header">
-              <h2>User Management</h2>
-              <div class="aum-filters">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Search users..." />
-                <select v-model="userFilter">
-                  <option value="all">All Types</option>
-                  <option value="Visitor">Visitor</option>
-                  <option value="Research">Research</option>
-                  <option value="Business">Business</option>
-                </select>
-                <select v-model="statusFilter">
-                  <option value="all">All Status</option>
-                  <option value="verified">Verified</option>
-                  <option value="unverified">Unverified</option>
-                </select>
-              </div>
+      <main>
+        <!-- Search and Filters Card -->
+        <div class="content-card">
+          <div class="card-header">
+            <h3>Search & Filters</h3>
+            <div class="header-actions">
+              <button
+                class="primary-btn"
+                @click="showAddUserForm = !showAddUserForm">
+                <i class="bx bx-user-plus"></i> Add User
+              </button>
             </div>
-            <table class="aum-table">
+          </div>
+          <div class="filters-section">
+            <div class="search-box">
+              <i class="bx bx-search"></i>
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search users..." />
+            </div>
+            <div class="filter-selects">
+              <select v-model="userFilter">
+                <option value="all">All Types</option>
+                <option value="Visitor">Visitor</option>
+                <option value="Research">Research</option>
+                <option value="Business">Business</option>
+              </select>
+              <select v-model="statusFilter">
+                <option value="all">All Status</option>
+                <option value="verified">Verified</option>
+                <option value="unverified">Unverified</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Table Card -->
+        <div class="content-card">
+          <div class="card-header">
+            <h3>User Management</h3>
+            <div class="user-stats">
+              <span class="stat-item">Total: {{ users.length }}</span>
+              <span class="stat-item"
+                >Verified:
+                {{ users.filter((u) => u.emailVerified).length }}</span
+              >
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="users-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -42,120 +70,172 @@
               </thead>
               <tbody>
                 <tr v-for="user in filteredUsers" :key="user.uid">
-                  <td>{{ user.firstName }} {{ user.lastName }}</td>
+                  <td>
+                    <div class="user-info">
+                      <div class="user-avatar">
+                        {{ user.firstName.charAt(0)
+                        }}{{ user.lastName.charAt(0) }}
+                      </div>
+                      <span>{{ user.firstName }} {{ user.lastName }}</span>
+                    </div>
+                  </td>
                   <td>{{ user.email }}</td>
                   <td>
-                    <span
-                      class="aum-badge"
-                      :class="user.typeofvisit.toLowerCase()"
-                      >{{ user.typeofvisit }}</span
-                    >
+                    <span class="badge" :class="user.typeofvisit.toLowerCase()">
+                      {{ user.typeofvisit }}
+                    </span>
                   </td>
                   <td>{{ user.gender }}</td>
                   <td>
                     <span
-                      class="aum-status"
+                      class="status-indicator"
                       :class="{ verified: user.emailVerified }">
                       {{ user.emailVerified ? "Verified" : "Unverified" }}
                     </span>
                   </td>
                   <td>{{ formatDate(user.createdAt) }}</td>
                   <td>
-                    <button class="aum-action" @click="editUser(user)">
-                      <i class="bx bx-edit"></i>
-                    </button>
-                    <button class="aum-action" @click="toggleUserStatus(user)">
-                      <i
-                        class="bx"
-                        :class="
-                          user.emailVerified ? 'bx-lock' : 'bx-lock-open'
-                        "></i>
-                    </button>
-                    <button class="aum-action delete" @click="deleteUser(user)">
-                      <i class="bx bx-trash"></i>
-                    </button>
+                    <div class="action-buttons">
+                      <button
+                        class="icon-btn"
+                        @click="editUser(user)"
+                        title="Edit">
+                        <i class="bx bx-edit"></i>
+                      </button>
+                      <button
+                        class="icon-btn"
+                        @click="toggleUserStatus(user)"
+                        title="Toggle Status">
+                        <i
+                          class="bx"
+                          :class="
+                            user.emailVerified ? 'bx-lock' : 'bx-lock-open'
+                          "></i>
+                      </button>
+                      <button
+                        class="icon-btn delete"
+                        @click="deleteUser(user)"
+                        title="Delete">
+                        <i class="bx bx-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
 
-          <!-- Registration/Edit Form Section -->
-          <div class="aum-form-section">
+        <!-- Register New User Section -->
+        <div v-if="showAddUserForm || editingUser" class="content-card">
+          <div class="card-header">
             <h3>{{ editingUser ? "Edit User" : "Register New User" }}</h3>
-            <form @submit.prevent="saveUser" class="aum-form">
-              <div class="aum-form-row">
+            <p>
+              {{
+                editingUser
+                  ? "Update user information"
+                  : "Add a new user to the system"
+              }}
+            </p>
+          </div>
+
+          <form @submit.prevent="saveUser" class="register-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>First Name</label>
                 <input
                   v-model="userForm.firstName"
                   type="text"
-                  placeholder="First Name"
+                  placeholder="Enter first name"
                   required />
+              </div>
+              <div class="form-group">
+                <label>Last Name</label>
                 <input
                   v-model="userForm.lastName"
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="Enter last name"
                   required />
               </div>
-              <div class="aum-form-row">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Middle Name</label>
                 <input
                   v-model="userForm.middleName"
                   type="text"
-                  placeholder="Middle Name" />
+                  placeholder="Enter middle name (optional)" />
+              </div>
+              <div class="form-group">
+                <label>Email Address</label>
                 <input
                   v-model="userForm.email"
                   type="email"
-                  placeholder="Email"
+                  placeholder="Enter email address"
                   required />
               </div>
-              <div class="aum-form-row">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Gender</label>
                 <select v-model="userForm.gender" required>
                   <option value="" disabled>Select Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                 </select>
+              </div>
+              <div class="form-group">
+                <label>Type of Visit</label>
                 <select v-model="userForm.typeofvisit" required>
                   <option value="" disabled>Select Type of Visit</option>
                   <option value="Visitor">Visitor</option>
                   <option value="Research">Research</option>
                   <option value="Business">Business</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="form-row" v-if="!editingUser">
+              <div class="form-group">
+                <label>Password</label>
+                <input
+                  v-model="userForm.password"
+                  type="password"
+                  placeholder="Enter password"
+                  required />
+              </div>
+              <div class="form-group">
+                <label>Role</label>
                 <select v-model="userForm.role" required>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <div class="aum-form-row" v-if="!editingUser">
-                <input
-                  v-model="userForm.password"
-                  type="password"
-                  placeholder="Password"
-                  required />
-              </div>
-              <div class="aum-form-actions">
-                <button
-                  type="submit"
-                  class="aum-btn primary"
-                  :disabled="isCreatingUser">
-                  {{
-                    isCreatingUser
-                      ? "Creating..."
-                      : editingUser
-                      ? "Update User"
-                      : "Register User"
-                  }}
-                </button>
-                <button
-                  type="button"
-                  class="aum-btn"
-                  v-if="editingUser"
-                  @click="cancelEdit">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="save-btn" :disabled="isCreatingUser">
+                {{
+                  isCreatingUser
+                    ? "Processing..."
+                    : editingUser
+                    ? "Update User"
+                    : "Register User"
+                }}
+              </button>
+              <button
+                type="button"
+                class="cancel-btn"
+                v-if="editingUser"
+                @click="cancelEdit">
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
-      </div>
+      </main>
     </div>
   </AdminLayout>
 </template>
@@ -192,6 +272,7 @@ export default {
       statusFilter: "all",
       editingUser: null,
       isCreatingUser: false,
+      showAddUserForm: false,
       currentAdminUser: null, // Store current admin user
       userForm: {
         firstName: "",
@@ -372,6 +453,7 @@ export default {
 
     editUser(user) {
       this.editingUser = user;
+      this.showAddUserForm = true;
       this.userForm = { ...user, password: "" };
     },
     cancelEdit() {
@@ -407,6 +489,7 @@ export default {
     },
     resetForm() {
       this.editingUser = null;
+      this.showAddUserForm = false;
       this.userForm = {
         firstName: "",
         lastName: "",
@@ -442,254 +525,505 @@ export default {
 </script>
 
 <style scoped>
-:root {
-  --bg-primary: #f8f9fa;
-  --bg-secondary: #fff;
-  --text-primary: #2c3e50;
-  --text-secondary: #666;
-  --hover-bg: #f0f2f5;
-  --shadow: 0 4px 24px rgba(44, 62, 80, 0.1), 0 1.5px 6px rgba(44, 62, 80, 0.08);
-  --card-bg: #f3f4f6;
-  --border-color: #d0d0d0;
-  --input-bg: #fff;
-  --input-border: #ddd;
-  --table-header-bg: #f8f9fa;
-  --table-row-hover: #f5f5f5;
-  --modal-bg: #fff;
-  --modal-overlay: rgba(0, 0, 0, 0.5);
-  --badge-visitor: #e3f2fd;
-  --badge-research: #f3e5f5;
-  --badge-business: #e8f5e9;
-  --badge-text-visitor: #1976d2;
-  --badge-text-research: #7b1fa2;
-  --badge-text-business: #2e7d32;
+main {
+  padding: 32px;
+  background: var(--bg-primary);
+  min-height: 100vh;
 }
 
-.admin-user-management {
-  padding: 20px;
+.head-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
   color: var(--text-primary);
+  padding: 0;
 }
 
-.aum-container {
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.content-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-header p {
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+  font-size: 14px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.primary-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
+  font-size: 14px;
+}
+
+.primary-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.user-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.stat-item {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filters-section {
+  padding: 24px 32px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 18px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-box input::placeholder {
+  color: var(--text-secondary);
+}
+
+.filter-selects {
+  display: flex;
+  gap: 12px;
+}
+
+.filter-selects select {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  min-width: 120px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.filter-selects select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th {
+  background: var(--table-header-bg);
+  color: var(--text-secondary);
+  padding: 16px 24px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.users-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.users-table tr:hover {
+  background: var(--table-row-hover);
+}
+
+.users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.badge.visitor {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.badge.research {
+  background: #f3e8ff;
+  color: #8b5cf6;
+}
+
+.badge.business {
+  background: #f0fdf4;
+  color: #22c55e;
+}
+
+.admin-layout.dark-mode .badge.visitor {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+.admin-layout.dark-mode .badge.research {
+  background: #581c87;
+  color: #c4b5fd;
+}
+
+.admin-layout.dark-mode .badge.business {
+  background: #14532d;
+  color: #86efac;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-indicator.verified {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.admin-layout.dark-mode .status-indicator {
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.admin-layout.dark-mode .status-indicator.verified {
+  background: #052e16;
+  color: #86efac;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  background: var(--hover-bg);
+  color: var(--text-secondary);
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.icon-btn.delete {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.icon-btn.delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.admin-layout.dark-mode .icon-btn.delete {
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.admin-layout.dark-mode .icon-btn.delete:hover {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.register-form {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
-.aum-users {
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 0 10px var(--shadow);
-  padding: 20px;
-  border: 1.5px solid var(--border-color);
-}
-
-.aum-header {
-  margin-bottom: 20px;
-}
-
-.aum-header h2 {
-  color: var(--text-primary);
-  margin-bottom: 15px;
-}
-
-.aum-filters {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.aum-filters input,
-.aum-filters select {
-  padding: 8px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-}
-
-.aum-table {
-  width: 100%;
-  border-collapse: collapse;
-  position: relative;
-}
-
-.aum-table th {
-  background: var(--table-header-bg);
-  color: var(--text-primary);
-  padding: 12px;
-  text-align: left;
-  position: relative;
-}
-
-.aum-table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
-  position: relative;
-}
-
-.aum-table tr:hover {
-  background: var(--table-row-hover);
-}
-
-.aum-table th:hover::after,
-.aum-table td:hover::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--hover-bg);
-  opacity: 0.3;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.aum-table td > *,
-.aum-table th > * {
-  position: relative;
-  z-index: 2;
-}
-
-.aum-table td .aum-badge,
-.aum-table td .aum-status,
-.aum-table td .aum-action {
-  position: relative;
-  z-index: 2;
-}
-
-.aum-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-.aum-badge.visitor {
-  background: var(--badge-visitor);
-  color: var(--badge-text-visitor);
-}
-
-.aum-badge.research {
-  background: var(--badge-research);
-  color: var(--badge-text-research);
-}
-
-.aum-badge.business {
-  background: var(--badge-business);
-  color: var(--badge-text-business);
-}
-
-.aum-status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  background: #ffebee;
-  color: #c62828;
-}
-
-.aum-status.verified {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.aum-action {
-  padding: 6px;
-  border: none;
-  border-radius: 4px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.aum-action:hover {
-  background: var(--hover-bg);
-}
-
-.aum-action.delete:hover {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.aum-form-section {
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 0 10px var(--shadow);
-  padding: 20px;
-  border: 1.5px solid var(--border-color);
-}
-
-.aum-form-section h3 {
-  color: var(--text-primary);
-  margin-bottom: 20px;
-}
-
-.aum-form {
+.form-group {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 8px;
 }
 
-.aum-form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+.form-group label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
-.aum-form input,
-.aum-form select {
-  padding: 8px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+.form-group input,
+.form-group select {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   background: var(--input-bg);
   color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
 }
 
-.aum-form-actions {
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--text-secondary);
+}
+
+.form-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  padding-top: 8px;
 }
 
-.aum-btn {
-  padding: 8px 16px;
-  border-radius: 4px;
+.save-btn {
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: white;
   border: none;
+  border-radius: 8px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
 }
 
-.aum-btn:disabled {
+.save-btn:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.save-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.aum-btn.primary {
-  background: #4caf50;
-  color: white;
-}
-
-.aum-btn:not(.primary) {
-  background: var(--bg-secondary);
+.cancel-btn {
+  padding: 12px 24px;
+  background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.cancel-btn:hover {
+  background: var(--hover-bg);
+}
+
+.admin-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-nav-bar .nav-link {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  margin-right: 20px;
+  white-space: nowrap;
+  font-size: 32px;
 }
 
 @media (max-width: 1024px) {
-  .aum-container {
+  main {
+    padding: 20px;
+  }
+
+  .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .filters-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .search-box {
+    max-width: none;
+  }
+
+  .card-header {
+    padding: 20px 24px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .user-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .register-form {
+    padding: 24px;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 12px 16px;
   }
 }
 
 @media (max-width: 768px) {
-  .aum-filters {
+  .head-title {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 
-  .aum-form-row {
-    grid-template-columns: 1fr;
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
 }
 </style>
+} .filter-selects { justify-content: flex-start; } } @media (max-width: 768px) {
+.head-title { flex-direction: column; align-items: flex-start; gap: 16px; }
+.users-table-section { overflow-x: auto; } .users-table { min-width: 800px; }
+.register-section { padding: 24px; } }

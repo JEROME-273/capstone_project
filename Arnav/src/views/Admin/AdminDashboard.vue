@@ -3,22 +3,15 @@
     <template #nav>
       <div class="admin-nav-bar">
         <a href="#" class="nav-link">Dashboard Overview</a>
-        <div class="theme-toggle">
-          <label for="switch-mode" class="switch-mode"></label>
-        </div>
       </div>
     </template>
     <div>
       <main>
         <div class="head-title">
-          <div class="left">
-            <h1>Dashboard Overview</h1>
-            <ul class="breadcrumb">
-              <li><i class="bx bx-chevron-right"></i></li>
-              <li><a class="active" href="#">Dashboard</a></li>
-            </ul>
-          </div>
-          <!-- Download Report button removed -->
+          <button class="download-report-btn" @click="downloadReport">
+            <i class="bx bx-download"></i>
+            Download Report
+          </button>
         </div>
 
         <ul class="box-info">
@@ -30,7 +23,7 @@
             </span>
           </li>
           <li>
-            <i class="bx bxs-user-tie"></i>
+            <i class="bx bxs-group"></i>
             <span class="text">
               <h3>{{ visitStats.Visitor }}</h3>
               <p>Visitors</p>
@@ -352,27 +345,42 @@ export default {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: "top",
-            labels: {
-              font: {
-                size: 14,
-              },
-            },
+            display: false,
           },
-          title: {
-            display: true,
-            text: "Visit Type Distribution",
-            font: {
-              size: 16,
-              weight: "bold",
-            },
+          tooltip: {
+            backgroundColor: "#1e293b",
+            titleColor: "#fff",
+            bodyColor: "#fff",
+            borderColor: "#334155",
+            borderWidth: 1,
+            cornerRadius: 8,
           },
         },
         scales: {
+          x: {
+            grid: {
+              display: false,
+            },
+            ticks: {
+              color: "#64748b",
+              font: {
+                size: 12,
+                weight: "500",
+              },
+            },
+          },
           y: {
             beginAtZero: true,
+            grid: {
+              color: "#f1f5f9",
+              drawBorder: false,
+            },
             ticks: {
               precision: 0,
+              color: "#64748b",
+              font: {
+                size: 12,
+              },
             },
           },
         },
@@ -466,17 +474,11 @@ export default {
             {
               label: "Number of Users",
               data: Object.values(this.visitStats),
-              backgroundColor: [
-                "rgba(54, 162, 235, 0.7)",
-                "rgba(255, 206, 86, 0.7)",
-                "rgba(75, 192, 192, 0.7)",
-              ],
-              borderColor: [
-                "rgba(54, 162, 235, 1)",
-                "rgba(255, 206, 86, 1)",
-                "rgba(75, 192, 192, 1)",
-              ],
-              borderWidth: 2,
+              backgroundColor: ["#60a5fa", "#fbbf24", "#34d399"],
+              borderColor: ["#3b82f6", "#f59e0b", "#10b981"],
+              borderWidth: 0,
+              borderRadius: 6,
+              borderSkipped: false,
             },
           ],
         };
@@ -676,6 +678,34 @@ export default {
         .join("\n");
     },
 
+    downloadReport() {
+      const reportData = {
+        totalUsers: this.totalUsers,
+        visitStats: this.visitStats,
+        generatedAt: new Date().toLocaleString(),
+      };
+
+      const csvData = [
+        ["Metric", "Value"],
+        ["Total Users", this.totalUsers],
+        ["Visitors", this.visitStats.Visitor],
+        ["Researchers", this.visitStats.Research],
+        ["Business", this.visitStats.Business],
+        ["Report Generated", new Date().toLocaleString()],
+      ];
+
+      const csv = csvData.map((row) => row.join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `admin-dashboard-report-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    },
+
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
@@ -698,65 +728,28 @@ export default {
 </script>
 
 <style scoped>
-:root {
-  --bg-primary: #f8f9fa;
-  --bg-secondary: #fff;
-  --text-primary: #2c3e50;
-  --text-secondary: #666;
-  --hover-bg: #f0f2f5;
-  --shadow: 0 4px 24px rgba(44, 62, 80, 0.1), 0 1.5px 6px rgba(44, 62, 80, 0.08);
-  --card-bg: #f3f4f6;
-  --border-color: #d0d0d0;
-  --input-bg: #fff;
-  --input-border: #ddd;
-  --table-header-bg: #f8f9fa;
-  --table-row-hover: #f5f5f5;
-  --modal-bg: #fff;
-  --modal-overlay: rgba(0, 0, 0, 0.5);
-  --badge-visitor: #e3f2fd;
-  --badge-research: #f3e5f5;
-  --badge-business: #e8f5e9;
-  --badge-text-visitor: #1976d2;
-  --badge-text-research: #7b1fa2;
-  --badge-text-business: #2e7d32;
-}
-
-.dark-mode {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
-  --hover-bg: #3d3d3d;
-  --shadow: rgba(0, 0, 0, 0.3);
-  --card-bg: #2d2d2d;
-  --border-color: #404040;
-  --input-bg: #333;
-  --input-border: #404040;
-  --table-header-bg: #333;
-  --table-row-hover: #3d3d3d;
-  --modal-bg: #2d2d2d;
-  --modal-overlay: rgba(0, 0, 0, 0.7);
-  --badge-visitor: #1a237e;
-  --badge-research: #4a148c;
-  --badge-business: #1b5e20;
-  --badge-text-visitor: #90caf9;
-  --badge-text-research: #ce93d8;
-  --badge-text-business: #a5d6a7;
+/* Main container styling */
+main {
+  background: var(--bg-primary);
+  min-height: 100vh;
+  padding: 20px;
 }
 
 .head-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
   color: var(--text-primary);
-  padding: 10px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0;
 }
 
 .head-title .left h1 {
-  font-size: 24px;
-  margin-bottom: 5px;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
 }
 
 .breadcrumb {
@@ -764,92 +757,224 @@ export default {
   align-items: center;
   gap: 5px;
   color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .breadcrumb a {
-  color: var(--text-primary);
+  color: #64748b;
   text-decoration: none;
 }
 
-.btn-download {
+.download-report-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-decoration: none;
-  transition: all 0.3s ease;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
 }
 
-.btn-download:hover {
-  background: var(--hover-bg);
+.download-report-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .box-info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+  padding: 0;
 }
 
 .box-info li {
-  padding: 20px;
+  padding: 24px;
   background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 0 10px var(--shadow);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.box-info li:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Different background colors for each card */
+.box-info li:nth-child(1) {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(1) {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.box-info li:nth-child(2) {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(2) {
+  background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+}
+
+.box-info li:nth-child(3) {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(3) {
+  background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+}
+
+.box-info li:nth-child(4) {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(4) {
+  background: linear-gradient(135deg, #581c87 0%, #6b21a8 100%);
 }
 
 .box-info li i {
-  font-size: 24px;
-  color: var(--text-primary);
+  font-size: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.box-info li:nth-child(1) i {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.box-info li:nth-child(2) i {
+  background: #f0fdf4;
+  color: #22c55e;
+}
+
+.box-info li:nth-child(3) i {
+  background: #fef3c7;
+  color: #f59e0b;
+}
+
+.box-info li:nth-child(4) i {
+  background: #f3e8ff;
+  color: #8b5cf6;
 }
 
 .box-info li .text h3 {
-  font-size: 20px;
-  margin-bottom: 5px;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
   color: var(--text-primary);
 }
 
 .box-info li .text p {
   color: var(--text-secondary);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Specific text colors for each card */
+.box-info li:nth-child(1) .text h3 {
+  color: #1e40af;
+}
+
+.box-info li:nth-child(1) .text p {
+  color: #3b82f6;
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(1) .text h3,
+.admin-layout.dark-mode .box-info li:nth-child(1) .text p {
+  color: #dbeafe;
+}
+
+.box-info li:nth-child(2) .text h3 {
+  color: #166534;
+}
+
+.box-info li:nth-child(2) .text p {
+  color: #22c55e;
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(2) .text h3,
+.admin-layout.dark-mode .box-info li:nth-child(2) .text p {
+  color: #dcfce7;
+}
+
+.box-info li:nth-child(3) .text h3 {
+  color: #b45309;
+}
+
+.box-info li:nth-child(3) .text p {
+  color: #f59e0b;
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(3) .text h3,
+.admin-layout.dark-mode .box-info li:nth-child(3) .text p {
+  color: #fef3c7;
+}
+
+.box-info li:nth-child(4) .text h3 {
+  color: #6b21a8;
+}
+
+.box-info li:nth-child(4) .text p {
+  color: #8b5cf6;
+}
+
+.admin-layout.dark-mode .box-info li:nth-child(4) .text h3,
+.admin-layout.dark-mode .box-info li:nth-child(4) .text p {
+  color: #f3e8ff;
 }
 
 .table-data {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 10px;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  margin-bottom: 32px;
+  padding: 0;
 }
 
 .table-data .order {
   background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 0 10px var(--shadow);
-  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  padding: 24px;
 }
 
 .table-data .head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .table-data .head h3 {
   color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .table-data .head i {
   color: var(--text-secondary);
   cursor: pointer;
+  font-size: 20px;
 }
 
 .chart-container {
@@ -870,10 +995,11 @@ export default {
 .activity-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 10px;
-  border-radius: 4px;
-  transition: background-color 0.3s ease;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  border: 1px solid var(--border-color);
 }
 
 .activity-item:hover {
@@ -883,12 +1009,12 @@ export default {
 .activity-icon {
   width: 40px;
   height: 40px;
-  background: var(--bg-secondary);
-  border-radius: 50%;
+  background: var(--hover-bg);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .activity-details {
@@ -899,23 +1025,48 @@ export default {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 2px;
+  font-size: 14px;
 }
 
 .activity-type {
   color: var(--text-secondary);
-  font-size: 0.9em;
+  font-size: 13px;
   margin-bottom: 2px;
 }
 
 .activity-time {
   color: var(--text-secondary);
-  font-size: 0.8em;
+  font-size: 12px;
 }
 
 .no-activity {
   text-align: center;
   color: var(--text-secondary);
   padding: 20px;
+}
+
+/* Admin Nav Bar Styles */
+.admin-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-nav-bar .nav-link {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.admin-nav-bar .nav-link:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 /* User Management Styles */
@@ -1208,43 +1359,5 @@ export default {
   .form-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.admin-nav-bar {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-}
-
-.admin-nav-bar .nav-link {
-  font-weight: 600;
-  color: var(--text-primary);
-  text-decoration: none;
-  margin-right: 20px;
-  white-space: nowrap;
-}
-
-.admin-nav-search {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.admin-nav-search .form-input {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.admin-nav-search input[type="search"] {
-  width: 200px;
-  max-width: 100%;
-}
-
-.theme-toggle {
-  margin-left: 20px;
-  display: flex;
-  align-items: center;
 }
 </style>

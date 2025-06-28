@@ -6,9 +6,13 @@
           <i class="fas fa-arrow-left icon-back"></i>
         </router-link>
         <h1 class="profile-title">My Profile</h1>
-        <button class="icon-theme" @click="toggleTheme">
-          <i class="fas fa-sun ml-1"></i>
-        </button>
+        <div class="header-actions">
+          <!-- Notification Bell -->
+          <NotificationBell />
+          <button class="icon-theme" @click="toggleTheme">
+            <i class="fas fa-sun ml-1"></i>
+          </button>
+        </div>
       </div>
       <div class="profile-info">
         <div class="relative">
@@ -249,6 +253,7 @@
 
 <script>
 import AuthManager from "@/components/AuthManager.vue";
+import NotificationBell from "@/components/NotificationBell.vue";
 import { auth } from "@/firebase/config";
 import {
   getFirestore,
@@ -271,6 +276,7 @@ export default {
   name: "UserInfo",
   components: {
     AuthManager,
+    NotificationBell,
   },
   data() {
     return {
@@ -555,6 +561,17 @@ export default {
   margin-bottom: 1.5rem;
   min-height: 2.5rem;
 }
+
+.header-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .icon-back {
   position: absolute;
   left: 0;
@@ -564,15 +581,20 @@ export default {
   color: #22c55e;
 }
 .icon-theme {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
   font-size: 1.25rem;
   color: #22c55e;
   background: none;
   border: none;
   cursor: pointer;
+}
+.header-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .profile-title {
   font-size: 1.25rem;
