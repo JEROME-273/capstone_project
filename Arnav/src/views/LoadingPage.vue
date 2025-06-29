@@ -1,16 +1,18 @@
 <template>
-  <div class="container">
-    <div class="map">
-      <div class="pointer"></div>
+  <div class="loading-wrapper">
+    <div class="container">
+      <div class="map">
+        <div class="pointer"></div>
+      </div>
+      <button v-if="showButton" id="continue-btn" @click="goToRegister">
+        Continue
+      </button>
     </div>
-    <button v-if="showButton" id="continue-btn" @click="goToRegister">
-      Continue
-    </button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
@@ -23,6 +25,14 @@ const goToRegister = () => {
 };
 
 onMounted(() => {
+  // Prevent body scrolling
+  document.body.style.overflow = "hidden";
+  document.body.style.height = "100vh";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  document.body.style.top = "0";
+  document.body.style.left = "0";
+
   // Check if user is already authenticated
   const authListener = onAuthStateChanged(auth, (user) => {
     if (user && user.emailVerified) {
@@ -41,33 +51,43 @@ onMounted(() => {
     authListener();
   };
 });
+
+onUnmounted(() => {
+  // Restore body scrolling when component is destroyed
+  document.body.style.overflow = "";
+  document.body.style.height = "";
+  document.body.style.position = "";
+  document.body.style.width = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+});
 </script>
 
 <style scoped>
-html,
-body {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  margin: 0;
-  padding: 0;
+.loading-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  box-sizing: border-box;
+  align-items: flex-start;
+  padding-top: 1vh;
+  background: #fff;
+  z-index: 9999;
 }
 
 .container {
   position: relative;
   width: 220px;
   height: 220px;
-  margin: 0 auto;
   background: transparent;
-  box-shadow: none !important;
-  margin-top: -50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  box-shadow: none;
 }
 
 .map {
@@ -94,20 +114,21 @@ body {
 }
 
 #continue-btn {
-  display: block;
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 40px;
+  bottom: 30px;
   transform: translateX(-50%);
-  padding: 10px 24px;
-  font-size: 1rem;
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  font-weight: 500;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #007bff;
   color: #fff;
   cursor: pointer;
   z-index: 20;
   opacity: 0.95;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
 @keyframes moveUpDown {
@@ -122,21 +143,17 @@ body {
   }
 }
 
-/* Extra small devices (phones, 600px and down) */
+/* Mobile devices */
 @media only screen and (max-width: 600px) {
+  .loading-wrapper {
+    padding-top: 15vh;
+  }
+
   .container {
     width: 60vw;
     height: 60vw;
     max-width: 160px;
     max-height: 160px;
-    margin: 10px auto 0 auto;
-    position: relative;
-    top: 0;
-  }
-
-  .map {
-    width: 100%;
-    height: 100%;
   }
 
   .pointer {
@@ -149,27 +166,13 @@ body {
 
   #continue-btn {
     bottom: 90px;
+    padding: 14px 32px;
+    font-size: 1.1rem;
+    border-radius: 10px;
   }
 }
 
-/* Small devices (portrait tablets and large phones, 600px and up) */
-@media only screen and (min-width: 600px) and (max-width: 768px) {
-  .container {
-    width: 70vw;
-    height: 70vw;
-    max-width: 300px;
-    max-height: 300px;
-  }
-
-  .pointer {
-    width: 140vw;
-    height: 47vw;
-    max-width: 600px;
-    max-height: 200px;
-  }
-}
-
-/* Medium devices (landscape tablets, 768px and up) */
+/* Medium tablets */
 @media only screen and (min-width: 768px) and (max-width: 992px) {
   .container {
     width: 50vw;
@@ -186,7 +189,7 @@ body {
   }
 }
 
-/* Large devices (laptops/desktops, 992px and up) */
+/* Desktop */
 @media only screen and (min-width: 992px) {
   .container {
     width: 300px;
@@ -199,13 +202,8 @@ body {
   }
 }
 
-/* For landscape orientation on mobile */
+/* Mobile landscape */
 @media only screen and (max-width: 768px) and (orientation: landscape) {
-  body {
-    align-items: flex-start;
-    padding-top: 20px;
-  }
-
   .container {
     width: 40vh;
     height: 40vh;
@@ -218,6 +216,12 @@ body {
     height: 27vh;
     max-width: 600px;
     max-height: 200px;
+  }
+
+  #continue-btn {
+    bottom: 15px;
+    padding: 10px 24px;
+    font-size: 1rem;
   }
 }
 </style>

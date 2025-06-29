@@ -88,11 +88,16 @@
                 v-if="notification.type === 'new_waypoint'"
                 class="notification-actions">
                 <button
+                  v-if="hasValidCoordinates(notification)"
                   @click.stop="viewLocation(notification)"
                   class="view-location-btn">
                   <i class="bx bx-map-pin"></i>
                   View Location
                 </button>
+                <div v-else class="no-coordinates-message">
+                  <i class="bx bx-info-circle"></i>
+                  Location coordinates not available
+                </div>
               </div>
             </div>
 
@@ -121,9 +126,10 @@
           <h4 class="card-title">{{ newNotificationCard.title }}</h4>
           <p class="card-message">{{ newNotificationCard.message }}</p>
           <div class="card-meta">
-            <span v-if="newNotificationCard.priority" 
-                  class="card-priority-tag" 
-                  :class="newNotificationCard.priority">
+            <span
+              v-if="newNotificationCard.priority"
+              class="card-priority-tag"
+              :class="newNotificationCard.priority">
               {{ newNotificationCard.priority }}
             </span>
             <span class="card-time">Just now</span>
@@ -141,6 +147,9 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useToast } from "vue-toastification";
 import NotificationService from "@/services/NotificationService";
+
+// Define emits
+const emit = defineEmits(["startNavigation"]);
 
 // Reactive data
 const notifications = ref([]);
@@ -199,7 +208,11 @@ const setupRealtimeListener = () => {
 
     // Show notification card for new notifications
     const latestNotification = data[0];
-    if (latestNotification && !latestNotification.isRead && data.length > previousCount) {
+    if (
+      latestNotification &&
+      !latestNotification.isRead &&
+      data.length > previousCount
+    ) {
       // Only show card if it's a very recent notification (within last 30 seconds)
       const notificationTime =
         latestNotification.createdAt?.toDate?.() ||
@@ -229,7 +242,7 @@ const closeNotifications = () => {
 const showNewNotificationCard = (notification) => {
   newNotificationCard.value = notification;
   showNotificationCard.value = true;
-  
+
   // Auto close after 5 seconds
   setTimeout(() => {
     showNotificationCard.value = false;
@@ -258,8 +271,14 @@ const handleNotificationClick = async (notification) => {
 
     // Handle specific notification types
     if (notification.type === "new_waypoint") {
-      // You can add navigation logic here if needed
-      toast.success(`Opened waypoint: ${notification.waypointName}`);
+      // Only start navigation if coordinates are valid
+      if (hasValidCoordinates(notification)) {
+        startNavigationToWaypoint(notification);
+      } else {
+        toast.error(
+          `Location "${notification.waypointName}" doesn't have valid coordinates for navigation.`
+        );
+      }
     }
   } catch (error) {
     console.error("Error marking notification as read:", error);
@@ -319,6 +338,58 @@ const handleClickOutside = (event) => {
   if (notificationRef.value && !notificationRef.value.contains(event.target)) {
     showNotifications.value = false;
   }
+};
+
+// Handle starting navigation to waypoint
+const startNavigationToWaypoint = (notification) => {
+  // Check if coordinates are valid
+  if (
+    !notification.coordinates ||
+    notification.coordinates.x === undefined ||
+    notification.coordinates.y === undefined ||
+    notification.coordinates.x === null ||
+    notification.coordinates.y === null
+  ) {
+    console.warn(
+      "Cannot start navigation: waypoint has invalid coordinates",
+      notification
+    );
+    toast.error(
+      `Location "${notification.waypointName}" doesn't have valid coordinates for navigation.`
+    );
+    return;
+  }
+
+  const waypointData = {
+    id: notification.waypointId,
+    name: notification.waypointName,
+    type: notification.waypointType,
+    coordinates: notification.coordinates,
+  };
+
+  // Emit event to parent component to start AR navigation
+  emit("startNavigation", waypointData);
+
+  // Close notifications dropdown
+  showNotifications.value = false;
+
+  console.log("Starting navigation to waypoint:", notification.waypointName);
+};
+
+// Handle view location button click
+const viewLocation = (notification) => {
+  startNavigationToWaypoint(notification);
+};
+
+// Helper function to check if notification has valid coordinates
+const hasValidCoordinates = (notification) => {
+  return (
+    notification.coordinates &&
+    notification.coordinates.x !== undefined &&
+    notification.coordinates.y !== undefined &&
+    notification.coordinates.x !== null &&
+    notification.coordinates.y !== null
+  );
 };
 
 // Utility functions
@@ -869,6 +940,23 @@ const formatTime = (timestamp) => {
 .card-close-btn:hover {
   background: #f0f0f0;
   color: #666;
+}
+
+.no-coordinates-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.no-coordinates-message i {
+  color: var(--warning-color);
 }
 
 @keyframes slideInRight {

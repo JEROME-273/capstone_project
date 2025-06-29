@@ -146,16 +146,86 @@
               <div
                 v-for="(dest, idx) in recentDestinations"
                 :key="idx"
-                style="margin-bottom: 0.5rem">
-                <b>{{ dest.name }}</b> <br />
-                <small>{{ dest.address }}</small> <br />
-                <span style="color: #888">{{
-                  new Date(dest.timestamp.seconds * 1000).toLocaleString()
-                }}</span>
+                style="
+                  margin-bottom: 1rem;
+                  padding: 0.75rem;
+                  border: 1px solid var(--border-color);
+                  border-radius: 8px;
+                  background: var(--card-bg);
+                ">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: start;
+                    margin-bottom: 0.5rem;
+                  ">
+                  <div>
+                    <b style="color: var(--primary-color)">{{
+                      dest.destinationName
+                    }}</b>
+                    <div
+                      style="
+                        font-size: 0.9em;
+                        color: var(--text-secondary);
+                        margin-top: 0.25rem;
+                      ">
+                      {{ dest.destinationAddress || "No address" }}
+                    </div>
+                  </div>
+                  <span
+                    style="
+                      background: var(--success-color);
+                      color: white;
+                      padding: 0.2rem 0.5rem;
+                      border-radius: 12px;
+                      font-size: 0.75em;
+                    ">
+                    ✓ Completed
+                  </span>
+                </div>
+                <div style="font-size: 0.85em; color: var(--text-muted)">
+                  <div>
+                    📅
+                    {{
+                      new Date(
+                        dest.timestamp.seconds
+                          ? dest.timestamp.seconds * 1000
+                          : dest.timestamp
+                      ).toLocaleDateString()
+                    }}
+                  </div>
+                  <div>
+                    🕒
+                    {{
+                      new Date(
+                        dest.timestamp.seconds
+                          ? dest.timestamp.seconds * 1000
+                          : dest.timestamp
+                      ).toLocaleTimeString()
+                    }}
+                  </div>
+                  <div v-if="dest.navigationDuration">
+                    ⏱️ Navigation time:
+                    {{ Math.round(dest.navigationDuration / 1000) }}s
+                  </div>
+                </div>
               </div>
             </div>
-            <div v-else>
-              <p>No recent destinations found.</p>
+            <div
+              v-else
+              style="
+                text-align: center;
+                padding: 2rem;
+                color: var(--text-muted);
+              ">
+              <i
+                class="fas fa-map-marker-alt"
+                style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5"></i>
+              <p>No successful arrivals yet.</p>
+              <p style="font-size: 0.9em">
+                Start navigating to see your visit history!
+              </p>
             </div>
           </div>
         </div>
@@ -265,6 +335,7 @@ import {
   orderBy,
   getDocs,
   updateDoc,
+  limit,
 } from "firebase/firestore";
 import {
   updatePassword,
@@ -347,18 +418,67 @@ export default {
         this.role = data.role;
         this.email = data.email;
       }
-      // Fetch recent destinations
-      const recentDestRef = collection(db, "recentDestinations");
-      const q = query(
-        recentDestRef,
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc")
-      );
-      const querySnapshot = await getDocs(q);
-      this.recentDestinations = [];
-      querySnapshot.forEach((doc) => {
-        this.recentDestinations.push(doc.data());
-      });
+
+      // Fetch arrival history from arrivalAnalytics
+      try {
+        console.log("Fetching arrival history for user:", user.uid);
+        const arrivalRef = collection(db, "arrivalAnalytics");
+
+        // Try with index first, fallback to simple query
+        let querySnapshot;
+        try {
+          const q = query(
+            arrivalRef,
+            where("userId", "==", user.uid),
+            orderBy("timestamp", "desc"),
+            limit(10)
+          );
+          querySnapshot = await getDocs(q);
+        } catch (indexError) {
+          console.log("Index not ready, using simple query...");
+          // Fallback: Get all user documents without ordering
+          const simpleQuery = query(
+            arrivalRef,
+            where("userId", "==", user.uid)
+          );
+          querySnapshot = await getDocs(simpleQuery);
+        }
+
+        this.recentDestinations = [];
+        this.arrivalHistory = [];
+
+        console.log("Query returned", querySnapshot.docs.length, "documents");
+
+        const arrivals = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          console.log("Document data:", data);
+          arrivals.push(data);
+        });
+
+        // Sort by timestamp manually if we used the fallback query
+        arrivals.sort((a, b) => {
+          const timeA = a.timestamp?.seconds
+            ? a.timestamp.seconds * 1000
+            : new Date(a.timestamp).getTime();
+          const timeB = b.timestamp?.seconds
+            ? b.timestamp.seconds * 1000
+            : new Date(b.timestamp).getTime();
+          return timeB - timeA; // Descending order (newest first)
+        });
+
+        // Take only the last 10
+        const recentArrivals = arrivals.slice(0, 10);
+
+        this.recentDestinations = recentArrivals;
+        this.arrivalHistory = recentArrivals;
+
+        console.log("Final recentDestinations:", this.recentDestinations);
+      } catch (error) {
+        console.error("Error fetching arrival history:", error);
+        this.recentDestinations = [];
+        this.arrivalHistory = [];
+      }
     }
   },
   methods: {
@@ -712,6 +832,26 @@ export default {
 .rotate-90 {
   transform: rotate(90deg);
   transition: transform 0.2s;
+}
+
+/* CSS Variables for history styling */
+:root {
+  --border-color: #e5e7eb;
+  --card-bg: #f9fafb;
+  --primary-color: #22c55e;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --success-color: #22c55e;
+}
+
+/* Dark mode CSS variables */
+body.dark-mode {
+  --border-color: #374151;
+  --card-bg: #1f2937;
+  --primary-color: #22c55e;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --success-color: #22c55e;
 }
 
 /* Responsive styles for mobile devices */

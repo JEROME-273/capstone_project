@@ -145,6 +145,41 @@
       </div>
     </div>
 
+    <!-- Arrival Options Dialog -->
+    <div v-if="showArrivalOptions" class="arrival-options-overlay">
+      <div class="arrival-options-dialog">
+        <div class="arrival-header">
+          <i class="fas fa-check-circle arrival-icon"></i>
+          <h3>🎉 You've Arrived!</h3>
+          <p>
+            You have successfully reached
+            <strong>{{ destinationLocation?.name }}</strong>
+          </p>
+        </div>
+
+        <div class="arrival-actions">
+          <button @click="startNewNavigation" class="action-btn primary-btn">
+            <i class="fas fa-map-marker-alt"></i>
+            Navigate to Another Location
+          </button>
+
+          <button @click="continueExploring" class="action-btn secondary-btn">
+            <i class="fas fa-compass"></i>
+            Continue Exploring
+          </button>
+
+          <button @click="finishNavigation" class="action-btn finish-btn">
+            <i class="fas fa-home"></i>
+            Finish & Go Home
+          </button>
+        </div>
+
+        <div class="arrival-info">
+          <small>🕐 Navigation completed in {{ formatNavigationTime() }}</small>
+        </div>
+      </div>
+    </div>
+
     <div class="ar-status" v-if="!currentLocation">
       <div class="ar-loading">
         <i class="fas fa-spinner fa-spin"></i>
@@ -174,7 +209,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(["stop-navigation"]);
+const emit = defineEmits(["stop-navigation", "start-new-navigation"]);
 
 // AR Navigation state
 const isARNavigationActive = ref(false);
@@ -233,6 +268,8 @@ const loader = new GLTFLoader();
 // Navigation tracking
 const navigationStartTime = ref(null);
 const hasLoggedArrival = ref(false);
+const showArrivalOptions = ref(false);
+const hasArrived = ref(false);
 
 // Computed properties
 const voiceStatusText = computed(() => {
@@ -428,23 +465,43 @@ function announceArrival() {
 
 // Log successful arrival to Firebase for analytics
 async function logSuccessfulArrival() {
+  console.log("🚀 logSuccessfulArrival() called!");
+
   try {
     const auth = getAuth();
     const currentUser = auth.currentUser;
     const db = getFirestore();
 
-    if (
-      !currentUser ||
-      !destinationLocation.value ||
-      !navigationStartTime.value
-    ) {
+    console.log("🔍 Debug checks:", {
+      hasAuth: !!auth,
+      hasCurrentUser: !!currentUser,
+      userUID: currentUser?.uid,
+      hasDestination: !!destinationLocation.value,
+      destinationName: destinationLocation.value?.name,
+      hasStartTime: !!navigationStartTime.value,
+      startTime: navigationStartTime.value,
+    });
+
+    if (!currentUser) {
+      console.error("❌ No current user authenticated!");
+      return;
+    }
+
+    if (!destinationLocation.value) {
+      console.error("❌ No destination location!");
+      return;
+    }
+
+    if (!navigationStartTime.value) {
+      console.error("❌ No navigation start time!");
       return;
     }
 
     const arrivalTime = new Date();
-    const navigationDuration = arrivalTime - navigationStartTime.value;
+    const navigationDuration =
+      arrivalTime.getTime() - navigationStartTime.value.getTime();
 
-    await addDoc(collection(db, "arrivalAnalytics"), {
+    const arrivalData = {
       userId: currentUser.uid,
       userEmail: currentUser.email,
       destinationName: destinationLocation.value.name,
@@ -458,11 +515,30 @@ async function logSuccessfulArrival() {
       successful: true,
       finalDistance: distanceToDestination.value,
       timestamp: arrivalTime,
+    };
+
+    console.log("📊 Logging arrival data:", arrivalData);
+
+    console.log("🔄 Attempting to save to Firebase...");
+
+    // Add timeout for Firebase operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () =>
+          reject(new Error("Firebase operation timed out after 10 seconds")),
+        10000
+      );
     });
 
-    console.log("Successful arrival logged to analytics");
+    const savePromise = addDoc(collection(db, "arrivalAnalytics"), arrivalData);
+
+    await Promise.race([savePromise, timeoutPromise]);
+
+    console.log("✅ SUCCESS! Arrival data saved to Firebase!");
   } catch (error) {
-    console.error("Error logging arrival:", error);
+    console.error("❌ ERROR logging arrival:", error);
+    console.error("Error details:", error.message);
+    console.error("Error code:", error.code);
   }
 }
 
@@ -478,6 +554,31 @@ function closeSettings() {
 function updateSettings() {
   // Settings are automatically updated via v-model
   console.log("Settings updated:", settings.value);
+}
+
+// Test function for manual arrival logging
+function testArrivalLogging() {
+  console.log("🧪 Manual test arrival logging triggered!");
+
+  // Set required data if missing
+  if (!navigationStartTime.value) {
+    navigationStartTime.value = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+    console.log("⚙️ Set navigation start time for testing");
+  }
+
+  if (!destinationLocation.value && props.destination) {
+    destinationLocation.value = {
+      lat: props.destination.coordinates.x,
+      lng: props.destination.coordinates.y,
+      name: props.destination.name,
+      address: props.destination.address,
+    };
+    console.log("⚙️ Set destination location for testing");
+  }
+
+  // Force trigger arrival
+  hasLoggedArrival.value = false;
+  logSuccessfulArrival();
 }
 
 // Voice Commands methods
@@ -856,8 +957,9 @@ function calculateNavigationData() {
   updateARInstructions();
   update3DElements();
 
-  // Check for arrival
-  if (distanceToDestination.value < 3 && previousDistance >= 3) {
+  // Check for arrival - improved logic
+  if (distanceToDestination.value < 3 && !hasLoggedArrival.value) {
+    console.log("🎉 ARRIVAL DETECTED! Logging to Firebase...");
     announceArrival();
   }
 }
@@ -868,6 +970,11 @@ function updateARInstructions() {
 
   if (distance < 3) {
     arInstructions.value = `You have arrived at ${destination.name}!`;
+    // Show arrival options
+    if (!hasArrived.value) {
+      hasArrived.value = true;
+      showArrivalOptions.value = true;
+    }
   } else if (distance <= 10) {
     arInstructions.value = `${destination.name} is very close - ${Math.round(
       distance
@@ -974,17 +1081,6 @@ function update3DElements() {
 
     // Rotate marker slowly for visibility
     markerModel.rotation.y += 0.01;
-
-    // Debug log for exact positioning
-    console.log(`Marker positioned at exact GPS coordinates:
-      User: ${currentLocation.value.lat.toFixed(
-        6
-      )}, ${currentLocation.value.lng.toFixed(6)}
-      Destination: ${destinationLocation.value.lat.toFixed(
-        6
-      )}, ${destinationLocation.value.lng.toFixed(6)}
-      World Position: x=${rotatedX.toFixed(2)}, z=${rotatedZ.toFixed(2)}
-      Distance: ${distance.toFixed(2)}m`);
   }
 }
 
@@ -1101,9 +1197,50 @@ function stopARNavigation() {
   lastInstruction.value = "";
   navigationStartTime.value = null;
   hasLoggedArrival.value = false;
+  showArrivalOptions.value = false;
+  hasArrived.value = false;
 
   // Emit stop event to parent
   emit("stop-navigation");
+}
+
+// Arrival completion methods
+function startNewNavigation() {
+  showArrivalOptions.value = false;
+  hasArrived.value = false;
+  hasLoggedArrival.value = false;
+
+  // Emit event to parent to show location selection
+  emit("startNewNavigation");
+}
+
+function continueExploring() {
+  showArrivalOptions.value = false;
+  hasArrived.value = false;
+  hasLoggedArrival.value = false;
+
+  // Just hide the dialog and let user continue with AR view active
+  // They can manually select a new destination or explore
+}
+
+function finishNavigation() {
+  showArrivalOptions.value = false;
+  stopARNavigation();
+}
+
+function formatNavigationTime() {
+  if (!navigationStartTime.value) return "0 min";
+
+  const now = new Date();
+  const durationMs = now.getTime() - navigationStartTime.value.getTime();
+  const minutes = Math.floor(durationMs / (1000 * 60));
+  const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  } else {
+    return `${seconds}s`;
+  }
 }
 </script>
 
@@ -1505,40 +1642,41 @@ select {
 
 .ar-info-overlay {
   position: absolute;
-  bottom: 100px;
+  top: 80px;
   left: 20px;
-  right: 20px;
+  right: 80px; /* Add more space on the right for voice commands */
   z-index: 10001;
+  max-width: 280px; /* Limit the maximum width */
 }
 
 .ar-destination-info {
   background: rgba(0, 0, 0, 0.8);
   color: white;
-  padding: 16px 20px;
+  padding: 12px 16px; /* Reduce padding */
   border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .ar-destination-info h3 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
+  margin: 0 0 6px 0; /* Reduce margin */
+  font-size: 18px; /* Slightly smaller font */
   font-weight: 600;
   color: #22c55e;
 }
 
 .ar-destination-info p {
-  margin: 0 0 8px 0;
-  font-size: 16px;
+  margin: 0 0 6px 0; /* Reduce margin */
+  font-size: 14px; /* Smaller font */
   opacity: 0.9;
 }
 
 .ar-distance {
-  font-size: 24px;
+  font-size: 20px; /* Smaller distance font */
   font-weight: bold;
   color: #22c55e;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 6px; /* Reduce margin */
 }
 
 .ar-precision-info {
@@ -1586,6 +1724,29 @@ select {
 
 /* Responsive AR styles */
 @media (max-width: 768px) {
+  .ar-info-overlay {
+    top: 70px;
+    left: 10px;
+    right: 70px; /* Leave space for voice commands */
+    max-width: 250px;
+  }
+
+  .ar-destination-info {
+    padding: 10px 12px; /* Even more compact on mobile */
+  }
+
+  .ar-destination-info h3 {
+    font-size: 16px;
+  }
+
+  .ar-destination-info p {
+    font-size: 13px;
+  }
+
+  .ar-distance {
+    font-size: 18px;
+  }
+
   .ar-controls-bar {
     top: 10px;
     right: 10px;
@@ -1652,5 +1813,133 @@ select {
 .voice-guidance-status,
 .listening-indicator {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Arrival Options Styles */
+.arrival-options-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.arrival-options-dialog {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.arrival-header {
+  margin-bottom: 25px;
+}
+
+.arrival-icon {
+  font-size: 3rem;
+  color: #22c55e;
+  margin-bottom: 15px;
+}
+
+.arrival-header h3 {
+  margin: 10px 0;
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.arrival-header p {
+  color: #666;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.arrival-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.primary-btn:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  transform: translateY(-2px);
+}
+
+.secondary-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.secondary-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-2px);
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
+.finish-btn:hover {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  transform: translateY(-2px);
+}
+
+.arrival-info {
+  color: #666;
+  font-style: italic;
+  margin-top: 15px;
+}
+
+.arrival-info small {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .arrival-options-dialog {
+    margin: 10px;
+    padding: 20px;
+  }
+
+  .arrival-header h3 {
+    font-size: 1.3rem;
+  }
+
+  .action-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
 }
 </style>

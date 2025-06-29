@@ -11,7 +11,7 @@
       </div>
       <div class="navbar-actions">
         <!-- Notification Bell -->
-        <NotificationBell />
+        <NotificationBell @startNavigation="handleNotificationNavigation" />
         <button
           class="darkmode-btn"
           @click="toggleDarkMode"
@@ -328,7 +328,8 @@
     <ARNavigation
       :destination="arDestination"
       :is-active="isARActive"
-      @stop-navigation="handleStopNavigation" />
+      @stop-navigation="handleStopNavigation"
+      @start-new-navigation="handleStartNewNavigation" />
 
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
@@ -820,14 +821,102 @@ function closeLocationModal() {
 // AR Navigation methods
 function goToLocation(location) {
   console.log("Starting AR navigation to:", location.name);
+
+  // Track destination selection for analytics
+  trackDestinationSelection(location);
+
   arDestination.value = location;
   isARActive.value = true;
+  closeLocationModal();
+}
+
+// Function to track destination selection for analytics
+async function trackDestinationSelection(location) {
+  try {
+    const db = getFirestore();
+    const user = auth.currentUser;
+
+    if (user) {
+      await addDoc(collection(db, "recentDestinations"), {
+        userId: user.uid,
+        destination: location.name,
+        destinationId: location.id,
+        destinationType: location.type || location.category,
+        coordinates: location.coordinates,
+        timestamp: new Date(),
+        userEmail: user.email,
+      });
+
+      console.log("Destination selection tracked:", location.name);
+    }
+  } catch (error) {
+    console.error("Error tracking destination selection:", error);
+  }
+}
+
+// Handle navigation from notification
+function handleNotificationNavigation(waypointData) {
+  console.log(
+    "Starting AR navigation from notification to:",
+    waypointData.name
+  );
+
+  // Validate coordinates before starting navigation
+  if (
+    !waypointData.coordinates ||
+    waypointData.coordinates.x === undefined ||
+    waypointData.coordinates.y === undefined ||
+    waypointData.coordinates.x === null ||
+    waypointData.coordinates.y === null
+  ) {
+    console.error(
+      "Cannot start navigation: waypoint has invalid coordinates",
+      waypointData
+    );
+
+    // Show an error message to the user
+    alert(
+      `Sorry, the location "${waypointData.name}" doesn't have valid coordinates for navigation.`
+    );
+    return;
+  }
+
+  // Convert waypoint data to location format expected by AR Navigation
+  const location = {
+    id: waypointData.id,
+    name: waypointData.name,
+    type: waypointData.type,
+    coordinates: waypointData.coordinates,
+  };
+
+  // Track the destination selection
+  trackDestinationSelection(location);
+
+  // Start AR Navigation
+  arDestination.value = location;
+  isARActive.value = true;
+
+  // Close any open modals
   closeLocationModal();
 }
 
 function handleStopNavigation() {
   isARActive.value = false;
   arDestination.value = null;
+}
+
+function handleStartNewNavigation() {
+  // Stop current navigation
+  isARActive.value = false;
+  arDestination.value = null;
+
+  // Show location selection by expanding the bottom sheet
+  isExpanded.value = true;
+
+  // Optionally scroll to top of locations
+  if (selectedCategory.value !== null) {
+    selectedCategory.value = null; // Reset to show all locations
+  }
 }
 </script>
 

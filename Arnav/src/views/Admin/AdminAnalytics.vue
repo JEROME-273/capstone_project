@@ -43,7 +43,7 @@
         <div class="stat-card">
           <div class="stat-icon">🎯</div>
           <div class="stat-content">
-            <h3>Popular Destination</h3>
+            <h3>Most Selected Destination</h3>
             <p class="stat-text">{{ popularDestination }}</p>
           </div>
         </div>
@@ -279,19 +279,44 @@ export default {
           (user) => user.lastLoginAt && user.lastLoginAt.toDate() > oneDayAgo
         ).length;
 
-        // Find most popular destination
-        const destinationCounts = {};
-        users.forEach((user) => {
-          if (user.lastDestination) {
-            destinationCounts[user.lastDestination] =
-              (destinationCounts[user.lastDestination] || 0) + 1;
-          }
-        });
+        // Find most selected destination from user selections
+        try {
+          const destinationsCollection = collection(db, "recentDestinations");
+          const destinationsSnapshot = await getDocs(destinationsCollection);
+          const destinationCounts = {};
 
-        const popularDest = Object.entries(destinationCounts).sort(
-          (a, b) => b[1] - a[1]
-        )[0];
-        this.popularDestination = popularDest ? popularDest[0] : "N/A";
+          destinationsSnapshot.forEach((doc) => {
+            const data = doc.data();
+            const destination = data.destination || data.name;
+            if (destination) {
+              destinationCounts[destination] =
+                (destinationCounts[destination] || 0) + 1;
+            }
+          });
+
+          const popularDest = Object.entries(destinationCounts).sort(
+            (a, b) => b[1] - a[1]
+          )[0];
+          this.popularDestination = popularDest ? popularDest[0] : "N/A";
+        } catch (error) {
+          console.error(
+            "Error fetching recent destinations for popular destination:",
+            error
+          );
+          // Fallback to lastDestination from users if recentDestinations fails
+          const destinationCounts = {};
+          users.forEach((user) => {
+            if (user.lastDestination) {
+              destinationCounts[user.lastDestination] =
+                (destinationCounts[user.lastDestination] || 0) + 1;
+            }
+          });
+
+          const popularDest = Object.entries(destinationCounts).sort(
+            (a, b) => b[1] - a[1]
+          )[0];
+          this.popularDestination = popularDest ? popularDest[0] : "N/A";
+        }
       } catch (error) {
         console.error("Error fetching user stats:", error);
       }

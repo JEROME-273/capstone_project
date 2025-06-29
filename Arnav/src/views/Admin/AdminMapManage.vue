@@ -142,7 +142,13 @@
 
             <div class="form-grid">
               <div class="form-group">
-                <label for="latitude">Latitude</label>
+                <label for="latitude">
+                  Latitude
+                  <i
+                    class="fas fa-info-circle coordinates-info"
+                    title="Valid coordinates are required for AR Navigation notifications to work. Use Current Location or enter manually.">
+                  </i>
+                </label>
                 <input
                   id="latitude"
                   v-model.number="waypoint.coordinates.x"
@@ -789,6 +795,18 @@ const loadData = async () => {
 const handleSubmit = async () => {
   saving.value = true;
   try {
+    // Validate coordinates
+    if (
+      !waypoint.value.coordinates ||
+      (waypoint.value.coordinates.x === 0 && waypoint.value.coordinates.y === 0)
+    ) {
+      toast.error(
+        "Please provide valid coordinates (not 0,0). Use 'Get Current Location' or enter manually."
+      );
+      saving.value = false;
+      return;
+    }
+
     // Check for duplicate name (case-insensitive)
     const duplicate = waypoints.value.some(
       (wp) =>
@@ -824,13 +842,18 @@ const handleSubmit = async () => {
 
       // Create notification for new waypoint
       try {
+        console.log(
+          "Creating notification with coordinates:",
+          waypoint.value.coordinates
+        );
         await NotificationService.createWaypointNotification({
           id: docRef.id,
           name: waypoint.value.name,
           type: waypoint.value.type,
           description: waypoint.value.description,
+          coordinates: waypoint.value.coordinates, // Add coordinates for AR Navigation
         });
-        console.log("Notification created for new waypoint");
+        console.log("Notification created for new waypoint with coordinates");
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
         // Don't fail the waypoint creation if notification fails
@@ -1137,5 +1160,17 @@ onMounted(async () => {
   gap: 10px;
   justify-content: center;
   padding: 20px;
+}
+
+/* Coordinate Info Icon */
+.coordinates-info {
+  margin-left: 5px;
+  color: var(--primary-color);
+  cursor: help;
+  font-size: 0.9rem;
+}
+
+.coordinates-info:hover {
+  color: var(--primary-hover);
 }
 </style>
