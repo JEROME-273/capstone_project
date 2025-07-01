@@ -33,15 +33,6 @@ const router = createRouter({
       name: "loadingPage",
       component: LoadingPage,
     },
-    // {
-    //   path: "/home",
-    //   name: "home",
-    //   component: HomeView,
-    //   meta: {
-    //     requiresAuth: true,
-    //     roles: ["user", "admin"],
-    //   },
-    // },
     {
       path: "/register",
       name: "register",
