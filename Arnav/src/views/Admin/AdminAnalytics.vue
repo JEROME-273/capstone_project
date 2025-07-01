@@ -7,14 +7,26 @@
     <div class="analytics-dashboard">
       <div class="dashboard-header">
         <h1>Analytics Dashboard</h1>
-        <div class="date-filter">
-          <select v-model="selectedPeriod" @change="fetchAllData">
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="365">Last year</option>
-            <option value="all">All time</option>
-          </select>
+        <div class="header-actions">
+          <div class="date-filter">
+            <select v-model="selectedPeriod" @change="fetchAllData">
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last year</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          <div class="action-buttons">
+            <button @click="showPreview" class="preview-btn">
+              <i class="bx bx-show"></i>
+              Preview Report
+            </button>
+            <button @click="printReport" class="print-btn">
+              <i class="bx bx-printer"></i>
+              Print Report
+            </button>
+          </div>
         </div>
       </div>
 
@@ -161,6 +173,237 @@
         <div class="loading-spinner"></div>
         <p>Loading analytics data...</p>
       </div>
+
+      <!-- Preview Modal -->
+      <div v-if="showPreviewModal" class="modal-overlay" @click="closePreview">
+        <div class="modal-content preview-modal" @click.stop>
+          <div class="modal-header">
+            <h2>
+              <i class="bx bx-file-blank"></i>
+              Analytics Report Preview
+            </h2>
+            <button @click="closePreview" class="close-btn">
+              <i class="bx bx-x"></i>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="preview-actions">
+              <button @click="printFromPreview" class="print-preview-btn">
+                <i class="bx bx-printer"></i>
+                Print This Report
+              </button>
+              <button @click="downloadPDF" class="download-btn">
+                <i class="bx bx-download"></i>
+                Download PDF
+              </button>
+            </div>
+
+            <!-- Preview Content -->
+            <div class="report-preview" id="reportPreview">
+              <div class="report-header">
+                <div class="report-logo">
+                  <h1>🌾 FarmGuide AR Navigation</h1>
+                  <h2>Analytics Report</h2>
+                </div>
+                <div class="report-info">
+                  <p>
+                    <strong>Generated:</strong> {{ formatDate(new Date()) }}
+                  </p>
+                  <p><strong>Period:</strong> {{ getPeriodText() }}</p>
+                  <p><strong>Report Type:</strong> Comprehensive Analytics</p>
+                </div>
+              </div>
+
+              <div class="report-section">
+                <h3>📊 Key Performance Indicators</h3>
+                <div class="kpi-grid">
+                  <div class="kpi-item">
+                    <span class="kpi-label">Total Users:</span>
+                    <span class="kpi-value">{{ totalUsers }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Verified Users:</span>
+                    <span class="kpi-value">{{ verifiedUsers }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Active Sessions:</span>
+                    <span class="kpi-value">{{ activeSessions }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Popular Destination:</span>
+                    <span class="kpi-value">{{ popularDestination }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-section">
+                <h3>🚀 Navigation Analytics</h3>
+                <div class="kpi-grid">
+                  <div class="kpi-item">
+                    <span class="kpi-label">Successful Arrivals:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.totalArrivals
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Average Navigation Time:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.avgDuration
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Most Visited Spot:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.mostVisited
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Success Rate:</span>
+                    <span class="kpi-value"
+                      >{{ arrivalStats.successRate }}%</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-section">
+                <h3>📈 Insights & Recommendations</h3>
+                <ul class="insights-list">
+                  <li>{{ getMainInsight() }}</li>
+                  <li>
+                    Navigation success rate indicates
+                    {{ getPerformanceLevel() }} user experience
+                  </li>
+                  <li>
+                    Peak usage shows optimal engagement during
+                    {{ getMostActiveTime() }}
+                  </li>
+                  <li>Recommend focusing on {{ getRecommendation() }}</li>
+                </ul>
+              </div>
+
+              <div class="report-footer">
+                <p>
+                  This report was automatically generated by FarmGuide Analytics
+                  System
+                </p>
+                <p>© 2025 FarmGuide AR Navigation - All Rights Reserved</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div v-if="showPreviewModal" class="modal-overlay" @click="closePreview">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2><i class="bx bx-show"></i> Report Preview</h2>
+          <button @click="closePreview" class="close-btn">
+            <i class="bx bx-x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="preview-actions">
+            <button @click="printPreview" class="print-preview-btn">
+              <i class="bx bx-printer"></i>
+              Print Report
+            </button>
+            <button @click="downloadPDF" class="download-btn">
+              <i class="bx bx-download"></i>
+              Download PDF
+            </button>
+          </div>
+
+          <div class="preview-container">
+            <div id="printable-report" class="printable-report">
+              <div class="report-header">
+                <h1>📊 FarmGuide Analytics Report</h1>
+                <p>Generated on {{ formatDate(new Date()) }}</p>
+                <p>Period: {{ getPeriodText() }}</p>
+              </div>
+
+              <div class="report-section">
+                <h3>📈 Key Performance Indicators</h3>
+                <div class="kpi-grid">
+                  <div class="kpi-item">
+                    <span class="kpi-label">Total Users:</span>
+                    <span class="kpi-value">{{ totalUsers }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Verified Users:</span>
+                    <span class="kpi-value">{{ verifiedUsers }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Active Sessions:</span>
+                    <span class="kpi-value">{{ activeSessions }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Popular Destination:</span>
+                    <span class="kpi-value">{{ popularDestination }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-section">
+                <h3>🎯 Arrival Analytics</h3>
+                <div class="kpi-grid">
+                  <div class="kpi-item">
+                    <span class="kpi-label">Total Arrivals:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.totalArrivals
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Avg Duration:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.avgDuration
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Most Visited Spot:</span>
+                    <span class="kpi-value">{{
+                      arrivalStats.mostVisited
+                    }}</span>
+                  </div>
+                  <div class="kpi-item">
+                    <span class="kpi-label">Success Rate:</span>
+                    <span class="kpi-value"
+                      >{{ arrivalStats.successRate }}%</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-section">
+                <h3>📈 Insights & Recommendations</h3>
+                <ul class="insights-list">
+                  <li>{{ getMainInsight() }}</li>
+                  <li>
+                    Navigation success rate indicates
+                    {{ getPerformanceLevel() }} user experience
+                  </li>
+                  <li>
+                    Peak usage shows optimal engagement during
+                    {{ getMostActiveTime() }}
+                  </li>
+                  <li>Recommend focusing on {{ getRecommendation() }}</li>
+                </ul>
+              </div>
+
+              <div class="report-footer">
+                <p>
+                  This report was automatically generated by FarmGuide Analytics
+                  System
+                </p>
+                <p>© 2025 FarmGuide AR Navigation - All Rights Reserved</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </AdminLayout>
 </template>
@@ -178,6 +421,7 @@ import {
   limit,
 } from "firebase/firestore";
 import Chart from "chart.js/auto";
+import html2pdf from "html2pdf.js";
 
 export default {
   name: "AdminAnalytics",
@@ -189,6 +433,7 @@ export default {
     return {
       loading: true,
       selectedPeriod: "30",
+      showPreviewModal: false,
 
       // Stats
       totalUsers: 0,
@@ -1213,6 +1458,408 @@ export default {
         },
       });
     },
+
+    // Preview and Print Methods
+    showPreview() {
+      this.showPreviewModal = true;
+    },
+
+    closePreview() {
+      this.showPreviewModal = false;
+    },
+
+    printReport() {
+      // Create a new window with print-optimized content
+      const printWindow = window.open("", "_blank");
+      const printContent = this.generatePrintHTML();
+
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+
+      // Wait for content to load then print
+      printWindow.onload = function () {
+        printWindow.print();
+        printWindow.close();
+      };
+    },
+
+    printFromPreview() {
+      const printContent = document.getElementById("reportPreview").innerHTML;
+      const printWindow = window.open("", "_blank");
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FarmGuide Analytics Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .report-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #4facfe; padding-bottom: 20px; }
+            .report-section { margin-bottom: 25px; }
+            .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 15px 0; }
+            .kpi-item { display: flex; justify-content: space-between; padding: 8px; border: 1px solid #eee; }
+            .kpi-label { font-weight: bold; }
+            .insights-list { margin: 15px 0; }
+            .insights-list li { margin: 8px 0; }
+            .report-footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+            h1, h2, h3 { color: #333; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.onload = function () {
+        printWindow.print();
+        printWindow.close();
+      };
+    },
+
+    downloadPDF() {
+      // For PDF download, you can use libraries like jsPDF or html2pdf
+      // This is a simple implementation using the browser's print to PDF
+      this.printFromPreview();
+      alert(
+        'Use your browser\'s "Save as PDF" option in the print dialog to download the PDF.'
+      );
+    },
+
+    generatePrintHTML() {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FarmGuide Analytics Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+            .report-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #4facfe; padding-bottom: 20px; }
+            .report-logo h1 { color: #4facfe; margin: 0; }
+            .report-logo h2 { color: #333; margin: 5px 0; }
+            .report-info { margin-top: 15px; }
+            .report-section { margin-bottom: 25px; page-break-inside: avoid; }
+            .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 15px 0; }
+            .kpi-item { display: flex; justify-content: space-between; padding: 10px; border: 1px solid #eee; background: #f9f9f9; }
+            .kpi-label { font-weight: bold; color: #555; }
+            .kpi-value { color: #4facfe; font-weight: bold; }
+            .insights-list { margin: 15px 0; }
+            .insights-list li { margin: 8px 0; padding: 5px 0; }
+            .report-footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
+            h1, h2, h3 { color: #333; }
+            h3 { border-left: 4px solid #4facfe; padding-left: 10px; }
+            @media print { 
+              body { margin: 0; } 
+              .report-section { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-header">
+            <div class="report-logo">
+              <h1>🌾 FarmGuide AR Navigation</h1>
+              <h2>Analytics Report</h2>
+            </div>
+            <div class="report-info">
+              <p><strong>Generated:</strong> ${this.formatDate(new Date())}</p>
+              <p><strong>Period:</strong> ${this.getPeriodText()}</p>
+              <p><strong>Report Type:</strong> Comprehensive Analytics</p>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <h3>📊 Key Performance Indicators</h3>
+            <div class="kpi-grid">
+              <div class="kpi-item">
+                <span class="kpi-label">Total Users:</span>
+                <span class="kpi-value">${this.totalUsers}</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Verified Users:</span>
+                <span class="kpi-value">${this.verifiedUsers}</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Active Sessions:</span>
+                <span class="kpi-value">${this.activeSessions}</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Popular Destination:</span>
+                <span class="kpi-value">${this.popularDestination}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <h3>🚀 Navigation Analytics</h3>
+            <div class="kpi-grid">
+              <div class="kpi-item">
+                <span class="kpi-label">Successful Arrivals:</span>
+                <span class="kpi-value">${
+                  this.arrivalStats.totalArrivals
+                }</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Average Navigation Time:</span>
+                <span class="kpi-value">${this.arrivalStats.avgDuration}</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Most Visited Spot:</span>
+                <span class="kpi-value">${this.arrivalStats.mostVisited}</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-label">Success Rate:</span>
+                <span class="kpi-value">${this.arrivalStats.successRate}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <h3>📈 Insights & Recommendations</h3>
+            <ul class="insights-list">
+              <li>${this.getMainInsight()}</li>
+              <li>Navigation success rate indicates ${this.getPerformanceLevel()} user experience</li>
+              <li>Peak usage shows optimal engagement during ${this.getMostActiveTime()}</li>
+              <li>Recommend focusing on ${this.getRecommendation()}</li>
+            </ul>
+          </div>
+
+          <div class="report-footer">
+            <p>This report was automatically generated by FarmGuide Analytics System</p>
+            <p>© 2025 FarmGuide AR Navigation - All Rights Reserved</p>
+          </div>
+        </body>
+        </html>
+      `;
+    },
+
+    // Helper methods for report content
+    formatDate(date) {
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    },
+
+    getPeriodText() {
+      const periods = {
+        7: "Last 7 days",
+        30: "Last 30 days",
+        90: "Last 90 days",
+        365: "Last year",
+        all: "All time",
+      };
+      return periods[this.selectedPeriod] || "Custom period";
+    },
+
+    getMainInsight() {
+      if (this.totalUsers > 100) {
+        return `Strong user adoption with ${this.totalUsers} total users demonstrates platform success`;
+      } else if (this.totalUsers > 50) {
+        return `Growing user base of ${this.totalUsers} users shows positive platform traction`;
+      } else {
+        return `Early stage platform with ${this.totalUsers} users ready for growth initiatives`;
+      }
+    },
+
+    getPerformanceLevel() {
+      const rate = this.arrivalStats.successRate;
+      if (rate >= 90) return "excellent";
+      if (rate >= 75) return "good";
+      if (rate >= 60) return "satisfactory";
+      return "needs improvement";
+    },
+
+    getMostActiveTime() {
+      // This could be enhanced with actual time-based analytics
+      return "peak hours (based on current data trends)";
+    },
+
+    getRecommendation() {
+      const verificationRate = (this.verifiedUsers / this.totalUsers) * 100;
+      if (verificationRate < 50) {
+        return "improving user verification processes";
+      } else if (this.arrivalStats.successRate < 80) {
+        return "enhancing navigation accuracy and user guidance";
+      } else {
+        return "expanding popular destination features and content";
+      }
+    },
+
+    // Print and Preview Methods
+    showPreview() {
+      this.showPreviewModal = true;
+    },
+
+    closePreview() {
+      this.showPreviewModal = false;
+    },
+
+    async printReport() {
+      const reportContent = document.getElementById("printable-report");
+
+      if (!reportContent) {
+        alert("Report content not found. Please try again.");
+        return;
+      }
+
+      // Clone the content for printing
+      const printWindow = window.open("", "_blank");
+      const clonedContent = reportContent.cloneNode(true);
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FarmGuide Analytics Report - ${this.formatDate(
+            new Date()
+          )}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Segoe UI', Arial, sans-serif; 
+              line-height: 1.6; 
+              color: #333;
+              background: white;
+            }
+            .printable-report { 
+              max-width: 800px; 
+              margin: 0 auto; 
+              padding: 40px 20px;
+            }
+            .report-header { 
+              text-align: center; 
+              margin-bottom: 40px; 
+              border-bottom: 3px solid #4facfe;
+              padding-bottom: 20px;
+            }
+            .report-header h1 { 
+              color: #2d3748; 
+              font-size: 28px; 
+              margin-bottom: 10px;
+            }
+            .report-header p { 
+              color: #718096; 
+              font-size: 14px;
+            }
+            .report-section { 
+              margin-bottom: 30px; 
+              page-break-inside: avoid;
+            }
+            .report-section h3 { 
+              color: #2d3748; 
+              margin-bottom: 15px; 
+              padding-bottom: 8px;
+              border-bottom: 2px solid #e2e8f0;
+              font-size: 18px;
+            }
+            .kpi-grid { 
+              display: grid; 
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+              gap: 20px; 
+              margin-bottom: 20px;
+            }
+            .kpi-item { 
+              padding: 15px; 
+              border: 1px solid #e2e8f0; 
+              border-radius: 8px;
+              background: #f7fafc;
+            }
+            .kpi-label { 
+              display: block; 
+              font-weight: 600; 
+              color: #4a5568; 
+              font-size: 12px; 
+              text-transform: uppercase;
+              margin-bottom: 5px;
+            }
+            .kpi-value { 
+              display: block; 
+              font-size: 24px; 
+              font-weight: 700; 
+              color: #2d3748;
+            }
+            .insights-list { 
+              list-style: none; 
+              padding: 0;
+            }
+            .insights-list li { 
+              margin-bottom: 10px; 
+              padding: 12px; 
+              background: #edf2f7; 
+              border-left: 4px solid #4facfe;
+              border-radius: 4px;
+            }
+            .report-footer { 
+              margin-top: 40px; 
+              padding-top: 20px; 
+              border-top: 2px solid #e2e8f0; 
+              text-align: center; 
+              color: #718096; 
+              font-size: 12px;
+            }
+            @media print {
+              body { print-color-adjust: exact; }
+              .report-section { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          ${clonedContent.outerHTML}
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    },
+
+    async downloadPDF() {
+      const reportContent = document.getElementById("printable-report");
+
+      if (!reportContent) {
+        alert("Report content not found. Please try again.");
+        return;
+      }
+
+      const options = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: `FarmGuide-Analytics-Report-${
+          new Date().toISOString().split("T")[0]
+        }.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          allowTaint: false,
+        },
+        jsPDF: {
+          unit: "in",
+          format: "letter",
+          orientation: "portrait",
+        },
+      };
+
+      try {
+        await html2pdf().set(options).from(reportContent).save();
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        alert("Error generating PDF. Please try again.");
+      }
+    },
+
+    printPreview() {
+      this.printReport();
+    },
   },
 };
 </script>
@@ -1427,6 +2074,258 @@ export default {
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
 }
 
+/* Header Actions Styles */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.preview-btn,
+.print-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.preview-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.preview-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.print-btn {
+  background: var(--success-color);
+  color: white;
+}
+
+.print-btn:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.preview-modal {
+  max-width: 900px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.print-preview-btn,
+.download-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.print-preview-btn {
+  background: var(--success-color);
+  color: white;
+}
+
+.print-preview-btn:hover {
+  background: #16a34a;
+}
+
+.download-btn {
+  background: var(--warning-color);
+  color: white;
+}
+
+.download-btn:hover {
+  background: #d97706;
+}
+
+/* Report Preview Styles */
+.report-preview {
+  background: white;
+  color: #333;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: "Arial", sans-serif;
+  line-height: 1.6;
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #4facfe;
+  padding-bottom: 20px;
+}
+
+.report-logo h1 {
+  color: #4facfe;
+  margin: 0;
+  font-size: 28px;
+}
+
+.report-logo h2 {
+  color: #333;
+  margin: 5px 0;
+  font-size: 20px;
+}
+
+.report-info {
+  margin-top: 15px;
+  font-size: 14px;
+  color: #666;
+}
+
+.report-info p {
+  margin: 5px 0;
+}
+
+.report-section {
+  margin-bottom: 25px;
+}
+
+.report-section h3 {
+  color: #333;
+  border-left: 4px solid #4facfe;
+  padding-left: 12px;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.kpi-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.kpi-label {
+  font-weight: 600;
+  color: #555;
+}
+
+.kpi-value {
+  color: #4facfe;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.insights-list {
+  margin: 15px 0;
+  padding-left: 20px;
+}
+
+.insights-list li {
+  margin: 10px 0;
+  color: #555;
+}
+
+.report-footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
 @media (max-width: 768px) {
   .charts-grid {
     grid-template-columns: 1fr;
@@ -1440,6 +2339,41 @@ export default {
     flex-direction: column;
     gap: 15px;
     align-items: flex-start;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+  }
+
+  .action-buttons {
+    width: 100%;
+  }
+
+  .preview-btn,
+  .print-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .modal-content {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-actions {
+    flex-direction: column;
+  }
+
+  .print-preview-btn,
+  .download-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

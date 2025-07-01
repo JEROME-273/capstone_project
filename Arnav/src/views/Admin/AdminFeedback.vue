@@ -45,6 +45,20 @@
             <div class="head">
               <h3>User Feedback</h3>
               <div class="header-actions">
+                <button
+                  class="test-toast-btn"
+                  @click="testToast"
+                  style="
+                    margin-right: 8px;
+                    padding: 8px 12px;
+                    background: #10b981;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                  ">
+                  Test Toast
+                </button>
                 <button class="filter-btn" @click="showFilters = !showFilters">
                   <i class="bx bx-filter"></i>
                 </button>
@@ -130,7 +144,9 @@
                           >({{ feedback.rating || 0 }} out of 5)</span
                         >
                       </div>
-                      <div v-if="feedback.adminReply" class="reply-indicator">
+                      <div
+                        v-if="hasAdminReply(feedback.id)"
+                        class="reply-indicator">
                         <i
                           class="bx bx-check-circle"
                           style="color: #10b981"></i>
@@ -209,12 +225,14 @@
                 <div class="admin-reply-section">
                   <h5>Admin Reply</h5>
                   <div
-                    v-if="selectedFeedback.adminReply"
+                    v-if="getAdminReply(selectedFeedback.id)"
                     class="existing-reply">
-                    <p>{{ selectedFeedback.adminReply }}</p>
+                    <p>{{ getAdminReply(selectedFeedback.id).message }}</p>
                     <small
                       >Replied on:
-                      {{ formatDate(selectedFeedback.repliedAt) }}</small
+                      {{
+                        formatDate(getAdminReply(selectedFeedback.id).createdAt)
+                      }}</small
                     >
                   </div>
                   <div v-else>
@@ -228,7 +246,7 @@
                       @click="sendReply"
                       :disabled="!replyText.trim() || isReplying">
                       <i class="bx bx-send"></i>
-                      {{ isReplying ? "Sending..." : "Send Reply" }}
+                      {{ isReplying ? "Sending..." : "Send Reply via Email" }}
                     </button>
                   </div>
                 </div>
@@ -236,6 +254,9 @@
             </div>
           </div>
         </div>
+
+        <!-- Toast Notifications -->
+        <!-- Toast notifications are now handled by vue-toastification -->
       </main>
     </div>
   </AdminLayout>
@@ -247,17 +268,30 @@ import {
   collection,
   getDocs,
   doc,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
 import { getAuth, signOut } from "firebase/auth";
+import emailjs from "@emailjs/browser";
+import { useToast } from "vue-toastification";
 import AdminLayout from "./AdminLayout.vue";
 
 export default {
   name: "AdminFeedback",
   components: { AdminLayout },
+  setup() {
+    // Initialize toast
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       feedbacks: [],
+      adminReplies: [],
       searchQuery: "",
       ratingFilter: "all",
       sortBy: "newest",
@@ -332,6 +366,7 @@ export default {
   },
   async mounted() {
     await this.fetchFeedbacks();
+    await this.fetchAdminReplies();
   },
   methods: {
     async fetchFeedbacks() {
@@ -348,14 +383,47 @@ export default {
             createdAt: doc.data().createdAt?.toDate
               ? doc.data().createdAt.toDate()
               : null,
-            repliedAt: doc.data().repliedAt?.toDate
-              ? doc.data().repliedAt.toDate()
-              : null,
           });
         });
       } catch (error) {
         console.error("Error fetching feedbacks:", error);
+        this.showErrorToast("Error loading feedback data");
       }
+    },
+
+    async fetchAdminReplies() {
+      try {
+        const db = getFirestore();
+        const q = collection(db, "admin_replies");
+        const querySnapshot = await getDocs(q);
+
+        this.adminReplies = [];
+        querySnapshot.forEach((doc) => {
+          this.adminReplies.push({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate
+              ? doc.data().createdAt.toDate()
+              : null,
+          });
+        });
+      } catch (error) {
+        console.error("Error fetching admin replies:", error);
+        if (error.code === "permission-denied") {
+          console.warn(
+            "Admin replies collection access denied. Please check Firestore security rules."
+          );
+          this.adminReplies = [];
+        }
+      }
+    },
+
+    hasAdminReply(feedbackId) {
+      return this.adminReplies.some((reply) => reply.feedbackId === feedbackId);
+    },
+
+    getAdminReply(feedbackId) {
+      return this.adminReplies.find((reply) => reply.feedbackId === feedbackId);
     },
 
     openFeedbackDetails(feedback) {
@@ -376,31 +444,183 @@ export default {
 
       try {
         const db = getFirestore();
-        await updateDoc(doc(db, "feedback", this.selectedFeedback.id), {
-          adminReply: this.replyText.trim(),
-          repliedAt: new Date(),
-          repliedBy: "admin", // In real app, use current admin's ID
-        });
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
 
-        // Update local data
-        this.selectedFeedback.adminReply = this.replyText.trim();
-        this.selectedFeedback.repliedAt = new Date();
+        // Save reply to admin_replies collection
+        const replyData = {
+          feedbackId: this.selectedFeedback.id,
+          userEmail: this.selectedFeedback.email,
+          message: this.replyText.trim(),
+          createdAt: serverTimestamp(),
+          repliedBy: currentUser?.email || "admin",
+          status: "sent",
+        };
 
-        // Update in the feedbacks array
-        const index = this.feedbacks.findIndex(
-          (f) => f.id === this.selectedFeedback.id
-        );
-        if (index !== -1) {
-          this.feedbacks[index] = { ...this.selectedFeedback };
-        }
+        await addDoc(collection(db, "admin_replies"), replyData);
+
+        // Send actual email to user
+        await this.sendEmailToUser();
+
+        // Refresh admin replies
+        await this.fetchAdminReplies();
 
         this.replyText = "";
-        this.showSuccessToast("Reply sent successfully!");
+
+        // Close modal first, then show success toast
+        this.closeFeedbackDetails();
+
+        // Show success toast with recipient email
+        setTimeout(() => {
+          this.toast.success(
+            `Reply sent successfully! Email delivered to ${this.selectedFeedback.email}`
+          );
+        }, 100);
       } catch (error) {
         console.error("Error sending reply:", error);
-        this.showErrorToast("Error sending reply");
+        if (error.code === "permission-denied") {
+          this.toast.error(
+            "Permission denied. Please check Firestore security rules for admin_replies collection."
+          );
+        } else {
+          this.toast.error("Error sending reply: " + error.message);
+        }
       } finally {
         this.isReplying = false;
+      }
+    },
+
+    async sendEmailToUser() {
+      try {
+        // Create email content
+        const subject = `FarmGuide Support: Reply to Your Feedback`;
+        const userFirstName = this.selectedFeedback.email.split("@")[0];
+
+        const emailBody = `
+Dear ${userFirstName},
+
+Thank you for your feedback regarding FarmGuide AR Navigation. We have reviewed your message and here is our response:
+
+Your Original Feedback:
+"${this.selectedFeedback.message}"
+
+Your Rating: ${this.selectedFeedback.rating} out of 5 stars
+
+Our Response:
+${this.replyText.trim()}
+
+We appreciate your input and hope this addresses your concerns. If you have any further questions, please don't hesitate to contact us.
+
+Best regards,
+FarmGuide Support Team
+arnavigation25@gmail.com
+
+---
+This is an automated response from FarmGuide Support System.
+        `.trim();
+
+        // Initialize EmailJS
+        emailjs.init("_wqlThEYfyqQWfWu7");
+
+        // Validate required fields
+        if (
+          !this.selectedFeedback.email ||
+          this.selectedFeedback.email.trim() === ""
+        ) {
+          throw new Error("Recipient email is missing or empty");
+        }
+
+        // Prepare template parameters for EmailJS
+        const templateParams = {
+          to_email: this.selectedFeedback.email.trim(),
+          to_name: userFirstName || "User",
+          email: this.selectedFeedback.email.trim(),
+          user_email: this.selectedFeedback.email.trim(),
+          recipient_email: this.selectedFeedback.email.trim(),
+          name: userFirstName || "User",
+          user_name: userFirstName || "User",
+          recipient_name: userFirstName || "User",
+          from_name: "FarmGuide Support Team",
+          reply_to: "arnavigation25@gmail.com",
+          subject: subject || "Reply to Your Feedback",
+          email_subject: subject || "Reply to Your Feedback",
+          user_feedback: this.selectedFeedback.message || "",
+          user_rating: this.selectedFeedback.rating || "No rating",
+          admin_reply: this.replyText.trim() || "",
+          reply_message: this.replyText.trim() || "",
+          message: emailBody || "",
+          email_body: emailBody || "",
+          feedback_id: this.selectedFeedback.id || "",
+          reply_date: new Date().toLocaleDateString(),
+        };
+
+        console.log("Sending email via EmailJS...");
+
+        // Send email using EmailJS
+        const response = await emailjs.send(
+          "service_txhch6f",
+          "template_z9y5zqt",
+          templateParams
+        );
+
+        console.log("Email sent successfully via EmailJS:", response);
+
+        // Update the admin reply status to include email status
+        const db = getFirestore();
+        const replyQuery = query(
+          collection(db, "admin_replies"),
+          where("feedbackId", "==", this.selectedFeedback.id)
+        );
+        const replySnapshot = await getDocs(replyQuery);
+
+        if (!replySnapshot.empty) {
+          const replyDoc = replySnapshot.docs[0];
+          await updateDoc(doc(db, "admin_replies", replyDoc.id), {
+            emailStatus: "sent",
+            emailSentAt: serverTimestamp(),
+            emailjsResponse: response.text,
+          });
+        }
+      } catch (error) {
+        console.error("Error sending email via EmailJS:", error);
+
+        let errorMessage = "Failed to send email";
+        if (error.message && error.message.includes("recipients address")) {
+          errorMessage =
+            "Email template configuration error: Check that your EmailJS template has a field for the recipient's email";
+        } else if (error.message && error.message.includes("template")) {
+          errorMessage =
+            "Email template not found: Check your template ID in EmailJS dashboard";
+        } else if (error.message && error.message.includes("service")) {
+          errorMessage =
+            "Email service error: Check your service ID in EmailJS dashboard";
+        } else if (error.message) {
+          errorMessage = `Email error: ${error.message}`;
+        }
+
+        this.toast.error(errorMessage);
+
+        // Update reply status to show email failed
+        try {
+          const db = getFirestore();
+          const replyQuery = query(
+            collection(db, "admin_replies"),
+            where("feedbackId", "==", this.selectedFeedback.id)
+          );
+          const replySnapshot = await getDocs(replyQuery);
+
+          if (!replySnapshot.empty) {
+            const replyDoc = replySnapshot.docs[0];
+            await updateDoc(doc(db, "admin_replies", replyDoc.id), {
+              emailStatus: "failed",
+              emailError: error.message,
+            });
+          }
+        } catch (updateError) {
+          console.error("Error updating email status:", updateError);
+        }
+
+        throw new Error(`Failed to send email: ${error.message}`);
       }
     },
 
@@ -411,21 +631,16 @@ export default {
         : message;
     },
 
-    showSuccessToast(message) {
-      // Simple toast implementation - in real app, use a proper toast library
-      alert(message);
-    },
-
-    showErrorToast(message) {
-      // Simple toast implementation - in real app, use a proper toast library
-      alert(message);
+    testToast() {
+      console.log("Feedback test toast button clicked");
+      this.toast.success("Test feedback toast - this should appear!");
     },
 
     formatDate(date) {
       if (!date) return "N/A";
       const now = new Date();
-      const feedbackDate = new Date(date);
-      const diffInHours = (now - feedbackDate) / (1000 * 60 * 60);
+      const targetDate = new Date(date);
+      const diffInHours = (now - targetDate) / (1000 * 60 * 60);
 
       if (diffInHours < 1) {
         const minutes = Math.floor(diffInHours * 60);
@@ -434,7 +649,7 @@ export default {
         const hours = Math.floor(diffInHours);
         return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
       } else {
-        return feedbackDate.toLocaleDateString("en-US", {
+        return targetDate.toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -613,6 +828,7 @@ export default {
   align-items: center;
   gap: 4px;
   transition: all 0.2s ease;
+  font-size: 12px;
 }
 
 .filter-btn:hover,

@@ -153,6 +153,66 @@
             </div>
           </div>
         </div>
+
+        <!-- Reply Modal -->
+        <div
+          v-if="showReplyModal"
+          class="modal-overlay"
+          @click="closeReplyModal">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h3>Reply to Support Request</h3>
+              <button class="close-btn" @click="closeReplyModal">
+                <i class="bx bx-x"></i>
+              </button>
+            </div>
+
+            <div class="modal-body">
+              <div class="request-info">
+                <div class="info-item">
+                  <strong>From:</strong> {{ selectedRequest?.email }}
+                </div>
+                <div class="info-item">
+                  <strong>Date:</strong>
+                  {{ formatDate(selectedRequest?.createdAt) }}
+                </div>
+                <div class="info-item">
+                  <strong>Message:</strong>
+                  <div class="original-message">
+                    {{ selectedRequest?.message }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="reply-section">
+                <label for="replyText" class="reply-label">Your Reply:</label>
+                <textarea
+                  id="replyText"
+                  v-model="replyText"
+                  class="reply-textarea"
+                  placeholder="Type your reply here..."
+                  rows="6"></textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeReplyModal">
+                Cancel
+              </button>
+              <button
+                class="btn btn-primary"
+                @click="sendReply"
+                :disabled="isReplying || !replyText.trim()">
+                <i v-if="isReplying" class="bx bx-loader-alt bx-spin"></i>
+                <i v-else class="bx bx-send"></i>
+                {{ isReplying ? "Sending..." : "Send Reply" }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <!-- Toast notifications are now handled by vue-toastification -->
       </main>
     </div>
   </AdminLayout>
@@ -166,13 +226,22 @@ import {
   doc,
   deleteDoc,
   updateDoc,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { getAuth, signOut } from "firebase/auth";
+import emailjs from "@emailjs/browser";
+import { useToast } from "vue-toastification";
 import AdminLayout from "./AdminLayout.vue";
 
 export default {
   name: "AdminCustomerSupport",
   components: { AdminLayout },
+  setup() {
+    // Initialize toast
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       supportRequests: [],
@@ -181,6 +250,10 @@ export default {
       sortBy: "newest",
       showFilters: false,
       resolvedToday: 0,
+      selectedRequest: null,
+      replyText: "",
+      isReplying: false,
+      showReplyModal: false,
     };
   },
   computed: {
@@ -296,28 +369,183 @@ export default {
     },
 
     replyToRequest(request) {
-      // Create a more professional email template
-      const subject = `Re: Support Request - ${
-        request.subject || "General Inquiry"
-      }`;
-      const body = `Dear ${request.email.split("@")[0]},
+      this.selectedRequest = request;
+      this.replyText = "";
+      this.showReplyModal = true;
+    },
 
-Thank you for contacting FarmGuide Support. We have received your message regarding:
+    async sendReply() {
+      if (!this.replyText.trim()) {
+        this.toast.warning("Please enter a reply message");
+        return;
+      }
 
-"${request.message}"
+      this.isReplying = true;
 
-Our support team is reviewing your request and will respond with a detailed solution within 24 hours. 
+      try {
+        // Save admin reply to Firestore
+        const db = getFirestore();
+        await addDoc(collection(db, "admin_replies"), {
+          supportRequestId: this.selectedRequest.id,
+          replyText: this.replyText.trim(),
+          repliedAt: serverTimestamp(),
+          repliedBy: "admin", // In real app, use current admin's ID
+          type: "support_request",
+        });
 
-If this is an urgent matter, please don't hesitate to contact us directly.
+        // Send email to user
+        await this.sendEmailToUser();
+
+        // Mark request as resolved
+        await updateDoc(doc(db, "support_requests", this.selectedRequest.id), {
+          status: "resolved",
+          resolvedAt: new Date(),
+          resolvedBy: "admin",
+        });
+
+        // Refresh requests
+        await this.fetchSupportRequests();
+
+        this.replyText = "";
+
+        // Close modal first, then show success toast
+        this.closeReplyModal();
+
+        // Show success toast with recipient email
+        setTimeout(() => {
+          this.toast.success(
+            `Support reply sent successfully! Email delivered to ${this.selectedRequest.email}`
+          );
+        }, 100);
+      } catch (error) {
+        console.error("Error sending reply:", error);
+        this.toast.error("Error sending reply: " + error.message);
+      } finally {
+        this.isReplying = false;
+      }
+    },
+
+    async sendEmailToUser() {
+      /**
+       * EmailJS Integration for Support Request Replies
+       * Uses a dedicated support template (different from feedback)
+       */
+      try {
+        // Get Firestore instance
+        const db = getFirestore();
+
+        // Create email content
+        const subject = `FarmGuide Support: Reply to Your Request`;
+        const userFirstName = this.selectedRequest.email.split("@")[0];
+
+        const emailBody = `
+Dear ${userFirstName},
+
+Thank you for contacting FarmGuide Support. We have reviewed your request and here is our response:
+
+Your Original Message:
+"${this.selectedRequest.message}"
+
+Our Response:
+${this.replyText.trim()}
+
+We hope this addresses your concerns. If you have any further questions, please don't hesitate to contact us.
 
 Best regards,
 FarmGuide Support Team
-support@farmguide.com`;
+arnavigation25@gmail.com
+        `.trim();
 
-      const mailtoLink = `mailto:${request.email}?subject=${encodeURIComponent(
-        subject
-      )}&body=${encodeURIComponent(body)}`;
-      window.open(mailtoLink);
+        // Initialize EmailJS
+        emailjs.init("_wqlThEYfyqQWfWu7"); // Your public key
+
+        // Validate required fields
+        if (
+          !this.selectedRequest.email ||
+          this.selectedRequest.email.trim() === ""
+        ) {
+          throw new Error("Recipient email is missing or empty");
+        }
+
+        // Prepare template parameters for Support Email (different from feedback)
+        const templateParams = {
+          // Primary recipient fields
+          to_email: this.selectedRequest.email.trim(),
+          to_name: userFirstName || "User",
+
+          // Alternative recipient field names
+          email: this.selectedRequest.email.trim(),
+          user_email: this.selectedRequest.email.trim(),
+          recipient_email: this.selectedRequest.email.trim(),
+
+          // Name variations
+          name: userFirstName || "User",
+          user_name: userFirstName || "User",
+          recipient_name: userFirstName || "User",
+
+          // Sender information
+          from_name: "FarmGuide Support Team",
+          reply_to: "arnavigation25@gmail.com",
+
+          // Subject variations
+          subject: subject,
+          email_subject: subject,
+
+          // Support-specific content (NO RATING for support requests)
+          user_message: this.selectedRequest.message || "",
+          original_message: this.selectedRequest.message || "",
+          support_reply: this.replyText.trim() || "",
+          admin_response: this.replyText.trim() || "",
+
+          // Full message content
+          message: emailBody,
+          email_body: emailBody,
+
+          // Additional info
+          request_id: this.selectedRequest.id || "",
+          reply_date: new Date().toLocaleDateString(),
+          request_type: "Support Request",
+        };
+
+        console.log("Sending support reply email via EmailJS...");
+
+        // Send email using EmailJS - using existing auto reply template
+        const response = await emailjs.send(
+          "service_txhch6f", // Your service ID
+          "template_btldizb", // Auto Reply template
+          templateParams
+        );
+
+        console.log("Support reply email sent successfully:", response);
+
+        // Update the admin reply status to include email status
+        await addDoc(collection(db, "admin_replies"), {
+          supportRequestId: this.selectedRequest.id,
+          emailStatus: "sent",
+          emailSentAt: serverTimestamp(),
+          emailjsResponse: response.text,
+        });
+      } catch (error) {
+        console.error("Error sending support reply email:", error);
+
+        // Provide more specific error information
+        let errorMessage = "Failed to send email";
+        if (error.message && error.message.includes("recipients address")) {
+          errorMessage =
+            "Email template configuration error: Check EmailJS template";
+        } else if (error.message) {
+          errorMessage = `Email error: ${error.message}`;
+        }
+
+        this.toast.error(errorMessage);
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+    },
+
+    closeReplyModal() {
+      this.showReplyModal = false;
+      this.replyText = "";
+      this.selectedRequest = null;
     },
 
     async markAsResolved(request) {
@@ -331,10 +559,10 @@ support@farmguide.com`;
           });
 
           await this.fetchSupportRequests();
-          this.showSuccessToast("Request marked as resolved!");
+          this.toast.success("Request marked as resolved!");
         } catch (error) {
           console.error("Error marking as resolved:", error);
-          this.showErrorToast("Error marking request as resolved");
+          this.toast.error("Error marking request as resolved");
         }
       }
     },
@@ -355,22 +583,12 @@ support@farmguide.com`;
         await this.fetchSupportRequests();
 
         if (showConfirm) {
-          this.showSuccessToast("Request deleted successfully!");
+          this.toast.success("Request deleted successfully!");
         }
       } catch (error) {
         console.error("Error deleting request:", error);
-        this.showErrorToast("Error deleting request");
+        this.toast.error("Error deleting request");
       }
-    },
-
-    showSuccessToast(message) {
-      // Simple toast implementation - in real app, use a proper toast library
-      alert(message);
-    },
-
-    showErrorToast(message) {
-      // Simple toast implementation - in real app, use a proper toast library
-      alert(message);
     },
 
     formatDate(date) {
@@ -795,9 +1013,190 @@ main {
   background: var(--danger-color);
   color: white;
 }
-
 .action-btn.delete:hover {
   background: #dc2626;
+}
+
+/* Reply Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.request-info {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.info-item {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-item strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.original-message {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.reply-section {
+  margin-bottom: 24px;
+}
+
+.reply-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.reply-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+  transition: all 0.2s ease;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 24px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--card-bg);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.bx-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
