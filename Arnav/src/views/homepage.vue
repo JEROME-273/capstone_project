@@ -401,7 +401,7 @@ const categories = ref([
   { key: "exit", name: "Exit", icon: "door-closed" },
   { key: "landmark", name: "Landmarks", icon: "monument" },
   { key: "junction", name: "Junctions", icon: "map-signs" },
-  { key: "destination", name: "Destinations", icon: "map-marker-alt" },
+  { key: "facility", name: "Facilities", icon: "map-marker-alt" },
 ]);
 
 // Computed properties

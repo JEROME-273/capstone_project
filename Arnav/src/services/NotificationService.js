@@ -90,6 +90,53 @@ class NotificationService {
     }
   }
 
+  // Create maintenance notification for waypoints
+  async createMaintenanceNotification(maintenanceData) {
+    try {
+      const { id, name, type, reason, coordinates, action } = maintenanceData;
+
+      const formattedType = this.formatWaypointTypeForTitle(type);
+
+      let title, message, priority;
+
+      if (action === "started") {
+        title = `⚠️ ${formattedType} Under Maintenance`;
+        message = `${name} is currently under maintenance and temporarily unavailable. ${
+          reason ? `Reason: ${reason}` : "Please use alternative routes."
+        }`;
+        priority = "high";
+      } else if (action === "completed") {
+        title = `✅ ${formattedType} Back Online`;
+        message = `${name} maintenance has been completed and is now available for navigation.`;
+        priority = "medium";
+      }
+
+      const notificationData = {
+        type: "maintenance_update",
+        title: title,
+        message: message,
+        waypointId: id,
+        waypointName: name,
+        waypointType: type,
+        maintenanceAction: action,
+        maintenanceReason: reason || "",
+        priority: priority,
+        createdAt: new Date(),
+        isRead: false,
+        isGlobal: true,
+        createdBy: "admin",
+        coordinates: coordinates || null,
+      };
+
+      await addDoc(collection(this.db, "notifications"), notificationData);
+      console.log(`Maintenance notification created for ${name} (${action})`);
+      return true;
+    } catch (error) {
+      console.error("Error creating maintenance notification:", error);
+      throw error;
+    }
+  }
+
   // Get notifications for current user
   async getUserNotifications(limit = 50) {
     try {
@@ -247,7 +294,7 @@ class NotificationService {
       exit: "Exit",
       landmark: "Landmark",
       junction: "Junction",
-      destination: "Destination",
+      facility: "Facility",
       parking: "Parking Area",
       office: "Office",
       cr: "Restroom",
@@ -268,7 +315,7 @@ class NotificationService {
       exit: "the exit area",
       landmark: "the landmark section",
       junction: "the junction area",
-      destination: "the destination area",
+      facility: "the facility area",
       parking: "the parking area",
       office: "the office section",
       cr: "the facility area",

@@ -39,15 +39,6 @@
           </div>
           <div class="stat-card">
             <div class="stat-icon">
-              <i class="bx bxs-directions"></i>
-            </div>
-            <div class="stat-content">
-              <h3>{{ paths.length }}</h3>
-              <p>Active Paths</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">
               <i class="bx bxs-camera"></i>
             </div>
             <div class="stat-content">
@@ -61,9 +52,20 @@
             </div>
             <div class="stat-content">
               <h3>
-                {{ waypoints.filter((w) => w.type === "destination").length }}
+                {{ waypoints.filter((w) => w.type === "facility").length }}
               </h3>
-              <p>Destinations</p>
+              <p>Facilities</p>
+            </div>
+          </div>
+          <div class="stat-card maintenance-stat">
+            <div class="stat-icon">
+              <i class="bx bx-wrench"></i>
+            </div>
+            <div class="stat-content">
+              <h3>
+                {{ waypoints.filter((w) => w.isUnderMaintenance).length }}
+              </h3>
+              <p>Under Maintenance</p>
             </div>
           </div>
         </div>
@@ -81,12 +83,6 @@
             @click="activeTab = 'list'">
             <i class="bx bx-list-ul"></i>
             Waypoints
-          </button>
-          <button
-            :class="['tab-btn', { active: activeTab === 'paths' }]"
-            @click="activeTab = 'paths'">
-            <i class="bx bx-git-branch"></i>
-            Paths
           </button>
         </div>
 
@@ -119,7 +115,7 @@
                   <option value="exit">Exit</option>
                   <option value="landmark">Landmark</option>
                   <option value="junction">Junction</option>
-                  <option value="destination">Destination</option>
+                  <option value="facility">Facility</option>
                   <option value="parking">Parking</option>
                   <option value="office">Office</option>
                   <option value="cr">CR</option>
@@ -129,7 +125,6 @@
                 </select>
               </div>
             </div>
-
             <div class="form-group">
               <label for="description">Description</label>
               <textarea
@@ -138,6 +133,31 @@
                 rows="3"
                 required
                 placeholder="Enter waypoint description"></textarea>
+            </div>
+
+            <div class="form-group">
+              <div class="maintenance-section">
+                <div class="maintenance-toggle">
+                  <input
+                    id="maintenance"
+                    v-model="waypoint.isUnderMaintenance"
+                    type="checkbox"
+                    class="maintenance-checkbox" />
+                  <label for="maintenance" class="maintenance-label">
+                    <i class="bx bx-wrench"></i>
+                    Under Maintenance
+                  </label>
+                </div>
+                <div
+                  v-if="waypoint.isUnderMaintenance"
+                  class="maintenance-details">
+                  <input
+                    v-model="waypoint.maintenanceReason"
+                    type="text"
+                    placeholder="Reason for maintenance (optional)"
+                    class="maintenance-reason-input" />
+                </div>
+              </div>
             </div>
 
             <div class="form-grid">
@@ -283,7 +303,7 @@
                   <option value="exit">Exit</option>
                   <option value="landmark">Landmark</option>
                   <option value="junction">Junction</option>
-                  <option value="destination">Destination</option>
+                  <option value="facility">Facility</option>
                   <option value="parking">Parking</option>
                   <option value="office">Office</option>
                   <option value="cr">CR</option>
@@ -292,8 +312,18 @@
                   <option value="plant_areas">Plant Areas</option>
                 </select>
               </div>
+              <div class="maintenance-filter">
+                <i class="bx bx-wrench"></i>
+                <select
+                  v-model="maintenanceFilter"
+                  @change="filterByMaintenance">
+                  <option value="">All Status</option>
+                  <option value="active">Active Only</option>
+                  <option value="maintenance">Under Maintenance</option>
+                </select>
+              </div>
               <button
-                v-if="selectedCategory || searchQuery"
+                v-if="selectedCategory || searchQuery || maintenanceFilter"
                 @click="clearFilters"
                 class="btn-clear-filters">
                 <i class="bx bx-x"></i>
@@ -344,11 +374,25 @@
                 <div class="waypoint-type">
                   {{ formatCategoryName(wp.type) }}
                 </div>
+                <div v-if="wp.isUnderMaintenance" class="maintenance-badge">
+                  <i class="bx bx-wrench"></i>
+                  Maintenance
+                </div>
               </div>
 
               <div class="waypoint-content">
                 <h3>{{ wp.name }}</h3>
                 <p>{{ wp.description }}</p>
+
+                <div v-if="wp.isUnderMaintenance" class="maintenance-info">
+                  <div class="maintenance-status">
+                    <i class="bx bx-error-circle"></i>
+                    <span>Currently under maintenance</span>
+                  </div>
+                  <div v-if="wp.maintenanceReason" class="maintenance-reason">
+                    <small>{{ wp.maintenanceReason }}</small>
+                  </div>
+                </div>
 
                 <div class="waypoint-meta">
                   <div class="meta-item">
@@ -373,6 +417,19 @@
               </div>
 
               <div class="waypoint-actions">
+                <button
+                  @click="toggleMaintenance(wp)"
+                  :class="[
+                    'btn-maintenance',
+                    { active: wp.isUnderMaintenance },
+                  ]"
+                  :title="
+                    wp.isUnderMaintenance
+                      ? 'Remove from maintenance'
+                      : 'Mark as under maintenance'
+                  ">
+                  <i class="bx bx-wrench"></i>
+                </button>
                 <button @click="editWaypoint(wp)" class="btn-edit">
                   <i class="bx bx-edit"></i>
                 </button>
@@ -381,135 +438,6 @@
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Paths Management -->
-        <div v-if="activeTab === 'paths'" class="content-card">
-          <div class="card-header">
-            <h2>Navigation Paths</h2>
-            <button @click="showPathModal = true" class="btn-primary">
-              <i class="bx bx-plus"></i>
-              Create Path
-            </button>
-          </div>
-
-          <div v-if="paths.length === 0" class="empty-state">
-            <i class="bx bx-git-branch"></i>
-            <h3>No paths created</h3>
-            <p>Create navigation paths to connect waypoints</p>
-          </div>
-
-          <div v-else class="paths-grid">
-            <div v-for="path in paths" :key="path.id" class="path-card">
-              <div class="path-header">
-                <h3>{{ path.name }}</h3>
-                <button @click="confirmDeletePath(path)" class="btn-delete">
-                  <i class="bx bx-trash"></i>
-                </button>
-              </div>
-
-              <p class="path-description">{{ path.description }}</p>
-
-              <div class="path-stats">
-                <div class="stat">
-                  <i class="bx bx-ruler"></i>
-                  <span>{{ path.distance }}m</span>
-                </div>
-                <div class="stat">
-                  <i class="bx bx-map-pin"></i>
-                  <span>{{ path.waypoints.length }} waypoints</span>
-                </div>
-              </div>
-
-              <div class="path-waypoints">
-                <h4>Connected Waypoints:</h4>
-                <div class="waypoint-chips">
-                  <span
-                    v-for="waypointId in path.waypoints"
-                    :key="waypointId"
-                    class="waypoint-chip">
-                    {{ getWaypointName(waypointId) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Path Creation Modal -->
-        <div v-if="showPathModal" class="modal-overlay" @click="closePathModal">
-          <div class="modal-content" @click.stop>
-            <div class="modal-header">
-              <h3>Create New Path</h3>
-              <button @click="closePathModal" class="btn-close">
-                <i class="bx bx-x"></i>
-              </button>
-            </div>
-
-            <form @submit.prevent="savePath" class="path-form">
-              <div class="form-group">
-                <label for="pathName">Path Name</label>
-                <input
-                  id="pathName"
-                  v-model="pathForm.name"
-                  type="text"
-                  required
-                  placeholder="Enter path name" />
-              </div>
-
-              <div class="form-group">
-                <label for="pathDescription">Description</label>
-                <textarea
-                  id="pathDescription"
-                  v-model="pathForm.description"
-                  rows="3"
-                  required
-                  placeholder="Describe this navigation path"></textarea>
-              </div>
-
-              <div class="form-group">
-                <label for="pathDistance">Distance (meters)</label>
-                <input
-                  id="pathDistance"
-                  v-model.number="pathForm.distance"
-                  type="number"
-                  required
-                  placeholder="Path distance in meters" />
-              </div>
-
-              <div class="form-group">
-                <label>Select Waypoints</label>
-                <div class="waypoint-selector">
-                  <div
-                    v-for="wp in waypoints"
-                    :key="wp.id"
-                    class="waypoint-option">
-                    <input
-                      :id="`wp-${wp.id}`"
-                      v-model="pathForm.waypoints"
-                      :value="wp.id"
-                      type="checkbox" />
-                    <label :for="`wp-${wp.id}`">
-                      <span class="waypoint-name">{{ wp.name }}</span>
-                      <span class="waypoint-type-badge">{{ wp.type }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="modal-actions">
-                <button
-                  type="button"
-                  @click="closePathModal"
-                  class="btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" :disabled="saving" class="btn-primary">
-                  {{ saving ? "Creating..." : "Create Path" }}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
 
@@ -609,15 +537,14 @@ const auth = getAuth(firebaseApp);
 // Reactive data
 const activeTab = ref("list");
 const waypoints = ref([]);
-const paths = ref([]);
 const searchQuery = ref("");
 const selectedCategory = ref("");
+const maintenanceFilter = ref("");
 const isEditMode = ref(false);
 const editingWaypoint = ref(null);
 const saving = ref(false);
 const uploading = ref(false);
 const imagePreview = ref("");
-const showPathModal = ref(false);
 const isAuthenticated = ref(false);
 const isLoading = ref(true);
 
@@ -635,13 +562,8 @@ const waypoint = ref({
   altitude: null,
   type: "landmark",
   imageUrl: "",
-});
-
-const pathForm = ref({
-  name: "",
-  description: "",
-  distance: 0,
-  waypoints: [],
+  isUnderMaintenance: false,
+  maintenanceReason: "",
 });
 
 // Computed - Enhanced filtering logic
@@ -651,6 +573,15 @@ const filteredWaypoints = computed(() => {
   // Filter by category
   if (selectedCategory.value) {
     filtered = filtered.filter((wp) => wp.type === selectedCategory.value);
+  }
+
+  // Filter by maintenance status
+  if (maintenanceFilter.value) {
+    if (maintenanceFilter.value === "maintenance") {
+      filtered = filtered.filter((wp) => wp.isUnderMaintenance);
+    } else if (maintenanceFilter.value === "active") {
+      filtered = filtered.filter((wp) => !wp.isUnderMaintenance);
+    }
   }
 
   // Filter by search query
@@ -672,13 +603,6 @@ const confirmDeleteWaypoint = (waypointToDelete) => {
   confirmationMessage.value = `Are you sure you want to delete the waypoint "${waypointToDelete.name}"? This will permanently remove all associated data including coordinates, images, and connections.`;
   deleteType.value = "Waypoint";
   pendingDeleteAction.value = () => deleteWaypoint(waypointToDelete.id);
-  showConfirmModal.value = true;
-};
-
-const confirmDeletePath = (pathToDelete) => {
-  confirmationMessage.value = `Are you sure you want to delete the path "${pathToDelete.name}"? This will permanently remove the navigation path and all its waypoint connections.`;
-  deleteType.value = "Path";
-  pendingDeleteAction.value = () => deletePath(pathToDelete.id);
   showConfirmModal.value = true;
 };
 
@@ -709,9 +633,15 @@ const filterByCategory = () => {
   // The computed property will automatically update
 };
 
+const filterByMaintenance = () => {
+  // This function is called when maintenance filter changes
+  // The computed property will automatically update
+};
+
 const clearFilters = () => {
   selectedCategory.value = "";
   searchQuery.value = "";
+  maintenanceFilter.value = "";
 };
 
 // Firebase operations
@@ -735,30 +665,6 @@ const loadWaypoints = async () => {
       toast.error("Access denied. Please check your permissions.");
     } else {
       toast.error("Failed to load waypoints. Please try again.");
-    }
-  }
-};
-
-const loadPaths = async () => {
-  if (!isAuthenticated.value) {
-    toast.error("Please wait for authentication...");
-    return;
-  }
-
-  try {
-    console.log("Loading paths...");
-    const querySnapshot = await getDocs(collection(db, "paths"));
-    paths.value = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    console.log(`Loaded ${paths.value.length} paths`);
-  } catch (error) {
-    console.error("Error loading paths:", error);
-    if (error.code === "permission-denied") {
-      toast.error("Access denied. Please check your permissions.");
-    } else {
-      toast.error("Failed to load paths. Please try again.");
     }
   }
 };
@@ -788,7 +694,7 @@ const initializeAuth = () => {
 };
 
 const loadData = async () => {
-  await Promise.all([loadWaypoints(), loadPaths()]);
+  await loadWaypoints();
 };
 
 // CRUD operations
@@ -827,6 +733,8 @@ const handleSubmit = async () => {
       altitude: waypoint.value.altitude,
       type: waypoint.value.type,
       imageUrl: waypoint.value.imageUrl,
+      isUnderMaintenance: waypoint.value.isUnderMaintenance || false,
+      maintenanceReason: waypoint.value.maintenanceReason || "",
       updatedAt: new Date(),
     };
 
@@ -900,38 +808,59 @@ const deleteWaypoint = async (id) => {
   }
 };
 
-// Path operations
-const savePath = async () => {
-  saving.value = true;
+// Maintenance functions
+const toggleMaintenance = async (waypointToToggle) => {
   try {
-    const pathData = {
-      ...pathForm.value,
-      createdAt: new Date(),
-    };
+    const newMaintenanceStatus = !waypointToToggle.isUnderMaintenance;
 
-    await addDoc(collection(db, "paths"), pathData);
-    await loadPaths();
-    closePathModal();
-    toast.success(`Path "${pathForm.value.name}" created successfully!`);
+    await updateDoc(doc(db, "waypoints", waypointToToggle.id), {
+      isUnderMaintenance: newMaintenanceStatus,
+      maintenanceReason: newMaintenanceStatus
+        ? waypointToToggle.maintenanceReason || ""
+        : "",
+      updatedAt: new Date(),
+    });
+
+    // Create notification for maintenance status change
+    try {
+      if (newMaintenanceStatus) {
+        await NotificationService.createMaintenanceNotification({
+          id: waypointToToggle.id,
+          name: waypointToToggle.name,
+          type: waypointToToggle.type,
+          reason: waypointToToggle.maintenanceReason || "Under maintenance",
+          coordinates: waypointToToggle.coordinates,
+          action: "started",
+        });
+        toast.success(
+          `${waypointToToggle.name} marked as under maintenance. Users will be notified.`
+        );
+      } else {
+        await NotificationService.createMaintenanceNotification({
+          id: waypointToToggle.id,
+          name: waypointToToggle.name,
+          type: waypointToToggle.type,
+          coordinates: waypointToToggle.coordinates,
+          action: "completed",
+        });
+        toast.success(
+          `${waypointToToggle.name} maintenance completed. Users will be notified.`
+        );
+      }
+    } catch (notificationError) {
+      console.error(
+        "Error creating maintenance notification:",
+        notificationError
+      );
+      // Don't fail the maintenance toggle if notification fails
+    }
+
+    await loadWaypoints();
   } catch (error) {
-    console.error("Error saving path:", error);
-    toast.error(`Failed to create path "${pathForm.value.name}"`);
-  } finally {
-    saving.value = false;
-  }
-};
-
-const deletePath = async (id) => {
-  try {
-    const pathToDelete = paths.value.find((p) => p.id === id);
-    const pathName = pathToDelete ? pathToDelete.name : "Unknown";
-
-    await deleteDoc(doc(db, "paths", id));
-    await loadPaths();
-    toast.success(`Path "${pathName}" deleted successfully!`);
-  } catch (error) {
-    console.error("Error deleting path:", error);
-    toast.error("Failed to delete path");
+    console.error("Error toggling maintenance status:", error);
+    toast.error(
+      `Failed to update maintenance status for ${waypointToToggle.name}`
+    );
   }
 };
 
@@ -1064,6 +993,8 @@ const resetForm = () => {
     altitude: null,
     type: "landmark",
     imageUrl: "",
+    isUnderMaintenance: false,
+    maintenanceReason: "",
   };
   imagePreview.value = "";
   isEditMode.value = false;
@@ -1074,21 +1005,6 @@ const removeImage = () => {
   imagePreview.value = "";
   waypoint.value.imageUrl = "";
   toast.info("Image removed");
-};
-
-const closePathModal = () => {
-  showPathModal.value = false;
-  pathForm.value = {
-    name: "",
-    description: "",
-    distance: 0,
-    waypoints: [],
-  };
-};
-
-const getWaypointName = (id) => {
-  const wp = waypoints.value.find((w) => w.id === id);
-  return wp ? wp.name : "Unknown";
 };
 
 // Initialize
