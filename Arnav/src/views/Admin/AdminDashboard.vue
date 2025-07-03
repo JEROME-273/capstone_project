@@ -7,13 +7,6 @@
     </template>
     <div>
       <main>
-        <div class="head-title">
-          <button class="download-report-btn" @click="downloadReport">
-            <i class="bx bx-download"></i>
-            Download Report
-          </button>
-        </div>
-
         <ul class="box-info">
           <li>
             <i class="bx bxs-user"></i>
@@ -678,34 +671,6 @@ export default {
         .join("\n");
     },
 
-    downloadReport() {
-      const reportData = {
-        totalUsers: this.totalUsers,
-        visitStats: this.visitStats,
-        generatedAt: new Date().toLocaleString(),
-      };
-
-      const csvData = [
-        ["Metric", "Value"],
-        ["Total Users", this.totalUsers],
-        ["Visitors", this.visitStats.Visitor],
-        ["Researchers", this.visitStats.Research],
-        ["Business", this.visitStats.Business],
-        ["Report Generated", new Date().toLocaleString()],
-      ];
-
-      const csv = csvData.map((row) => row.join(",")).join("\n");
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `admin-dashboard-report-${
-        new Date().toISOString().split("T")[0]
-      }.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    },
-
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
@@ -732,57 +697,24 @@ export default {
 main {
   background: var(--bg-primary);
   min-height: 100vh;
-  padding: 20px;
+  padding: 16px; /* Reduced from 20px for better mobile fit */
 }
 
-.head-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  color: var(--text-primary);
-  padding: 0;
+/* Mobile-first optimizations */
+* {
+  box-sizing: border-box;
 }
 
-.head-title .left h1 {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--text-primary);
-  letter-spacing: -0.5px;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.breadcrumb a {
-  color: #64748b;
-  text-decoration: none;
-}
-
-.download-report-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
-}
-
-.download-report-btn:hover {
-  background: #2563eb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+/* Prevent text selection on interactive elements for better mobile UX */
+button,
+.nav-link {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .box-info {
@@ -1054,7 +986,7 @@ main {
 }
 
 .admin-nav-bar .nav-link {
-  font-size: 32px;
+  font-size: 24px; /* Reduced from 32px for better mobile fit */
   font-weight: 600;
   color: var(--text-primary);
   text-decoration: none;
@@ -1342,22 +1274,527 @@ main {
   color: var(--text-primary);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+/* Responsive Design for All Screen Sizes */
+
+/* Large Desktop (1200px and up) */
+@media (min-width: 1200px) {
+  main {
+    padding: 24px;
+  }
+
   .box-info {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .table-data {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* Medium Desktop (992px to 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .admin-nav-bar .nav-link {
+    font-size: 28px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet (768px to 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
+  main {
+    padding: 16px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 24px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
 
   .table-data {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .download-report-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .box-info li {
+    padding: 20px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 24px;
+  }
+
+  .table-data .head h3 {
+    font-size: 16px;
+  }
+}
+
+/* Mobile Large (480px to 767px) */
+@media (max-width: 767px) and (min-width: 480px) {
+  main {
+    padding: 12px;
+  }
+  .admin-nav-bar .nav-link {
+    font-size: 20px;
+  }
+
+  .box-info {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .box-info li {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .box-info li i {
+    font-size: 24px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 20px;
+  }
+
+  .box-info li .text p {
+    font-size: 13px;
+  }
+
+  .table-data {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .table-data .order {
+    padding: 16px;
+  }
+
+  .table-data .head h3 {
+    font-size: 14px;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .activity-item {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .activity-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .activity-name {
+    font-size: 13px;
+  }
+
+  .activity-type {
+    font-size: 12px;
+  }
+
+  .activity-time {
+    font-size: 11px;
   }
 
   .user-filters {
     flex-direction: column;
+    gap: 12px;
   }
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+}
+
+/* Mobile Small (320px to 479px) */
+@media (max-width: 479px) {
+  main {
+    padding: 8px;
+  }
+  .admin-nav-bar .nav-link {
+    font-size: 16px;
+    padding: 6px 12px;
+  }
+
+  .box-info {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .box-info li {
+    padding: 12px;
+    gap: 10px;
+    border-radius: 8px;
+  }
+
+  .box-info li i {
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 18px;
+  }
+
+  .box-info li .text p {
+    font-size: 12px;
+  }
+
+  .table-data {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .table-data .order {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .table-data .head {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .table-data .head h3 {
+    font-size: 13px;
+  }
+
+  .table-data .head i {
+    font-size: 16px;
+  }
+
+  .chart-container {
+    height: 200px;
+  }
+
+  .recent-activity {
+    max-height: 200px;
+  }
+
+  .activity-list {
+    gap: 8px;
+  }
+
+  .activity-item {
+    padding: 8px;
+    gap: 6px;
+    border-radius: 6px;
+  }
+
+  .activity-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  .activity-icon i {
+    font-size: 14px;
+  }
+
+  .activity-name {
+    font-size: 12px;
+    margin-bottom: 1px;
+  }
+
+  .activity-type {
+    font-size: 11px;
+    margin-bottom: 1px;
+  }
+
+  .activity-time {
+    font-size: 10px;
+  }
+
+  .no-activity {
+    padding: 16px;
+    font-size: 12px;
+  }
+
+  .section-content {
+    padding: 12px;
+    border-radius: 6px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .primary-btn,
+  .secondary-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .user-filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-select,
+  .search-input {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .table-container {
+    padding: 6px;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .badge {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .status-indicator {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .action-buttons {
+    gap: 4px;
+  }
+
+  .icon-btn {
+    padding: 4px;
+    font-size: 12px;
+  }
+
+  .pagination {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .pagination-btn {
+    padding: 6px;
+    font-size: 12px;
+  }
+
+  .pagination-info {
+    font-size: 11px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: none;
+    border-radius: 8px;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h3 {
+    font-size: 14px;
+  }
+
+  .close-modal {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .user-form {
+    gap: 12px;
+  }
+
+  .form-group {
+    gap: 4px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+/* Samsung Galaxy A55 and similar devices (390px to 414px) */
+@media (max-width: 414px) and (min-width: 390px) {
+  main {
+    padding: 6px;
+  }
+  .admin-nav-bar .nav-link {
+    font-size: 14px;
+    padding: 4px 8px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .box-info {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .box-info li {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .box-info li i {
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 16px;
+  }
+
+  .box-info li .text p {
+    font-size: 11px;
+  }
+
+  .table-data {
+    gap: 10px;
+  }
+
+  .table-data .order {
+    padding: 10px;
+  }
+
+  .table-data .head h3 {
+    font-size: 12px;
+  }
+
+  .chart-container {
+    height: 180px;
+  }
+
+  .activity-item {
+    padding: 6px;
+  }
+
+  .activity-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .activity-name {
+    font-size: 11px;
+  }
+
+  .activity-type {
+    font-size: 10px;
+  }
+
+  .activity-time {
+    font-size: 9px;
+  }
+}
+
+/* Very Small Mobile (300px to 389px) */
+@media (max-width: 389px) {
+  main {
+    padding: 4px;
+  }
+  .admin-nav-bar .nav-link {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .box-info li {
+    padding: 8px;
+  }
+
+  .box-info li i {
+    font-size: 16px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 14px;
+  }
+
+  .box-info li .text p {
+    font-size: 10px;
+  }
+
+  .table-data .order {
+    padding: 8px;
+  }
+
+  .chart-container {
+    height: 160px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  main {
+    padding: 8px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .box-info li {
+    padding: 8px;
+  }
+
+  .table-data {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chart-container {
+    height: 150px;
   }
 }
 </style>

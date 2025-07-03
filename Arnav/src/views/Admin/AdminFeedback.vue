@@ -45,20 +45,6 @@
             <div class="head">
               <h3>User Feedback</h3>
               <div class="header-actions">
-                <button
-                  class="test-toast-btn"
-                  @click="testToast"
-                  style="
-                    margin-right: 8px;
-                    padding: 8px 12px;
-                    background: #10b981;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                  ">
-                  Test Toast
-                </button>
                 <button class="filter-btn" @click="showFilters = !showFilters">
                   <i class="bx bx-filter"></i>
                 </button>
@@ -631,11 +617,6 @@ This is an automated response from FarmGuide Support System.
         : message;
     },
 
-    testToast() {
-      console.log("Feedback test toast button clicked");
-      this.toast.success("Test feedback toast - this should appear!");
-    },
-
     formatDate(date) {
       if (!date) return "N/A";
       const now = new Date();
@@ -705,20 +686,20 @@ This is an automated response from FarmGuide Support System.
 /* Statistics Cards */
 .box-info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  grid-gap: 24px;
-  margin-bottom: 36px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-gap: 16px;
+  margin-bottom: 24px;
   list-style: none;
   padding: 0;
 }
 
 .box-info li {
-  padding: 24px;
+  padding: 16px;
   background: var(--card-bg);
-  border-radius: 20px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  grid-gap: 24px;
+  grid-gap: 16px;
   cursor: pointer;
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow);
@@ -731,10 +712,10 @@ This is an automated response from FarmGuide Support System.
 }
 
 .box-info li .bx {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   border-radius: 10px;
-  font-size: 36px;
+  font-size: 28px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -758,7 +739,7 @@ This is an automated response from FarmGuide Support System.
 }
 
 .box-info li .text h3 {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 4px 0;
@@ -766,7 +747,7 @@ This is an automated response from FarmGuide Support System.
 
 .box-info li .text p {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 12px;
   margin: 0;
 }
 
@@ -781,9 +762,9 @@ This is an automated response from FarmGuide Support System.
 
 .table-data .order {
   flex: 1;
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--card-bg);
-  padding: 24px;
+  padding: 16px;
   overflow-x: auto;
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow);
@@ -798,13 +779,13 @@ This is an automated response from FarmGuide Support System.
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .table-data .head h3 {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -818,7 +799,7 @@ This is an automated response from FarmGuide Support System.
 
 .filter-btn,
 .refresh-btn {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--border-color);
   background: var(--card-bg);
   color: var(--text-primary);
@@ -828,7 +809,7 @@ This is an automated response from FarmGuide Support System.
   align-items: center;
   gap: 4px;
   transition: all 0.2s ease;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .filter-btn:hover,
@@ -839,8 +820,8 @@ This is an automated response from FarmGuide Support System.
 
 /* Filters Section */
 .filters-section {
-  margin-bottom: 24px;
-  padding: 16px;
+  margin-bottom: 16px;
+  padding: 12px;
   background: var(--bg-color);
   border-radius: 12px;
   border: 1px solid var(--border-color);
@@ -869,22 +850,22 @@ This is an automated response from FarmGuide Support System.
 
 .search-box input {
   width: 100%;
-  padding: 10px 16px 10px 40px;
+  padding: 8px 14px 8px 36px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--card-bg);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .filter-select {
-  padding: 10px 16px;
+  padding: 8px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--card-bg);
   color: var(--text-primary);
-  font-size: 14px;
-  min-width: 150px;
+  font-size: 12px;
+  min-width: 120px;
 }
 
 /* Feedback Container */
@@ -894,32 +875,32 @@ This is an automated response from FarmGuide Support System.
 
 .empty-state {
   text-align: center;
-  padding: 48px 24px;
+  padding: 32px 16px;
   color: var(--text-secondary);
 }
 
 .empty-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 36px;
+  margin-bottom: 12px;
   opacity: 0.5;
 }
 
 .empty-state h4 {
-  font-size: 18px;
-  margin-bottom: 8px;
+  font-size: 16px;
+  margin-bottom: 6px;
   color: var(--text-primary);
 }
 
 .feedback-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .feedback-card {
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 20px;
+  padding: 14px;
   background: var(--card-bg);
   transition: all 0.2s ease;
   cursor: pointer;
@@ -935,43 +916,43 @@ This is an automated response from FarmGuide Support System.
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .feedback-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .user-avatar.large {
-  width: 60px;
-  height: 60px;
-  font-size: 20px;
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
 }
 
 .user-info h4 {
   margin: 0 0 4px 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .feedback-time {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -979,7 +960,7 @@ This is an automated response from FarmGuide Support System.
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 
 .star-rating {
@@ -993,16 +974,16 @@ This is an automated response from FarmGuide Support System.
 }
 
 .star-rating .bx {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .star-rating.large .bx {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .rating-text {
-  margin-left: 8px;
-  font-size: 12px;
+  margin-left: 6px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -1010,25 +991,25 @@ This is an automated response from FarmGuide Support System.
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--success-color);
 }
 
 .feedback-content {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .feedback-message {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .feedback-subject {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: var(--bg-color);
   border-radius: 6px;
 }
@@ -1062,13 +1043,13 @@ This is an automated response from FarmGuide Support System.
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 24px 16px;
+  padding: 16px 16px 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -1076,7 +1057,7 @@ This is an automated response from FarmGuide Support System.
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
@@ -1090,31 +1071,31 @@ This is an automated response from FarmGuide Support System.
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 16px;
 }
 
 .user-section {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .user-details h4 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
+  margin: 0 0 6px 0;
+  font-size: 15px;
   color: var(--text-primary);
 }
 
 .feedback-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .feedback-section h5 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
+  margin: 0 0 6px 0;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -1122,21 +1103,21 @@ This is an automated response from FarmGuide Support System.
 }
 
 .feedback-text {
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--text-primary);
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .feedback-date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   margin: 0;
 }
 
 .admin-reply-section h5 {
-  margin: 0 0 16px 0;
-  font-size: 14px;
+  margin: 0 0 12px 0;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -1144,35 +1125,36 @@ This is an automated response from FarmGuide Support System.
 }
 
 .existing-reply {
-  padding: 16px;
+  padding: 12px;
   background: var(--bg-color);
   border-radius: 8px;
   border-left: 4px solid var(--success-color);
 }
 
 .existing-reply p {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
 .existing-reply small {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .reply-textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 16px;
+  min-height: 80px;
+  padding: 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--card-bg);
   color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   resize: vertical;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .reply-textarea:focus {
@@ -1182,7 +1164,7 @@ This is an automated response from FarmGuide Support System.
 }
 
 .send-reply-btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: var(--primary-color);
   color: white;
   border: none;
@@ -1191,9 +1173,9 @@ This is an automated response from FarmGuide Support System.
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .send-reply-btn:hover:not(:disabled) {
@@ -1209,15 +1191,44 @@ This is an automated response from FarmGuide Support System.
 @media screen and (max-width: 768px) {
   .box-info {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .box-info li {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .box-info li .bx {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 16px;
+  }
+
+  .box-info li .text p {
+    font-size: 11px;
   }
 
   .table-data {
     flex-direction: column;
   }
 
+  .table-data .order {
+    padding: 12px;
+  }
+
+  .table-data .head h3 {
+    font-size: 14px;
+  }
+
   .filter-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
   .search-box {
@@ -1226,7 +1237,7 @@ This is an automated response from FarmGuide Support System.
 
   .feedback-header {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .feedback-meta {
@@ -1246,26 +1257,152 @@ This is an automated response from FarmGuide Support System.
 
 @media screen and (max-width: 480px) {
   .box-info li {
-    padding: 16px;
-    gap: 16px;
+    padding: 10px;
+    gap: 10px;
   }
 
   .box-info li .bx {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 14px;
+  }
+
+  .box-info li .text p {
+    font-size: 10px;
   }
 
   .table-data .order {
-    padding: 16px;
+    padding: 10px;
+  }
+
+  .table-data .head h3 {
+    font-size: 13px;
   }
 
   .feedback-card {
-    padding: 16px;
+    padding: 10px;
+  }
+
+  .feedback-message {
+    font-size: 12px;
   }
 
   .modal-body {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .modal-header {
+    padding: 12px 12px 8px;
+  }
+
+  .modal-header h3 {
+    font-size: 14px;
+  }
+
+  .user-details h4 {
+    font-size: 13px;
+  }
+
+  .feedback-text {
+    font-size: 12px;
+  }
+}
+
+/* Samsung Galaxy A55 specific optimizations (390px - 414px width) */
+@media screen and (min-width: 390px) and (max-width: 414px) {
+  .box-info {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .box-info li {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .box-info li .bx {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 13px;
+  }
+
+  .box-info li .text p {
+    font-size: 9px;
+  }
+
+  .feedback-card {
+    padding: 8px;
+  }
+
+  .feedback-message {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .star-rating .bx {
+    font-size: 12px;
+  }
+
+  .filter-btn,
+  .refresh-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .search-box input,
+  .filter-select {
+    padding: 6px 10px 6px 32px;
+    font-size: 11px;
+  }
+
+  .modal-content {
+    margin: 5px;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 10px;
+  }
+
+  .modal-body {
+    padding: 10px;
+  }
+
+  .modal-header h3 {
+    font-size: 13px;
+  }
+
+  .user-details h4 {
+    font-size: 12px;
+  }
+
+  .feedback-text {
+    font-size: 11px;
+  }
+
+  .reply-textarea {
+    min-height: 60px;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .send-reply-btn {
+    padding: 8px 16px;
+    font-size: 11px;
   }
 }
 </style>

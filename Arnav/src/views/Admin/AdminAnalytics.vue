@@ -6,7 +6,7 @@
 
     <div class="analytics-dashboard">
       <div class="dashboard-header">
-        <h1>Analytics Dashboard</h1>
+        <div></div>
         <div class="header-actions">
           <div class="date-filter">
             <select v-model="selectedPeriod" @change="fetchAllData">
@@ -17,16 +17,10 @@
               <option value="all">All time</option>
             </select>
           </div>
-          <div class="action-buttons">
-            <button @click="showPreview" class="preview-btn">
-              <i class="bx bx-show"></i>
-              Preview Report
-            </button>
-            <button @click="printReport" class="print-btn">
-              <i class="bx bx-printer"></i>
-              Print Report
-            </button>
-          </div>
+          <button @click="showPreview" class="print-btn">
+            <i class="bx bx-printer"></i>
+            Print Report
+          </button>
         </div>
       </div>
 
@@ -189,14 +183,16 @@
 
           <div class="modal-body">
             <div class="preview-actions">
-              <button @click="printFromPreview" class="print-preview-btn">
-                <i class="bx bx-printer"></i>
-                Print This Report
-              </button>
-              <button @click="downloadPDF" class="download-btn">
-                <i class="bx bx-download"></i>
-                Download PDF
-              </button>
+              <div class="action-buttons-group">
+                <button @click="printFromPreview" class="print-preview-btn">
+                  <i class="bx bx-printer"></i>
+                  Print Report
+                </button>
+                <button @click="downloadPDF" class="download-btn">
+                  <i class="bx bx-download"></i>
+                  Download PDF
+                </button>
+              </div>
             </div>
 
             <!-- Preview Content -->
@@ -518,11 +514,20 @@ export default {
         this.totalUsers = users.length;
         this.verifiedUsers = users.filter((user) => user.emailVerified).length;
 
-        // Calculate active sessions (users who logged in within last 24 hours)
+        // Calculate active sessions (users who were created recently or have recent activity)
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        this.activeSessions = users.filter(
-          (user) => user.lastLoginAt && user.lastLoginAt.toDate() > oneDayAgo
-        ).length;
+        this.activeSessions = users.filter((user) => {
+          // Check if user was created recently (as a proxy for recent activity)
+          if (user.createdAt && user.createdAt.toDate() > oneDayAgo) {
+            return true;
+          }
+          // Check if user has lastLoginAt field and it's recent
+          if (user.lastLoginAt && user.lastLoginAt.toDate() > oneDayAgo) {
+            return true;
+          }
+          // If no recent login data, consider verified users as potentially active
+          return user.emailVerified;
+        }).length;
 
         // Find most selected destination from user selections
         try {
@@ -754,13 +759,69 @@ export default {
     },
 
     async fetchDeviceData() {
-      // Mock device data - you can implement actual device tracking
-      this.deviceData = [
-        { device: "Mobile", count: Math.floor(Math.random() * 100) + 50 },
-        { device: "Desktop", count: Math.floor(Math.random() * 80) + 30 },
-        { device: "Tablet", count: Math.floor(Math.random() * 40) + 10 },
-        { device: "Other", count: Math.floor(Math.random() * 20) + 5 },
-      ];
+      try {
+        const db = getFirestore();
+        const usersSnapshot = await getDocs(collection(db, "users"));
+
+        const deviceCounts = {
+          Mobile: 0,
+          Desktop: 0,
+          Tablet: 0,
+          Other: 0,
+        };
+
+        usersSnapshot.forEach((doc) => {
+          const userData = doc.data();
+          // Check if user has device info or use user agent detection
+          let deviceType = userData.deviceType || userData.device;
+
+          if (!deviceType) {
+            // If no device info, make educated guess based on email or other data
+            // Most users on mobile apps will be mobile users
+            deviceType = "Mobile";
+          }
+
+          // Normalize device type
+          deviceType = deviceType.toLowerCase();
+          if (
+            deviceType.includes("mobile") ||
+            deviceType.includes("android") ||
+            deviceType.includes("iphone")
+          ) {
+            deviceCounts["Mobile"]++;
+          } else if (
+            deviceType.includes("desktop") ||
+            deviceType.includes("windows") ||
+            deviceType.includes("mac")
+          ) {
+            deviceCounts["Desktop"]++;
+          } else if (
+            deviceType.includes("tablet") ||
+            deviceType.includes("ipad")
+          ) {
+            deviceCounts["Tablet"]++;
+          } else {
+            deviceCounts["Other"]++;
+          }
+        });
+
+        // Convert to array format for chart
+        this.deviceData = Object.entries(deviceCounts).map(
+          ([device, count]) => ({
+            device,
+            count,
+          })
+        );
+      } catch (error) {
+        console.error("Error fetching device data:", error);
+        // Fallback to basic data if there's an error
+        this.deviceData = [
+          { device: "Mobile", count: this.totalUsers || 0 },
+          { device: "Desktop", count: 0 },
+          { device: "Tablet", count: 0 },
+          { device: "Other", count: 0 },
+        ];
+      }
     },
 
     // New Arrival Analytics Methods
@@ -1872,7 +1933,7 @@ export default {
 }
 
 .analytics-dashboard {
-  padding: 20px;
+  padding: 15px;
   background-color: var(--bg-primary);
   min-height: calc(100vh - 80px);
   position: relative;
@@ -1882,12 +1943,13 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .dashboard-header h1 {
   color: var(--text-primary);
   margin: 0;
+  font-size: 1.5rem;
 }
 
 .date-filter select {
@@ -1900,25 +1962,31 @@ export default {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+@supports not (grid-template-columns: subgrid) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
 
 .stat-card {
   background: var(--bg-secondary);
-  padding: 20px;
+  padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 8px var(--shadow);
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .stat-icon {
-  font-size: 2rem;
-  width: 60px;
-  height: 60px;
+  font-size: 1.5rem;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1927,53 +1995,77 @@ export default {
 }
 
 .stat-content h3 {
-  margin: 0 0 5px 0;
+  margin: 0 0 4px 0;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 .stat-number {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
   color: var(--text-primary);
 }
 
 .stat-text {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+@supports not (grid-template-columns: subgrid) {
+  .charts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 }
 
 .chart-container {
   background: var(--bg-secondary);
-  padding: 20px;
+  padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 8px var(--shadow);
-  height: 400px;
+  height: 350px;
+  min-width: 0; /* Prevents flex overflow */
+  overflow: hidden;
+  position: relative;
 }
 
 .chart-container.large {
   grid-column: span 2;
 }
 
+@media (max-width: 1199px) {
+  .chart-container.large {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 767px) {
+  .chart-container.large {
+    grid-column: span 1;
+  }
+}
+
 .chart-container h3 {
-  margin: 0 0 20px 0;
+  margin: 0 0 15px 0;
   color: var(--text-primary);
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
 .chart-container canvas {
-  max-height: 320px;
+  max-height: 280px;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
 }
 
 .loading-overlay {
@@ -2016,8 +2108,8 @@ export default {
 
 /* Arrival Analytics Styles */
 .arrival-analytics-section {
-  margin: 40px 0;
-  padding: 30px;
+  margin: 25px 0;
+  padding: 20px;
   background: var(--card-bg);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
@@ -2026,16 +2118,22 @@ export default {
 
 .arrival-analytics-section h2 {
   color: var(--text-primary);
-  margin-bottom: 20px;
-  font-size: 24px;
+  margin-bottom: 15px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .arrival-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+@supports not (grid-template-columns: subgrid) {
+  .arrival-stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
 
 .stat-card.success {
@@ -2088,15 +2186,15 @@ export default {
 
 .preview-btn,
 .print-btn {
-  padding: 10px 16px;
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 
@@ -2136,7 +2234,7 @@ export default {
 }
 
 .modal-content {
-  background: var(--bg-primary);
+  background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   max-height: 90vh;
@@ -2172,15 +2270,15 @@ export default {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: #6b7280;
   padding: 8px;
   border-radius: 4px;
   transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+  background: #f3f4f6;
+  color: #1f2937;
 }
 
 .modal-body {
@@ -2189,10 +2287,19 @@ export default {
 
 .preview-actions {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 20px;
   margin-bottom: 20px;
-  padding-bottom: 20px;
+  padding: 20px;
   border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.action-buttons-group {
+  display: flex;
+  gap: 12px;
+  padding-top: 16px;
 }
 
 .print-preview-btn,
@@ -2326,29 +2433,81 @@ export default {
   padding-top: 20px;
 }
 
-@media (max-width: 768px) {
+/* Responsive Design for All Screen Sizes */
+
+/* Large Desktop (1200px and up) */
+@media (min-width: 1200px) {
+  .analytics-dashboard {
+    padding: 30px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
   .charts-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .chart-container.large {
-    grid-column: span 1;
+    grid-column: span 3;
+  }
+}
+
+/* Medium Desktop (992px to 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-container.large {
+    grid-column: span 2;
+  }
+}
+
+/* Tablet (768px to 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
+  .analytics-dashboard {
+    padding: 20px 15px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .chart-container {
+    height: 350px;
+    padding: 15px;
+  }
+
+  .chart-container.large {
+    grid-column: span 2;
   }
 
   .dashboard-header {
     flex-direction: column;
     gap: 15px;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
   .header-actions {
     flex-direction: column;
     gap: 15px;
-    width: 100%;
   }
 
   .action-buttons {
-    width: 100%;
+    display: flex;
+    gap: 10px;
   }
 
   .preview-btn,
@@ -2358,22 +2517,495 @@ export default {
   }
 
   .modal-content {
-    margin: 10px;
-    max-width: calc(100vw - 20px);
+    margin: 15px;
+    max-width: calc(100vw - 30px);
+  }
+
+  .arrival-analytics-section {
+    padding: 20px;
+  }
+
+  .arrival-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+}
+
+/* Mobile (480px to 767px) */
+@media (max-width: 767px) and (min-width: 480px) {
+  .analytics-dashboard {
+    padding: 15px 10px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 15px;
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+    width: 50px;
+    height: 50px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .stat-text {
+    font-size: 1rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .chart-container {
+    height: 300px;
+    padding: 15px;
+    min-width: 0;
+  }
+
+  .chart-container.large {
+    grid-column: span 1;
+  }
+
+  .chart-container h3 {
+    font-size: 1rem;
+    margin-bottom: 15px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+  }
+
+  .date-filter {
+    width: 100%;
+  }
+
+  .date-filter select {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .action-buttons {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .preview-btn,
+  .print-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-content {
+    margin: 0;
+    max-width: 100%;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 15px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 15px;
+  }
+
+  .arrival-analytics-section {
+    padding: 15px;
+    margin: 20px 0;
+  }
+
+  .arrival-analytics-section h2 {
+    font-size: 20px;
+  }
+
+  .arrival-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .kpi-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .kpi-item {
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+    padding: 10px;
   }
 
   .preview-actions {
     flex-direction: column;
+    gap: 15px;
+  }
+
+  .selection-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .action-buttons-group {
+    flex-direction: column;
+    gap: 10px;
   }
 
   .print-preview-btn,
   .download-btn {
     width: 100%;
     justify-content: center;
+    padding: 12px 16px;
+  }
+
+  .report-preview {
+    padding: 20px 15px;
+  }
+
+  .report-logo h1 {
+    font-size: 24px;
+  }
+
+  .report-logo h2 {
+    font-size: 18px;
+  }
+
+  .report-section h3 {
+    font-size: 16px;
+  }
+}
+
+/* Small Mobile (320px to 479px) */
+@media (max-width: 479px) {
+  .analytics-dashboard {
+    padding: 8px 4px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.2rem;
+    text-align: center;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 10px;
+    flex-direction: row;
+    text-align: left;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    font-size: 1.3rem;
+    width: 45px;
+    height: 45px;
+    flex-shrink: 0;
+  }
+
+  .stat-content h3 {
+    font-size: 0.8rem;
+  }
+
+  .stat-number {
+    font-size: 1.3rem;
+  }
+
+  .stat-text {
+    font-size: 0.9rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .chart-container {
+    height: 280px;
+    padding: 12px;
+    min-width: 0;
+  }
+
+  .chart-container h3 {
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+
+  .chart-container canvas {
+    max-height: 240px;
+  }
+
+  .dashboard-header {
+    text-align: center;
+  }
+
+  .date-filter select {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .preview-btn,
+  .print-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .modal-overlay {
+    padding: 5px;
+  }
+
+  .modal-content {
+    max-height: 98vh;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .arrival-analytics-section {
+    padding: 12px;
+    margin: 15px 0;
+  }
+
+  .arrival-analytics-section h2 {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .arrival-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .print-preview-btn,
+  .download-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .report-preview {
+    padding: 15px 10px;
+  }
+
+  .report-logo h1 {
+    font-size: 20px;
+  }
+
+  .report-logo h2 {
+    font-size: 16px;
+  }
+
+  .report-section h3 {
+    font-size: 14px;
+  }
+
+  .kpi-item {
+    padding: 8px;
+  }
+
+  .kpi-label {
+    font-size: 13px;
+  }
+
+  .kpi-value {
+    font-size: 14px;
+  }
+
+  .insights-list {
+    font-size: 14px;
+    padding-left: 15px;
+  }
+}
+
+/* Samsung Galaxy A55 specific optimizations (390px - 414px width) */
+@media (min-width: 390px) and (max-width: 414px) {
+  .analytics-dashboard {
+    padding: 10px 6px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+
+  .stat-content h3 {
+    font-size: 0.7rem;
+  }
+
+  .stat-number {
+    font-size: 1.3rem;
+  }
+
+  .stat-text {
+    font-size: 0.9rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .chart-container {
+    height: 280px;
+    padding: 10px;
+  }
+
+  .chart-container h3 {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+  }
+
+  .chart-container canvas {
+    max-height: 240px;
+  }
+
+  .arrival-analytics-section {
+    padding: 12px;
+    margin: 15px 0;
+  }
+
+  .arrival-analytics-section h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .arrival-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .preview-btn,
+  .print-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .action-buttons {
+    gap: 6px;
+  }
+
+  .date-filter select {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .modal-content {
+    margin: 8px;
+    border-radius: 8px;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h2 {
+    font-size: 14px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+}
+
+/* Landscape orientation adjustments for mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Print media queries */
+@media print {
+  .analytics-dashboard {
+    padding: 0;
+    background: white !important;
+  }
+
+  .modal-overlay,
+  .action-buttons,
+  .preview-actions {
+    display: none !important;
+  }
+
+  .chart-container {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-preview {
+    box-shadow: none;
+    border: none;
   }
 }
 </style>

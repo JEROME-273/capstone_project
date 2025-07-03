@@ -630,6 +630,48 @@ arnavigation25@gmail.com
 /* Use consistent variable names from AdminLayout */
 main {
   background: var(--bg-primary);
+  padding: 16px; /* Reduced from default for mobile-first approach */
+}
+
+/* Mobile-first optimizations */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent text selection on interactive elements for better mobile UX */
+button,
+.nav-link {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* Admin Navigation Bar */
+.admin-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-nav-bar .nav-link {
+  font-size: 20px; /* Reduced for mobile-first */
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.admin-nav-bar .nav-link:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 /* Additional colors not in AdminLayout */
@@ -1199,22 +1241,124 @@ main {
   }
 }
 
-/* Responsive Design */
-@media screen and (max-width: 768px) {
+/* Comprehensive Responsive Design for All Screen Sizes */
+
+/* Large Desktop (1200px and up) */
+@media (min-width: 1200px) {
+  main {
+    padding: 24px;
+  }
+
   .box-info {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 24px;
+  }
+}
+
+/* Medium Desktop (992px to 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .admin-nav-bar .nav-link {
+    font-size: 22px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet (768px to 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
+  main {
+    padding: 16px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 20px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .box-info li {
+    padding: 20px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 20px;
   }
 
   .table-data {
     flex-direction: column;
   }
 
+  .table-data .head h3 {
+    font-size: 18px;
+  }
+}
+
+/* Mobile Large (480px to 767px) */
+@media (max-width: 767px) and (min-width: 480px) {
+  main {
+    padding: 12px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 18px;
+  }
+
+  .box-info {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .box-info li {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .box-info li .bx {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 18px;
+  }
+
+  .box-info li .text p {
+    font-size: 13px;
+  }
+
+  .table-data {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .table-data .order {
+    padding: 16px;
+  }
+
+  .table-data .head h3 {
+    font-size: 16px;
+  }
+
   .filter-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
   .search-box {
+    min-width: auto;
+  }
+
+  .filter-select {
     min-width: auto;
   }
 
@@ -1225,27 +1369,367 @@ main {
 
   .request-actions {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .modal-content {
+    margin: 16px;
+    max-width: calc(100% - 32px);
   }
 }
 
-@media screen and (max-width: 480px) {
+/* Mobile Small (320px to 479px) */
+@media (max-width: 479px) {
+  main {
+    padding: 8px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 16px;
+    padding: 6px 12px;
+  }
+
+  .box-info {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
   .box-info li {
-    padding: 16px;
-    gap: 16px;
+    padding: 12px;
+    gap: 12px;
+    border-radius: 12px;
   }
 
   .box-info li .bx {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     font-size: 24px;
+    border-radius: 8px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 16px;
+  }
+
+  .box-info li .text p {
+    font-size: 12px;
+  }
+
+  .table-data {
+    flex-direction: column;
+    gap: 12px;
   }
 
   .table-data .order {
-    padding: 16px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .table-data .head {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .table-data .head h3 {
+    font-size: 14px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .filter-btn,
+  .refresh-btn {
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+
+  .filters-section {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-box input {
+    padding: 8px 12px 8px 32px;
+    font-size: 13px;
+  }
+
+  .filter-select {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 
   .request-card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .request-header {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .user-info h4 {
+    font-size: 14px;
+  }
+
+  .request-time {
+    font-size: 11px;
+  }
+
+  .status-badge {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .priority-indicator {
+    padding: 2px;
+    font-size: 10px;
+  }
+
+  .request-message {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .request-subject {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .request-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .action-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    flex: 1;
+    min-width: 70px;
+    justify-content: center;
+  }
+
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-state i {
+    font-size: 36px;
+  }
+
+  .empty-state h4 {
+    font-size: 16px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+  }
+
+  .modal-overlay {
+    padding: 8px;
+  }
+
+  .modal-content {
+    margin: 0;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .modal-header {
     padding: 16px;
+  }
+
+  .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .close-btn {
+    font-size: 20px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .request-info {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .info-item {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .original-message {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .reply-label {
+    font-size: 12px;
+  }
+
+  .reply-textarea {
+    padding: 8px;
+    font-size: 13px;
+    min-height: 100px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
+/* Samsung Galaxy A55 and similar devices (390px to 414px) */
+@media (max-width: 414px) and (min-width: 390px) {
+  main {
+    padding: 6px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 14px;
+    padding: 4px 8px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .box-info {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .box-info li {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .box-info li .bx {
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 14px;
+  }
+
+  .box-info li .text p {
+    font-size: 11px;
+  }
+
+  .table-data .order {
+    padding: 10px;
+  }
+
+  .table-data .head h3 {
+    font-size: 12px;
+  }
+
+  .request-card {
+    padding: 10px;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .user-info h4 {
+    font-size: 12px;
+  }
+
+  .request-message {
+    font-size: 12px;
+  }
+
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}
+
+/* Very Small Mobile (300px to 389px) */
+@media (max-width: 389px) {
+  main {
+    padding: 4px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .box-info li {
+    padding: 8px;
+  }
+
+  .box-info li .bx {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .box-info li .text h3 {
+    font-size: 12px;
+  }
+
+  .box-info li .text p {
+    font-size: 10px;
+  }
+
+  .table-data .order {
+    padding: 8px;
+  }
+
+  .request-card {
+    padding: 8px;
+  }
+}
+
+/* Landscape orientation for mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  main {
+    padding: 8px;
+  }
+
+  .box-info {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .box-info li {
+    padding: 8px;
+  }
+
+  .modal-content {
+    max-height: 95vh;
   }
 }
 </style>

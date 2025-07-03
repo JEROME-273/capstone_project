@@ -526,9 +526,25 @@ export default {
 
 <style scoped>
 main {
-  padding: 32px;
+  padding: 24px; /* Reduced from 32px */
   background: var(--bg-primary);
   min-height: 100vh;
+}
+
+/* Mobile-first approach for better performance */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent text selection on buttons for better mobile UX */
+button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .head-title {
@@ -691,6 +707,24 @@ main {
 
 .table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 .users-table {
@@ -960,10 +994,28 @@ main {
   text-decoration: none;
   margin-right: 20px;
   white-space: nowrap;
-  font-size: 32px;
+  font-size: 24px; /* Reduced from 32px for better mobile fit */
 }
 
-@media (max-width: 1024px) {
+/* Responsive Design for All Screen Sizes */
+
+/* Large Tablet (992px to 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  main {
+    padding: 24px;
+  }
+
+  .card-header h3 {
+    font-size: 18px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 28px;
+  }
+}
+
+/* Tablet (768px to 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
   main {
     padding: 20px;
   }
@@ -1002,24 +1054,576 @@ main {
   .users-table td {
     padding: 12px 16px;
   }
+
+  .admin-nav-bar .nav-link {
+    font-size: 24px;
+  }
+
+  .card-header h3 {
+    font-size: 16px;
+  }
 }
 
-@media (max-width: 768px) {
-  .head-title {
+/* Mobile Large (480px to 767px) */
+@media (max-width: 767px) and (min-width: 480px) {
+  main {
+    padding: 16px 12px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 20px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .card-header h3 {
+    font-size: 16px;
+  }
+
+  .card-header p {
+    font-size: 12px;
+  }
+
+  .primary-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .filters-section {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .search-box input {
+    padding: 10px 10px 10px 36px;
+    font-size: 13px;
+  }
+
+  .filter-selects {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filter-selects select {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .users-table {
+    font-size: 12px;
+  }
+
+  .users-table th {
+    padding: 12px 16px;
+    font-size: 11px;
+  }
+
+  .users-table td {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .badge {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .status-indicator {
+    padding: 4px 8px;
+    font-size: 11px;
   }
 
   .action-buttons {
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  .user-stats {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .stat-item {
+    font-size: 12px;
+  }
+
+  .register-form {
+    padding: 20px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Mobile Small (320px to 479px) */
+@media (max-width: 479px) {
+  main {
+    padding: 12px 8px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 18px;
+  }
+
+  .content-card {
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card-header h3 {
+    font-size: 14px;
+  }
+
+  .card-header p {
+    font-size: 11px;
+  }
+
+  .primary-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filters-section {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-box input {
+    padding: 8px 8px 8px 32px;
+    font-size: 12px;
+  }
+
+  .search-box i {
+    font-size: 14px;
+    left: 10px;
+  }
+
+  .filter-selects {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-selects select {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .users-table {
+    min-width: 600px;
+    font-size: 11px;
+  }
+
+  .users-table th {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  .users-table td {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .user-info {
+    gap: 8px;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .badge {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .status-indicator {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .action-buttons {
     gap: 4px;
   }
 
   .icon-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .user-stats {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .stat-item {
+    font-size: 11px;
+  }
+
+  .register-form {
+    padding: 16px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form-group {
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Very Small Mobile (300px to 319px) */
+@media (max-width: 319px) {
+  main {
+    padding: 8px 4px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 16px;
+  }
+
+  .card-header {
+    padding: 10px 12px;
+  }
+
+  .card-header h3 {
+    font-size: 13px;
+  }
+
+  .filters-section {
+    padding: 10px 12px;
+  }
+
+  .users-table {
+    min-width: 550px;
+    font-size: 10px;
+  }
+
+  .users-table th {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .users-table td {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
+  }
+
+  .register-form {
+    padding: 12px;
+  }
+}
+
+/* Landscape orientation for mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  main {
+    padding: 8px;
+  }
+
+  .content-card {
+    margin-bottom: 12px;
+  }
+
+  .card-header {
+    padding: 12px 16px;
+  }
+
+  .filters-section {
+    padding: 12px 16px;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 6px 12px;
+  }
+}
+
+/* Samsung Galaxy A55 and similar devices (390px to 414px) */
+@media (max-width: 414px) and (min-width: 390px) {
+  main {
+    padding: 10px 6px;
+  }
+
+  .admin-nav-bar .nav-link {
+    font-size: 16px;
+    margin: 0;
+    text-align: center;
+    width: 100%;
+  }
+
+  .content-card {
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+
+  .card-header {
+    padding: 10px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header h3 {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .card-header p {
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .primary-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+  }
+
+  .primary-btn i {
+    font-size: 12px;
+  }
+
+  .user-stats {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .stat-item {
+    font-size: 10px;
+    flex: 1;
+  }
+
+  .filters-section {
+    padding: 10px 14px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-box input {
+    padding: 6px 6px 6px 28px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .search-box i {
+    font-size: 12px;
+    left: 8px;
+  }
+
+  .filter-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .filter-selects select {
+    padding: 6px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .users-table {
+    min-width: 580px;
+    font-size: 10px;
+  }
+
+  .users-table th {
+    padding: 6px 8px;
+    font-size: 9px;
+    letter-spacing: 0.2px;
+  }
+
+  .users-table td {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .user-info {
+    gap: 6px;
+  }
+
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 9px;
+    border-radius: 6px;
+  }
+
+  .badge {
+    padding: 2px 5px;
+    font-size: 9px;
+    border-radius: 10px;
+  }
+
+  .status-indicator {
+    padding: 2px 5px;
+    font-size: 9px;
+    border-radius: 10px;
+  }
+
+  .action-buttons {
+    gap: 3px;
+  }
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+    border-radius: 5px;
+  }
+
+  .register-form {
+    padding: 14px;
+    gap: 16px;
+  }
+
+  .form-group {
+    gap: 4px;
+  }
+
+  .form-group label {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 6px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+  }
+}
+
+/* Fix for horizontal scrolling on mobile */
+@media (max-width: 767px) {
+  .table-container {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .users-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .users-table th:first-child,
+  .users-table td:first-child {
+    padding-left: 12px;
+    position: sticky;
+    left: 0;
+    background: var(--card-bg);
+    z-index: 1;
+  }
+
+  .users-table th:first-child {
+    background: var(--table-header-bg);
   }
 }
 </style>
