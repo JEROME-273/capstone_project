@@ -113,7 +113,14 @@
               class="locapp-location-card"
               v-for="location in searchResults"
               :key="location.id"
-              @click="goToLocation(location)">
+              :class="{
+                'maintenance-mode': location.isUnderMaintenance === true,
+              }"
+              @click="
+                location.isUnderMaintenance === true
+                  ? handleMaintenanceClick(location)
+                  : goToLocation(location)
+              ">
               <div class="location-image">
                 <img
                   :src="
@@ -121,6 +128,13 @@
                   "
                   :alt="location.name"
                   class="location-img" />
+                <!-- Maintenance overlay -->
+                <div
+                  v-if="location.isUnderMaintenance === true"
+                  class="maintenance-overlay">
+                  <i class="fas fa-tools"></i>
+                  <span>Under Maintenance</span>
+                </div>
                 <button
                   @click.stop="showLocationDetails(location)"
                   class="location-info-btn-image"
@@ -137,6 +151,13 @@
                     >{{ location.coordinates.x.toFixed(4) }},
                     {{ location.coordinates.y.toFixed(4) }}</span
                   >
+                </div>
+                <!-- Status indicator -->
+                <div
+                  v-if="location.isUnderMaintenance === true"
+                  class="status-badge maintenance">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  Under Maintenance - Navigation Disabled
                 </div>
               </div>
             </div>
@@ -198,7 +219,14 @@
               class="locapp-location-card"
               v-for="location in filteredAdminLocations"
               :key="location.id"
-              @click="goToLocation(location)">
+              :class="{
+                'maintenance-mode': location.isUnderMaintenance === true,
+              }"
+              @click="
+                location.isUnderMaintenance === true
+                  ? handleMaintenanceClick(location)
+                  : goToLocation(location)
+              ">
               <div class="location-image">
                 <img
                   :src="
@@ -206,6 +234,13 @@
                   "
                   :alt="location.name"
                   class="location-img" />
+                <!-- Maintenance overlay -->
+                <div
+                  v-if="location.isUnderMaintenance === true"
+                  class="maintenance-overlay">
+                  <i class="fas fa-tools"></i>
+                  <span>Under Maintenance</span>
+                </div>
                 <button
                   @click.stop="showLocationDetails(location)"
                   class="location-info-btn-image"
@@ -222,6 +257,13 @@
                     >{{ location.coordinates.x.toFixed(4) }},
                     {{ location.coordinates.y.toFixed(4) }}</span
                   >
+                </div>
+                <!-- Status indicator -->
+                <div
+                  v-if="location.isUnderMaintenance === true"
+                  class="status-badge maintenance">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  Under Maintenance - Navigation Disabled
                 </div>
               </div>
             </div>
@@ -298,6 +340,13 @@
             <div class="modal-type-badge">
               {{ formatCategoryName(selectedLocationDetails.type) }}
             </div>
+            <!-- Maintenance Status Badge in Modal -->
+            <div
+              v-if="selectedLocationDetails.isUnderMaintenance === true"
+              class="modal-status-badge maintenance">
+              <i class="fas fa-exclamation-triangle"></i>
+              Under Maintenance - Navigation Disabled
+            </div>
           </div>
 
           <div class="location-details">
@@ -314,10 +363,22 @@
 
           <div class="location-modal-actions">
             <button
-              @click="goToLocation(selectedLocationDetails)"
-              class="navigate-btn">
+              @click="
+                selectedLocationDetails.isUnderMaintenance === true
+                  ? handleMaintenanceClick(selectedLocationDetails)
+                  : goToLocation(selectedLocationDetails)
+              "
+              class="navigate-btn"
+              :class="{
+                'maintenance-disabled':
+                  selectedLocationDetails.isUnderMaintenance === true,
+              }">
               <i class="fas fa-directions"></i>
-              Navigate Here
+              {{
+                selectedLocationDetails.isUnderMaintenance === true
+                  ? "Under Maintenance"
+                  : "Navigate Here"
+              }}
             </button>
           </div>
         </div>
@@ -628,6 +689,8 @@ async function loadAdminLocations() {
         coordinates: data.coordinates,
         altitude: data.altitude,
         imageUrl: data.imageUrl,
+        status: data.status || "active", // Add status field with default 'active'
+        isUnderMaintenance: data.isUnderMaintenance || false, // Add maintenance field
         createdAt: data.createdAt?.toDate() || new Date(),
       });
     });
@@ -820,6 +883,14 @@ function closeLocationModal() {
 
 // AR Navigation methods
 function goToLocation(location) {
+  // Check if location is under maintenance
+  if (location.isUnderMaintenance === true) {
+    alert(
+      `Sorry, "${location.name}" is currently under maintenance and not available for navigation.`
+    );
+    return;
+  }
+
   console.log("Starting AR navigation to:", location.name);
 
   // Track destination selection for analytics
@@ -828,6 +899,13 @@ function goToLocation(location) {
   arDestination.value = location;
   isARActive.value = true;
   closeLocationModal();
+}
+
+function handleMaintenanceClick(location) {
+  // Show informative message when user clicks on maintenance waypoint
+  alert(
+    `"${location.name}" is currently under maintenance. Navigation is temporarily disabled for safety reasons. Please check back later.`
+  );
 }
 
 // Function to track destination selection for analytics
@@ -861,6 +939,14 @@ function handleNotificationNavigation(waypointData) {
     waypointData.name
   );
 
+  // Check if location is under maintenance
+  if (waypointData.isUnderMaintenance === true) {
+    alert(
+      `Sorry, "${waypointData.name}" is currently under maintenance and not available for navigation.`
+    );
+    return;
+  }
+
   // Validate coordinates before starting navigation
   if (
     !waypointData.coordinates ||
@@ -887,6 +973,7 @@ function handleNotificationNavigation(waypointData) {
     name: waypointData.name,
     type: waypointData.type,
     coordinates: waypointData.coordinates,
+    status: waypointData.status,
   };
 
   // Track the destination selection
@@ -1212,6 +1299,99 @@ body.dark-mode .locapp-search:focus-within {
   margin: 0 0 8px 0;
   line-height: 1.4;
   display: -webkit-box;
+}
+
+/* Maintenance Mode Styles - Improved */
+.locapp-location-card.maintenance-mode {
+  opacity: 0.85;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+  border: 2px solid #fed7d7;
+  position: relative;
+  overflow: hidden;
+}
+
+.locapp-location-card.maintenance-mode::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f56565, #fc8181);
+  z-index: 2;
+}
+
+.maintenance-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(220, 38, 38, 0.95);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
+  z-index: 3;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.maintenance-overlay i {
+  font-size: 14px;
+  animation: maintenance-pulse 2s infinite;
+}
+
+@keyframes maintenance-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.maintenance {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  border: 1px solid #f87171;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.1);
+}
+
+.status-badge i {
+  font-size: 12px;
+  animation: maintenance-icon-pulse 2s infinite;
+}
+
+@keyframes maintenance-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.location-description {
+  display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1310,8 +1490,55 @@ body.dark-mode .location-name {
   color: #f9fafb !important;
 }
 
-body.dark-mode .location-description {
-  color: #d1d5db !important;
+/* Dark mode maintenance styles - Improved */
+body.dark-mode .locapp-location-card.maintenance-mode {
+  background: linear-gradient(135deg, #451a1a 0%, #3f1818 100%) !important;
+  border-color: #991b1b !important;
+}
+
+body.dark-mode .locapp-location-card.maintenance-mode::before {
+  background: linear-gradient(90deg, #dc2626, #ef4444) !important;
+}
+
+body.dark-mode .maintenance-overlay {
+  background: rgba(185, 28, 28, 0.95) !important;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.4) !important;
+}
+
+body.dark-mode .status-badge.maintenance {
+  background: linear-gradient(135deg, #5b1f1f, #7c2d2d) !important;
+  color: #fca5a5 !important;
+  border-color: #991b1b !important;
+}
+
+.locapp-location-card.maintenance-mode .location-name {
+  color: #7f1d1d !important;
+  opacity: 0.9;
+}
+
+.locapp-location-card.maintenance-mode .location-description {
+  color: #991b1b !important;
+  opacity: 0.8;
+}
+
+.locapp-location-card.maintenance-mode .location-coordinates {
+  color: #b91c1c !important;
+  opacity: 0.7;
+}
+
+body.dark-mode .locapp-location-card.maintenance-mode .location-name {
+  color: #fca5a5 !important;
+  opacity: 0.9;
+}
+
+body.dark-mode .locapp-location-card.maintenance-mode .location-description {
+  color: #f87171 !important;
+  opacity: 0.8;
+}
+
+body.dark-mode .locapp-location-card.maintenance-mode .location-coordinates {
+  color: #fca5a5 !important;
+  opacity: 0.7;
 }
 
 body.dark-mode .location-coordinates {
@@ -1675,6 +1902,21 @@ body.dark-mode .location-info-btn-image:hover {
   font-weight: 500;
 }
 
+.modal-status-badge.maintenance {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  background: rgba(245, 158, 11, 0.95);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .detail-section {
   margin-bottom: 24px;
 }
@@ -1743,6 +1985,17 @@ body.dark-mode .location-info-btn-image:hover {
 
 .navigate-btn:hover {
   background: #16a34a;
+}
+
+.navigate-btn.maintenance-disabled {
+  background: #f59e0b !important;
+  color: white !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+}
+
+.navigate-btn.maintenance-disabled:hover {
+  background: #d97706 !important;
 }
 
 .copy-coords-btn {
