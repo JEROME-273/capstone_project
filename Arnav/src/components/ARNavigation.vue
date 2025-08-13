@@ -225,6 +225,17 @@ const isLocationTracking = ref(false);
 const canvasWidth = ref(375);
 const canvasHeight = ref(667);
 
+// Enhanced navigation stabilization
+const locationHistory = ref([]);
+const headingHistory = ref([]);
+const stabilizedHeading = ref(0);
+const stabilizedLocation = ref(null);
+const lastUpdateTime = ref(0);
+const STABILIZATION_FACTOR = 0.15; // Lower = more stable, higher = more responsive
+const MIN_UPDATE_INTERVAL = 100; // Minimum milliseconds between updates
+const HEADING_THRESHOLD = 2; // Degrees - ignore small heading changes
+const LOCATION_THRESHOLD = 0.5; // Meters - ignore small location changes
+
 // Settings state
 const showSettings = ref(false);
 const settings = ref({
@@ -877,31 +888,58 @@ function startLocationTracking() {
 
   isLocationTracking.value = true;
 
-  // Get initial position
+  // Enhanced GPS options for maximum precision
+  const highPrecisionOptions = {
+    enableHighAccuracy: true,
+    timeout: 15000, // Longer timeout for better accuracy
+    maximumAge: 500, // Use recent readings only
+  };
+
+  // Get initial position with high precision
   navigator.geolocation.getCurrentPosition(
     updateCurrentLocation,
     handleLocationError,
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+    highPrecisionOptions
   );
 
-  // Watch position changes
-  navigator.geolocation.watchPosition(
+  // Watch position changes with enhanced precision settings
+  const watchId = navigator.geolocation.watchPosition(
     updateCurrentLocation,
     handleLocationError,
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 1000 }
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 200, // Use very recent readings for continuous updates
+    }
   );
+
+  // Store watch ID for cleanup
+  if (!window.arNavigationWatchId) {
+    window.arNavigationWatchId = watchId;
+  }
 }
 
 function updateCurrentLocation(position) {
-  currentLocation.value = {
+  // Create location object with enhanced precision data
+  const newLocation = {
     lat: position.coords.latitude,
     lng: position.coords.longitude,
     accuracy: position.coords.accuracy,
+    heading: position.coords.heading, // GPS-based heading if available
+    speed: position.coords.speed,
+    timestamp: Date.now(),
   };
 
+  // Apply stabilization before updating current location
+  currentLocation.value = stabilizeLocation(newLocation);
+
+  // Update navigation calculations if destination exists
   if (destinationLocation.value) {
     calculateNavigationData();
   }
+
+  // Log accuracy for debugging (remove in production)
+  console.log(`GPS Update: Accuracy ±${position.coords.accuracy.toFixed(1)}m`);
 }
 
 function handleLocationError(error) {
@@ -912,16 +950,48 @@ function handleLocationError(error) {
 
 function startOrientationTracking() {
   if (window.DeviceOrientationEvent) {
-    window.addEventListener("deviceorientation", handleOrientationChange);
+    // Request permission for iOS devices
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then((response) => {
+          if (response === "granted") {
+            window.addEventListener(
+              "deviceorientation",
+              handleOrientationChange,
+              true
+            );
+          }
+        })
+        .catch(console.error);
+    } else {
+      // For Android and other devices
+      window.addEventListener(
+        "deviceorientation",
+        handleOrientationChange,
+        true
+      );
+    }
   }
 }
 
 function handleOrientationChange(event) {
-  // Get compass heading (0-360 degrees)
-  userHeading.value = event.alpha || 0;
+  // Get compass heading with enhanced precision
+  let rawHeading = event.alpha;
 
-  if (currentLocation.value && destinationLocation.value) {
-    calculateNavigationData();
+  // Use webkitCompassHeading on iOS for better accuracy
+  if (event.webkitCompassHeading) {
+    rawHeading = event.webkitCompassHeading;
+  }
+
+  if (rawHeading !== null && rawHeading !== undefined) {
+    // Apply heading stabilization
+    const stabilizedHeadingValue = stabilizeHeading(rawHeading);
+    userHeading.value = stabilizedHeadingValue;
+
+    // Update navigation if we have location and destination
+    if (currentLocation.value && destinationLocation.value) {
+      calculateNavigationData();
+    }
   }
 }
 
@@ -1020,6 +1090,128 @@ function gpsToWorldPosition(userLat, userLng, targetLat, targetLng) {
   return { x, z };
 }
 
+// Enhanced high-precision distance calculation using Haversine formula
+function calculatePreciseDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in meters
+}
+
+// Enhanced bearing calculation with stabilization
+function calculatePreciseBearing(lat1, lng1, lat2, lng2) {
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const lat1Rad = (lat1 * Math.PI) / 180;
+  const lat2Rad = (lat2 * Math.PI) / 180;
+
+  const y = Math.sin(dLng) * Math.cos(lat2Rad);
+  const x =
+    Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+    Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+
+  let bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  return (bearing + 360) % 360; // Normalize to 0-360 degrees
+}
+
+// Stabilize location data to reduce GPS jitter
+function stabilizeLocation(newLocation) {
+  const now = Date.now();
+
+  // Rate limiting
+  if (now - lastUpdateTime.value < MIN_UPDATE_INTERVAL) {
+    return stabilizedLocation.value || newLocation;
+  }
+
+  lastUpdateTime.value = now;
+
+  // Add to history
+  locationHistory.value.push({
+    ...newLocation,
+    timestamp: now,
+  });
+
+  // Keep only recent history (last 5 readings)
+  if (locationHistory.value.length > 5) {
+    locationHistory.value.shift();
+  }
+
+  // If this is the first reading, use it directly
+  if (!stabilizedLocation.value) {
+    stabilizedLocation.value = newLocation;
+    return newLocation;
+  }
+
+  // Check if change is significant enough
+  const distance = calculatePreciseDistance(
+    stabilizedLocation.value.lat,
+    stabilizedLocation.value.lng,
+    newLocation.lat,
+    newLocation.lng
+  );
+
+  if (distance < LOCATION_THRESHOLD) {
+    return stabilizedLocation.value; // Ignore small changes
+  }
+
+  // Apply exponential smoothing for gradual updates
+  const smoothedLat =
+    stabilizedLocation.value.lat +
+    (newLocation.lat - stabilizedLocation.value.lat) * STABILIZATION_FACTOR;
+  const smoothedLng =
+    stabilizedLocation.value.lng +
+    (newLocation.lng - stabilizedLocation.value.lng) * STABILIZATION_FACTOR;
+
+  stabilizedLocation.value = {
+    lat: smoothedLat,
+    lng: smoothedLng,
+    accuracy: newLocation.accuracy,
+  };
+
+  return stabilizedLocation.value;
+}
+
+// Stabilize heading data to reduce compass jitter
+function stabilizeHeading(newHeading) {
+  if (!newHeading && newHeading !== 0) return stabilizedHeading.value;
+
+  // Add to history
+  headingHistory.value.push(newHeading);
+  if (headingHistory.value.length > 3) {
+    headingHistory.value.shift();
+  }
+
+  // If this is the first reading, use it directly
+  if (stabilizedHeading.value === 0) {
+    stabilizedHeading.value = newHeading;
+    return newHeading;
+  }
+
+  // Calculate difference considering circular nature of degrees
+  let diff = newHeading - stabilizedHeading.value;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+
+  // Ignore small changes
+  if (Math.abs(diff) < HEADING_THRESHOLD) {
+    return stabilizedHeading.value;
+  }
+
+  // Apply smoothing
+  stabilizedHeading.value =
+    (stabilizedHeading.value + diff * STABILIZATION_FACTOR + 360) % 360;
+
+  return stabilizedHeading.value;
+}
+
 function update3DElements() {
   if (
     !arrowModel ||
@@ -1030,57 +1222,113 @@ function update3DElements() {
   )
     return;
 
-  const distance = distanceToDestination.value;
-  const relativeDirection = directionToDestination.value - userHeading.value;
-  const normalizedDirection = ((relativeDirection % 360) + 360) % 360;
+  // Use stabilized location for calculations
+  const stableLocation = stabilizeLocation(currentLocation.value);
+
+  // Calculate precise distance and bearing
+  const distance = calculatePreciseDistance(
+    stableLocation.lat,
+    stableLocation.lng,
+    destinationLocation.value.lat,
+    destinationLocation.value.lng
+  );
+
+  const bearing = calculatePreciseBearing(
+    stableLocation.lat,
+    stableLocation.lng,
+    destinationLocation.value.lat,
+    destinationLocation.value.lng
+  );
+
+  // Use stabilized heading
+  const stableHeading = stabilizeHeading(userHeading.value);
+
+  // Calculate relative direction with enhanced precision
+  let relativeDirection = bearing - stableHeading;
+  if (relativeDirection > 180) relativeDirection -= 360;
+  if (relativeDirection < -180) relativeDirection += 360;
+
+  // Update distance for other components
+  distanceToDestination.value = distance;
+  directionToDestination.value = bearing;
 
   // Show arrow only when distance is greater than 10 meters
   if (distance > 10) {
     arrowModel.visible = settings.value.showArrows;
     markerModel.visible = false;
 
-    // Update arrow rotation to point toward destination
-    const arrowRotationY = (normalizedDirection * Math.PI) / 180;
-    arrowModel.rotation.y = arrowRotationY;
+    // Update arrow rotation with smooth interpolation
+    const targetRotationY = (relativeDirection * Math.PI) / 180;
 
-    // Add subtle floating animation to arrow
-    const time = Date.now() * 0.002;
-    arrowModel.position.y = -2 + Math.sin(time) * 0.1;
+    // Smooth rotation interpolation to prevent jerky movements
+    let currentRotationY = arrowModel.rotation.y;
+    let rotationDiff = targetRotationY - currentRotationY;
 
-    // Scale arrow based on distance (closer = smaller, further = larger)
-    const arrowScale = Math.max(0.3, Math.min(0.8, distance / 100));
-    arrowModel.scale.set(arrowScale, arrowScale, arrowScale);
+    // Handle circular interpolation (shortest path)
+    if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI;
+    if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI;
+
+    // Apply smooth rotation with higher precision
+    arrowModel.rotation.y = currentRotationY + rotationDiff * 0.08; // Smooth interpolation factor
+
+    // Enhanced floating animation with distance-based amplitude
+    const time = Date.now() * 0.001;
+    const floatAmplitude = Math.max(0.05, Math.min(0.15, distance / 200));
+    arrowModel.position.y = -2 + Math.sin(time) * floatAmplitude;
+
+    // Dynamic arrow scaling based on distance with smoother transitions
+    const targetScale = Math.max(0.25, Math.min(0.9, distance / 80));
+    const currentScale = arrowModel.scale.x;
+    const scaleDiff = (targetScale - currentScale) * 0.05; // Smooth scaling
+
+    const newScale = currentScale + scaleDiff;
+    arrowModel.scale.set(newScale, newScale, newScale);
   }
   // Show marker only when within 10 meters, positioned at exact GPS coordinates
   else {
     arrowModel.visible = false;
     markerModel.visible = true;
 
-    // Calculate exact world position based on GPS coordinates
+    // Calculate exact world position with enhanced precision
     const worldPos = gpsToWorldPosition(
-      currentLocation.value.lat,
-      currentLocation.value.lng,
+      stableLocation.lat,
+      stableLocation.lng,
       destinationLocation.value.lat,
       destinationLocation.value.lng
     );
 
-    // Apply device heading rotation to world coordinates
-    const headingRad = ((userHeading.value || 0) * Math.PI) / 180;
+    // Apply device heading rotation to world coordinates with stabilization
+    const headingRad = (stableHeading * Math.PI) / 180;
     const rotatedX =
       worldPos.x * Math.cos(headingRad) - worldPos.z * Math.sin(headingRad);
     const rotatedZ =
       worldPos.x * Math.sin(headingRad) + worldPos.z * Math.cos(headingRad);
 
-    // Position marker at exact calculated coordinates
-    markerModel.position.set(rotatedX, 0, rotatedZ);
+    // Smooth position interpolation for marker to prevent jitter
+    const currentX = markerModel.position.x;
+    const currentZ = markerModel.position.z;
 
-    // Add pulsing animation to marker
+    const positionDampening = 0.12; // Smooth position updates
+    const targetX = rotatedX;
+    const targetZ = rotatedZ;
+
+    markerModel.position.set(
+      currentX + (targetX - currentX) * positionDampening,
+      0,
+      currentZ + (targetZ - currentZ) * positionDampening
+    );
+
+    // Enhanced pulsing animation with distance-based intensity
     const time = Date.now() * 0.002;
-    const pulseScale = 0.4 + Math.sin(time * 2) * 0.05;
+    const pulseIntensity = Math.max(
+      0.02,
+      Math.min(0.08, ((10 - distance) / 10) * 0.05)
+    );
+    const pulseScale = 0.4 + Math.sin(time * 2) * pulseIntensity;
     markerModel.scale.set(pulseScale, pulseScale, pulseScale);
 
-    // Rotate marker slowly for visibility
-    markerModel.rotation.y += 0.01;
+    // Gentle rotation for visibility without distraction
+    markerModel.rotation.y += 0.005; // Slower, smoother rotation
   }
 }
 
