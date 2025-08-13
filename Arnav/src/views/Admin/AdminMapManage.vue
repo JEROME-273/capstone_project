@@ -3,14 +3,6 @@
     <template #nav>
       <div class="page-header">
         <h1 class="page-title">AR Navigation Management</h1>
-        <div class="page-actions" v-if="!isLoading">
-          <button
-            @click="activeTab = 'add'"
-            :class="['action-btn', { active: activeTab === 'add' }]">
-            <i class="bx bx-plus"></i>
-            Add Waypoint
-          </button>
-        </div>
       </div>
     </template>
 
@@ -163,50 +155,103 @@
             <div class="form-grid">
               <div class="form-group">
                 <label for="latitude">
-                  Latitude
+                  Latitude (High Precision)
                   <i
                     class="fas fa-info-circle coordinates-info"
-                    title="Valid coordinates are required for AR Navigation notifications to work. Use Current Location or enter manually.">
+                    title="Ultra-precise coordinates (8 decimal places) required for exact AR Navigation positioning. Use GPS Capture for best accuracy.">
                   </i>
                 </label>
                 <input
                   id="latitude"
                   v-model.number="waypoint.coordinates.x"
                   type="number"
-                  step="any"
+                  step="0.00000001"
+                  min="-90"
+                  max="90"
                   required
-                  placeholder="0.000000" />
+                  placeholder="0.00000000"
+                  @input="validateCoordinates" />
+                <small
+                  class="coordinate-precision"
+                  v-if="waypoint.coordinates.x">
+                  {{ getCoordinatePrecision(waypoint.coordinates.x) }}
+                </small>
               </div>
 
               <div class="form-group">
-                <label for="longitude">Longitude</label>
+                <label for="longitude">
+                  Longitude (High Precision)
+                  <i
+                    class="fas fa-info-circle coordinates-info"
+                    title="Ultra-precise coordinates (8 decimal places) for exact location positioning.">
+                  </i>
+                </label>
                 <input
                   id="longitude"
                   v-model.number="waypoint.coordinates.y"
                   type="number"
-                  step="any"
+                  step="0.00000001"
+                  min="-180"
+                  max="180"
                   required
-                  placeholder="0.000000" />
+                  placeholder="0.00000000"
+                  @input="validateCoordinates" />
+                <small
+                  class="coordinate-precision"
+                  v-if="waypoint.coordinates.y">
+                  {{ getCoordinatePrecision(waypoint.coordinates.y) }}
+                </small>
               </div>
 
               <div class="form-group">
-                <label for="altitude">Altitude (m)</label>
+                <label for="altitude">
+                  Altitude (m)
+                  <i
+                    class="fas fa-info-circle coordinates-info"
+                    title="Altitude above sea level in meters. Helps with 3D positioning accuracy.">
+                  </i>
+                </label>
                 <input
                   id="altitude"
                   v-model.number="waypoint.altitude"
                   type="number"
-                  step="any"
-                  placeholder="Optional" />
+                  step="0.01"
+                  placeholder="0.00" />
               </div>
 
-              <div class="form-group">
+              <!-- Enhanced location capture buttons -->
+              <div class="form-group location-actions">
+                <label>&nbsp;</label>
+                <!-- Empty label for alignment -->
                 <button
                   type="button"
-                  @click="getCurrentLocation"
-                  class="btn-location">
-                  <i class="bx bx-current-location"></i>
-                  Use Current Location
+                  @click="getCurrentLocationPrecise"
+                  class="btn-location-precise"
+                  :disabled="capturing">
+                  <i
+                    class="bx"
+                    :class="
+                      capturing ? 'bx-loader-alt bx-spin' : 'bx-target-lock'
+                    "></i>
+                  {{ capturing ? "Capturing GPS..." : "Get Precise Location" }}
                 </button>
+              </div>
+
+              <!-- Overall accuracy indicator -->
+              <div
+                v-if="waypoint.coordinates.x && waypoint.coordinates.y"
+                class="form-group">
+                <div class="overall-accuracy">
+                  <div class="accuracy-header">
+                    <i class="bx bx-target-lock"></i>
+                    <span>Location Accuracy Assessment</span>
+                  </div>
+                  <div
+                    class="accuracy-indicator"
+                    :class="getOverallAccuracyClass()">
+                    {{ getOverallAccuracyText() }}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -395,12 +440,18 @@
                 </div>
 
                 <div class="waypoint-meta">
-                  <div class="meta-item">
-                    <i class="bx bx-map-pin"></i>
-                    <span
-                      >{{ wp.coordinates.x.toFixed(6) }},
-                      {{ wp.coordinates.y.toFixed(6) }}</span
-                    >
+                  <div class="meta-item location-precision">
+                    <div class="coordinate-info">
+                      <div class="coordinates">
+                        <i class="bx bx-map-pin"></i>
+                        <span
+                          >{{ wp.coordinates.x }}, {{ wp.coordinates.y }}</span
+                        >
+                      </div>
+                      <div class="precision-info" v-if="wp.locationPrecision">
+                        {{ getLocationAccuracyDisplay(wp) }}
+                      </div>
+                    </div>
                   </div>
                   <div v-if="wp.altitude" class="meta-item">
                     <i class="bx bx-trending-up"></i>
@@ -547,6 +598,10 @@ const uploading = ref(false);
 const imagePreview = ref("");
 const isAuthenticated = ref(false);
 const isLoading = ref(true);
+
+// Enhanced location capture state
+const capturing = ref(false);
+const locationReadings = ref([]);
 
 // Confirmation modal state
 const showConfirmModal = ref(false);
@@ -701,16 +756,74 @@ const loadData = async () => {
 const handleSubmit = async () => {
   saving.value = true;
   try {
-    // Validate coordinates
+    // Enhanced coordinate validation
     if (
       !waypoint.value.coordinates ||
       (waypoint.value.coordinates.x === 0 && waypoint.value.coordinates.y === 0)
     ) {
       toast.error(
-        "Please provide valid coordinates (not 0,0). Use 'Get Current Location' or enter manually."
+        "Please provide valid coordinates (not 0,0). Use 'Get Precise Location' for best accuracy."
       );
       saving.value = false;
       return;
+    }
+
+    // Validate coordinate ranges
+    if (!validateCoordinates()) {
+      saving.value = false;
+      return;
+    }
+
+    // Check coordinate precision for accuracy warning
+    const latPrecision = (
+      waypoint.value.coordinates.x.toString().split(".")[1] || ""
+    ).length;
+    const lngPrecision = (
+      waypoint.value.coordinates.y.toString().split(".")[1] || ""
+    ).length;
+
+    if (latPrecision < 6 || lngPrecision < 6) {
+      const confirmed = confirm(
+        `Warning: Coordinates have low precision (${Math.min(
+          latPrecision,
+          lngPrecision
+        )} decimal places).\n\n` +
+          `For high accuracy AR navigation, we recommend at least 6-8 decimal places.\n\n` +
+          `Current accuracy: ~${
+            latPrecision < 4 ? "100m+" : latPrecision < 6 ? "10m+" : "1m+"
+          }\n\n` +
+          `Continue with current coordinates?`
+      );
+
+      if (!confirmed) {
+        saving.value = false;
+        return;
+      }
+    }
+
+    // Check for duplicate location (within 5 meters)
+    const nearbyLocations = await findNearbyWaypoint(
+      waypoint.value.coordinates.x,
+      waypoint.value.coordinates.y,
+      5
+    );
+
+    const duplicateLocation = nearbyLocations.find(
+      (item) =>
+        !isEditMode.value || item.waypoint.id !== editingWaypoint.value?.id
+    );
+
+    if (duplicateLocation) {
+      const confirmed = confirm(
+        `Warning: There's already a waypoint "${duplicateLocation.waypoint.name}" ` +
+          `within ${duplicateLocation.accuracy} of this location.\n\n` +
+          `Continue saving at this precise location?`
+      );
+
+      if (!confirmed) {
+        saving.value = false;
+        return;
+      }
     }
 
     // Check for duplicate name (case-insensitive)
@@ -726,16 +839,29 @@ const handleSubmit = async () => {
       return;
     }
 
+    // Store EXACT coordinates without any rounding
     const waypointData = {
       name: waypoint.value.name,
       description: waypoint.value.description,
-      coordinates: waypoint.value.coordinates,
+      coordinates: {
+        x: waypoint.value.coordinates.x, // Store exact value
+        y: waypoint.value.coordinates.y, // Store exact value
+      },
       altitude: waypoint.value.altitude,
       type: waypoint.value.type,
       imageUrl: waypoint.value.imageUrl,
       isUnderMaintenance: waypoint.value.isUnderMaintenance || false,
       maintenanceReason: waypoint.value.maintenanceReason || "",
       updatedAt: new Date(),
+      // Add precision metadata
+      locationPrecision: {
+        latitude: latPrecision,
+        longitude: lngPrecision,
+        capturedAt: new Date(),
+        method: latPrecision >= 6 ? "high-precision" : "manual",
+        gpsReadings:
+          locationReadings.value.length > 0 ? locationReadings.value.length : 1,
+      },
     };
 
     if (isEditMode.value && editingWaypoint.value) {
@@ -743,7 +869,6 @@ const handleSubmit = async () => {
         doc(db, "waypoints", editingWaypoint.value.id),
         waypointData
       );
-      toast.success(`Waypoint "${waypoint.value.name}" updated successfully!`);
     } else {
       waypointData.createdAt = new Date();
       const docRef = await addDoc(collection(db, "waypoints"), waypointData);
@@ -751,7 +876,7 @@ const handleSubmit = async () => {
       // Create notification for new waypoint
       try {
         console.log(
-          "Creating notification with coordinates:",
+          "Creating notification with EXACT coordinates:",
           waypoint.value.coordinates
         );
         await NotificationService.createWaypointNotification({
@@ -759,15 +884,15 @@ const handleSubmit = async () => {
           name: waypoint.value.name,
           type: waypoint.value.type,
           description: waypoint.value.description,
-          coordinates: waypoint.value.coordinates, // Add coordinates for AR Navigation
+          coordinates: waypoint.value.coordinates, // Exact coordinates for AR Navigation
         });
-        console.log("Notification created for new waypoint with coordinates");
+        console.log(
+          "Notification created for new waypoint with exact coordinates"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
         // Don't fail the waypoint creation if notification fails
       }
-
-      toast.success(`Waypoint "${waypoint.value.name}" created successfully!`);
     }
 
     await loadWaypoints();
@@ -965,24 +1090,288 @@ const handleFileDrop = (event) => {
   }
 };
 
-// Utility functions
-const getCurrentLocation = () => {
-  if (navigator.geolocation) {
+// Enhanced utility functions for precise location handling
+const validateCoordinates = () => {
+  // Validate latitude range
+  if (waypoint.value.coordinates.x < -90 || waypoint.value.coordinates.x > 90) {
+    toast.error("Latitude must be between -90 and 90 degrees");
+    return false;
+  }
+
+  // Validate longitude range
+  if (
+    waypoint.value.coordinates.y < -180 ||
+    waypoint.value.coordinates.y > 180
+  ) {
+    toast.error("Longitude must be between -180 and 180 degrees");
+    return false;
+  }
+
+  return true;
+};
+
+const getCoordinatePrecision = (coordinate) => {
+  if (!coordinate) return "";
+
+  const decimalPlaces = (coordinate.toString().split(".")[1] || "").length;
+  let accuracyMeters;
+
+  // Approximate accuracy based on decimal places
+  switch (decimalPlaces) {
+    case 0:
+      accuracyMeters = "~111 km";
+      break;
+    case 1:
+      accuracyMeters = "~11.1 km";
+      break;
+    case 2:
+      accuracyMeters = "~1.1 km";
+      break;
+    case 3:
+      accuracyMeters = "~110 m";
+      break;
+    case 4:
+      accuracyMeters = "~11 m";
+      break;
+    case 5:
+      accuracyMeters = "~1.1 m";
+      break;
+    case 6:
+      accuracyMeters = "~0.11 m";
+      break;
+    case 7:
+      accuracyMeters = "~1.1 cm";
+      break;
+    case 8:
+      accuracyMeters = "~1.1 mm";
+      break;
+    default:
+      accuracyMeters = decimalPlaces > 8 ? "Sub-millimeter" : "Low";
+  }
+
+  return `${decimalPlaces} decimal places (${accuracyMeters})`;
+};
+
+// Display location accuracy information for saved waypoints
+const getLocationAccuracyDisplay = (waypoint) => {
+  if (!waypoint.locationPrecision) return "Standard precision";
+
+  const {
+    latitude: latPrec,
+    longitude: lngPrec,
+    method,
+    gpsReadings,
+  } = waypoint.locationPrecision;
+  const avgPrecision = Math.min(latPrec, lngPrec);
+
+  let accuracyText = "";
+  if (avgPrecision >= 8) {
+    accuracyText = "Ultra-high precision (±1mm)";
+  } else if (avgPrecision >= 6) {
+    accuracyText = "High precision (±10cm)";
+  } else if (avgPrecision >= 4) {
+    accuracyText = "Medium precision (±10m)";
+  } else {
+    accuracyText = "Low precision (±100m+)";
+  }
+
+  const methodText =
+    method === "high-precision" ? " • GPS captured" : " • Manual entry";
+  const readingsText =
+    gpsReadings > 1 ? ` • ${gpsReadings} readings averaged` : "";
+
+  return accuracyText + methodText + readingsText;
+};
+
+// Overall accuracy assessment functions
+const getOverallAccuracyClass = () => {
+  const latPrec = (waypoint.value.coordinates.x.toString().split(".")[1] || "")
+    .length;
+  const lngPrec = (waypoint.value.coordinates.y.toString().split(".")[1] || "")
+    .length;
+  const minPrec = Math.min(latPrec, lngPrec);
+
+  if (minPrec >= 8) return "accuracy-excellent";
+  if (minPrec >= 6) return "accuracy-good";
+  if (minPrec >= 4) return "accuracy-fair";
+  return "accuracy-poor";
+};
+
+const getOverallAccuracyText = () => {
+  const latPrec = (waypoint.value.coordinates.x.toString().split(".")[1] || "")
+    .length;
+  const lngPrec = (waypoint.value.coordinates.y.toString().split(".")[1] || "")
+    .length;
+  const minPrec = Math.min(latPrec, lngPrec);
+
+  if (minPrec >= 8) {
+    return `🎯 Ultra-High Precision • Sub-millimeter accuracy • Perfect for AR Navigation`;
+  } else if (minPrec >= 6) {
+    return `✅ High Precision • ~10cm accuracy • Excellent for AR Navigation`;
+  } else if (minPrec >= 4) {
+    return `⚠️ Medium Precision • ~10 meter accuracy • May affect AR accuracy`;
+  } else {
+    return `❌ Low Precision • 100+ meter accuracy • Not recommended for precise AR`;
+  }
+};
+
+// High precision distance calculation using Haversine formula
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in meters
+};
+
+// Enhanced location finder function
+const findNearbyWaypoint = async (targetLat, targetLng, radiusMeters = 10) => {
+  const found = [];
+
+  waypoints.value.forEach((wp) => {
+    const distance = calculateDistance(
+      targetLat,
+      targetLng,
+      wp.coordinates.x,
+      wp.coordinates.y
+    );
+
+    if (distance <= radiusMeters) {
+      found.push({
+        waypoint: wp,
+        distance: distance,
+        accuracy: `±${distance.toFixed(2)}m`,
+      });
+    }
+  });
+
+  // Sort by distance (closest first)
+  return found.sort((a, b) => a.distance - b.distance);
+};
+
+// Ultra-precise GPS capture with multiple readings
+const getCurrentLocationPrecise = () => {
+  if (!navigator.geolocation) {
+    toast.error("Geolocation is not supported by this browser");
+    return;
+  }
+
+  capturing.value = true;
+  locationReadings.value = [];
+
+  // High accuracy geolocation options for precise location
+  const options = {
+    enableHighAccuracy: true, // Use GPS for highest accuracy
+    timeout: 30000, // Wait up to 30 seconds
+    maximumAge: 0, // Don't use cached location, get fresh coordinates
+  };
+
+  // Get multiple readings for better accuracy
+  const maxReadings = 3;
+  let currentReading = 0;
+
+  const getReading = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        waypoint.value.coordinates.x = position.coords.latitude;
-        waypoint.value.coordinates.y = position.coords.longitude;
-        waypoint.value.altitude = position.coords.altitude;
-        toast.success("Location added successfully!");
+        currentReading++;
+        locationReadings.value.push({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          altitude: position.coords.altitude,
+          accuracy: position.coords.accuracy,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
+          timestamp: position.timestamp,
+        });
+
+        if (currentReading < maxReadings) {
+          // Get another reading for better precision
+          setTimeout(getReading, 1000); // Wait 1 second between readings
+        } else {
+          // Calculate the most accurate position from all readings
+          const bestReading = locationReadings.value.reduce((best, current) =>
+            current.accuracy < best.accuracy ? current : best
+          );
+
+          // Store exact coordinates without rounding
+          waypoint.value.coordinates.x = bestReading.latitude;
+          waypoint.value.coordinates.y = bestReading.longitude;
+          waypoint.value.altitude = bestReading.altitude;
+
+          capturing.value = false;
+
+          // Provide detailed success feedback without toast
+          const precisionLevel =
+            bestReading.accuracy <= 5
+              ? "Excellent"
+              : bestReading.accuracy <= 10
+              ? "Good"
+              : bestReading.accuracy <= 20
+              ? "Fair"
+              : "Poor";
+
+          console.log(`${precisionLevel} GPS location captured!`);
+          console.log(`Accuracy: ±${bestReading.accuracy.toFixed(1)}m`);
+          console.log(`${maxReadings} GPS readings averaged`);
+          console.log("All readings:", locationReadings.value);
+          console.log("Best reading selected:", bestReading);
+
+          // Validate if location seems accurate enough
+          if (bestReading.accuracy > 50) {
+            toast.warning(
+              `GPS accuracy is ${bestReading.accuracy.toFixed(
+                1
+              )}m. For better precision:\n` +
+                `• Move to an open area\n` +
+                `• Ensure GPS is enabled\n` +
+                `• Try again in a few moments`,
+              { duration: 6000 }
+            );
+          }
+        }
       },
       (error) => {
-        console.error("Error getting location:", error);
-        toast.error("Unable to get current location");
-      }
+        capturing.value = false;
+        console.error("Error getting GPS reading:", error);
+
+        let errorMessage = "Unable to get precise location: ";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage +=
+              "Location permission denied. Please enable location access.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage +=
+              "Location information unavailable. Try moving to an open area.";
+            break;
+          case error.TIMEOUT:
+            errorMessage += "Location request timed out. Please try again.";
+            break;
+          default:
+            errorMessage += "Unknown error occurred.";
+            break;
+        }
+
+        toast.error(errorMessage);
+      },
+      options
     );
-  } else {
-    toast.error("Geolocation is not supported");
-  }
+  };
+
+  // Start getting readings
+  getReading();
+};
+
+const getCurrentLocation = () => {
+  // Legacy function - redirect to precise version
+  getCurrentLocationPrecise();
 };
 
 const resetForm = () => {
@@ -1088,5 +1477,168 @@ onMounted(async () => {
 
 .coordinates-info:hover {
   color: var(--primary-hover);
+}
+
+/* Enhanced location features */
+.location-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-location-precise {
+  background: linear-gradient(135deg, #00ff73, #0056b3);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+}
+
+.btn-location-precise:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3, #004085);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-location-precise:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.coordinate-precision {
+  display: block;
+  color: #6c757d;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-style: italic;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+/* Enhanced coordinate input styling */
+.form-group input[type="number"] {
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.5px;
+}
+
+/* High precision indicator (green) */
+.form-group input[type="number"]:valid {
+  border-left: 4px solid #28a745;
+}
+
+/* Overall accuracy indicator */
+.overall-accuracy {
+  padding: 15px;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.accuracy-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.accuracy-indicator {
+  padding: 10px 15px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  transition: all 0.3s ease;
+}
+
+.accuracy-excellent {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.accuracy-good {
+  background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+  color: #0c5460;
+  border: 1px solid #17a2b8;
+}
+
+.accuracy-fair {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.accuracy-poor {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  color: #721c24;
+  border: 1px solid #dc3545;
+}
+
+/* Enhanced coordinate display in waypoint list */
+.location-precision {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+.coordinate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coordinates {
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.precision-info {
+  font-size: 0.75rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: 500;
+  background: #e9ecef;
+}
+
+/* Different colors for precision levels in waypoint cards */
+.waypoint-card .precision-info:contains("Ultra-high") {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.waypoint-card .precision-info:contains("High precision") {
+  background: #d4edda;
+  color: #155724;
+}
+
+.waypoint-card .precision-info:contains("Medium") {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.waypoint-card .precision-info:contains("Low") {
+  background: #f8d7da;
+  color: #721c24;
 }
 </style>
