@@ -397,6 +397,8 @@ const getNotificationIcon = (type) => {
   switch (type) {
     case "new_waypoint":
       return "bx-map-pin";
+    case "weather_advice":
+      return "bx-cloud-rain";
     case "system":
       return "bx-cog";
     case "update":

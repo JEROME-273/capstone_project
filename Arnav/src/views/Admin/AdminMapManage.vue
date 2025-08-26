@@ -259,7 +259,6 @@
               <label for="image">AR Marker Image</label>
               <div
                 class="file-upload-area"
-                @click="triggerFileInput"
                 @dragover.prevent
                 @drop.prevent="handleFileDrop">
                 <input
@@ -569,7 +568,7 @@ const firebaseConfig = {
 
 // Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME =
-  import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dhkztfwlw";
+  import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dhkztfwiw";
 const CLOUDINARY_UPLOAD_PRESET =
   import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "my_unsigned_preset";
 
@@ -996,6 +995,8 @@ const handleFileUpload = async (event) => {
 
   if (file.size > 10 * 1024 * 1024) {
     toast.error("File size must be less than 10MB");
+    // Clear file input so the next selection (even the same file) triggers change
+    if (fileInput.value) fileInput.value.value = "";
     return;
   }
 
@@ -1036,6 +1037,8 @@ const handleFileUpload = async (event) => {
     waypoint.value.imageUrl = "";
   } finally {
     uploading.value = false;
+    // Important: clear the file input to prevent double-open and allow re-selecting same file
+    if (fileInput.value) fileInput.value.value = "";
   }
 };
 
@@ -1393,6 +1396,8 @@ const resetForm = () => {
 const removeImage = () => {
   imagePreview.value = "";
   waypoint.value.imageUrl = "";
+  // Clear the file input so selecting the same file will fire change again
+  if (fileInput.value) fileInput.value.value = "";
   toast.info("Image removed");
 };
 

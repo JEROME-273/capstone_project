@@ -1,5 +1,13 @@
 <template>
   <div class="locapp-container">
+    <!-- Learning Tips Modal (teleported to body so it’s outside any other modals) -->
+    <teleport to="body">
+      <LearningTipsModal
+        :tips="newTips"
+        :visible="showTipsModal"
+        @close="showTipsModal = false"
+        @seen="onTipsSeen" />
+    </teleport>
     <!-- Navbar -->
     <nav class="locapp-navbar">
       <div class="navbar-left">
@@ -10,6 +18,20 @@
         <span class="farm-name">Demo Farm</span>
       </div>
       <div class="navbar-actions">
+        <!-- Learning Progress Button -->
+        <button
+          class="learning-progress-btn"
+          @click="toggleLearningProgress"
+          :class="{ active: showLearningProgress }"
+          aria-label="Learning Progress">
+          <div class="learning-icon">
+            <i class="bx bx-brain"></i>
+            <div v-if="userLearningStreak > 0" class="streak-badge">
+              {{ userLearningStreak }}
+            </div>
+          </div>
+        </button>
+
         <!-- Notification Bell -->
         <NotificationBell @startNavigation="handleNotificationNavigation" />
         <button
@@ -25,6 +47,24 @@
         </router-link>
       </div>
     </nav>
+
+    <!-- Weather Advice Banner -->
+    <div
+      v-if="rainReminder.show"
+      class="weather-banner"
+      role="status"
+      aria-live="polite">
+      <div class="weather-banner-content">
+        <i class="fas fa-cloud-rain"></i>
+        <span class="weather-banner-text">{{ rainReminder.text }}</span>
+      </div>
+      <button
+        class="weather-banner-close"
+        @click="dismissRainReminder"
+        aria-label="Dismiss weather reminder">
+        ×
+      </button>
+    </div>
 
     <!-- Full-screen Map -->
     <iframe
@@ -392,6 +432,30 @@
       @stop-navigation="handleStopNavigation"
       @start-new-navigation="handleStartNewNavigation" />
 
+    <!-- Learning Progress Modal -->
+    <!-- Use v-show so the tracker component stays mounted (for real-time listeners) but remains hidden -->
+    <div v-show="showLearningProgress" class="learning-progress-modal">
+      <div
+        class="learning-progress-overlay"
+        @click="closeLearningProgress"></div>
+      <div class="learning-progress-content">
+        <div class="learning-modal-header">
+          <h2>
+            <i class="bx bx-brain"></i>
+            Learning Progress
+          </h2>
+          <button @click="closeLearningProgress" class="close-modal-btn">
+            ×
+          </button>
+        </div>
+        <div class="learning-modal-body">
+          <LearningProgressTracker :visible="showLearningProgress" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Tracker mounts inside the modal; real-time will re-run when opened -->
+
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="loading-spinner">
@@ -412,10 +476,21 @@ import {
   orderBy,
   getDocs,
   addDoc,
+  limit,
 } from "firebase/firestore";
 import { auth } from "@/firebase/config";
+import { signInAnonymously } from "firebase/auth";
+import {
+  getNewTipsForUser,
+  markTipsAsSeen,
+} from "@/services/LearningTipsService";
 import ARNavigation from "@/components/ARNavigation.vue";
 import NotificationBell from "@/components/NotificationBell.vue";
+import LearningProgressTracker from "@/components/LearningProgressTracker.vue";
+import LearningTipsModal from "@/components/LearningTipsModal.vue";
+import { checkRainSoon } from "@/services/WeatherService";
+import NotificationService from "@/services/NotificationService";
+import VoiceService from "@/services/VoiceService";
 
 // Sheet state
 const sheetY = ref(0);
@@ -449,6 +524,23 @@ const voiceSearchTranscript = ref("");
 // AR Navigation state
 const isARActive = ref(false);
 const arDestination = ref(null);
+
+// Learning Progress state
+const showLearningProgress = ref(false);
+const userLearningStreak = ref(0);
+
+// Learning Tips modal state
+const showTipsModal = ref(false);
+const newTips = ref([]);
+// Session guard to prevent re-opening multiple times in one visit
+let tipsShownThisSession = false;
+
+// Weather reminder state
+const rainReminder = ref({ show: false, text: "" });
+const DEFAULT_LAT = Number(import.meta.env.VITE_DEFAULT_LAT) || 13.1235;
+const DEFAULT_LON = Number(import.meta.env.VITE_DEFAULT_LON) || 121.1235;
+// Voice readiness for weather announcements
+const voiceReady = ref(false);
 
 // Categories with enhanced mapping
 const categories = ref([
@@ -531,7 +623,35 @@ onMounted(async () => {
   // Initialize voice search
   initializeVoiceSearch();
 
+  // Initialize voice service (for spoken weather advice)
+  try {
+    voiceReady.value = (await VoiceService.initialize()) || false;
+  } catch (e) {
+    voiceReady.value = false;
+  }
+
+  // Ensure we have a user (anonymous is fine) so Firestore reads are allowed
+  await ensureAuth();
+
+  // Check ASAP so the modal can appear on the base page
+  await checkNewLearningTips();
+
   await loadData();
+  await loadUserLearningStreak();
+
+  // After loading, check for new learning tips for this user
+  await checkNewLearningTips();
+
+  // Small delayed re-check (handles serverTimestamp delays or slow network)
+  setTimeout(() => {
+    // Don't reopen if already visible
+    if (!showTipsModal.value) {
+      checkNewLearningTips();
+    }
+  }, 2000);
+
+  // Kick off a weather check after initial UI is ready
+  checkWeatherReminder();
 });
 
 onUnmounted(() => {
@@ -631,6 +751,86 @@ function handleVoiceSearchResult(text) {
 function cleanupVoiceSearch() {
   if (voiceSearchRecognition.value) {
     voiceSearchRecognition.value.abort();
+  }
+}
+
+// Weather reminder methods
+function checkWeatherReminder() {
+  try {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const result = await checkRainSoon(lat, lon, 6);
+        if (result.willRain && result.message) {
+          rainReminder.value = { show: true, text: result.message };
+        }
+      },
+      (err) => {
+        console.warn(
+          "Geolocation denied/failed, using defaults for weather reminder",
+          err?.message
+        );
+        // Fallback using default coordinates
+        checkRainSoon(DEFAULT_LAT, DEFAULT_LON, 6).then((result) => {
+          if (result.willRain && result.message) {
+            rainReminder.value = { show: true, text: result.message };
+          }
+        });
+      },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
+  } catch (e) {
+    console.warn("Weather reminder error", e);
+  }
+}
+function dismissRainReminder() {
+  rainReminder.value.show = false;
+}
+
+// Learning Tips methods
+async function ensureAuth() {
+  try {
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+      // Give Firebase a moment to populate currentUser
+    }
+  } catch (e) {
+    console.error("Anonymous sign-in failed:", e);
+  }
+}
+
+async function checkNewLearningTips() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+    if (tipsShownThisSession) return; // don't reopen in same session
+    const tips = await getNewTipsForUser(user.uid, 3);
+    console.log(
+      "Learning tips check: user=",
+      user.uid,
+      "tips=",
+      tips?.length || 0
+    );
+    if (tips && tips.length) {
+      newTips.value = tips;
+      showTipsModal.value = true;
+      tipsShownThisSession = true;
+      console.log("Showing LearningTipsModal with", tips.length, "items");
+    }
+  } catch (e) {
+    console.error("Error checking learning tips:", e);
+  }
+}
+
+async function onTipsSeen(ids) {
+  try {
+    const user = auth.currentUser;
+    if (!user || !ids?.length) return;
+    await markTipsAsSeen(user.uid, ids);
+  } catch (e) {
+    console.error("Error marking tips as seen:", e);
   }
 }
 
@@ -899,6 +1099,9 @@ function goToLocation(location) {
   arDestination.value = location;
   isARActive.value = true;
   closeLocationModal();
+
+  // Weather advice for this destination (non-blocking)
+  checkRainForDestination(location);
 }
 
 function handleMaintenanceClick(location) {
@@ -985,6 +1188,9 @@ function handleNotificationNavigation(waypointData) {
 
   // Close any open modals
   closeLocationModal();
+
+  // Weather advice for this destination (non-blocking)
+  checkRainForDestination(location);
 }
 
 function handleStopNavigation() {
@@ -1005,10 +1211,259 @@ function handleStartNewNavigation() {
     selectedCategory.value = null; // Reset to show all locations
   }
 }
+
+// Weather advice based on destination coordinates
+async function checkRainForDestination(location) {
+  try {
+    const coords = location?.coordinates || {};
+    const lat = typeof coords.x === "number" ? coords.x : DEFAULT_LAT;
+    const lon = typeof coords.y === "number" ? coords.y : DEFAULT_LON;
+
+    const result = await checkRainSoon(lat, lon, 6);
+    if (result.willRain && result.message) {
+      // Show banner
+      rainReminder.value = { show: true, text: result.message };
+      // Also push a global notification so it shows in the bell
+      NotificationService.createCustomNotification(
+        "weather_advice",
+        "Weather Reminder",
+        result.message,
+        {
+          priority: "medium",
+          destinationId: location.id,
+          destinationName: location.name,
+          destinationType: location.type,
+        }
+      ).catch(() => {});
+
+      // Speak advice if voice is ready
+      if (voiceReady.value) {
+        try {
+          await VoiceService.speak(result.message);
+        } catch (e) {
+          // ignore speech errors
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("checkRainForDestination failed", e);
+  }
+}
+
+// Learning Progress methods
+function toggleLearningProgress() {
+  showLearningProgress.value = !showLearningProgress.value;
+}
+
+function closeLearningProgress() {
+  showLearningProgress.value = false;
+}
+
+// Load user learning streak on component mount
+async function loadUserLearningStreak() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const db = getFirestore();
+    const statsQuery = query(
+      collection(db, "userLearningStats"),
+      where("userId", "==", user.uid),
+      limit(1)
+    );
+
+    const statsSnapshot = await getDocs(statsQuery);
+    if (!statsSnapshot.empty) {
+      const statsData = statsSnapshot.docs[0].data();
+      userLearningStreak.value = statsData.currentStreak || 0;
+    }
+  } catch (error) {
+    console.error("Error loading user learning streak:", error);
+  }
+}
 </script>
 
 <style scoped>
 @import "@/assets/allstyle.css";
+
+/* Weather Banner */
+.weather-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(90deg, #2196f3 0%, #6ec6ff 100%);
+  color: #fff;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+.weather-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.weather-banner-content i {
+  font-size: 18px;
+}
+.weather-banner-text {
+  line-height: 1.4;
+}
+.weather-banner-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.weather-banner-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Learning Progress Button Styles */
+.learning-progress-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: #4a5568;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+  margin-right: 10px;
+}
+
+.learning-progress-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  transform: scale(1.1);
+}
+
+.learning-progress-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.learning-icon {
+  position: relative;
+}
+
+.streak-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff6b6b;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Learning Progress Modal */
+.learning-progress-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.learning-progress-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.learning-progress-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  position: relative;
+  z-index: 1001;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.learning-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.learning-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.learning-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
 
 /* Voice Search Styles */
 .voice-search-btn {

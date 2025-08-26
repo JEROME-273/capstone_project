@@ -43,6 +43,12 @@
             <span class="text">Map Management</span>
           </router-link>
         </li>
+        <li :class="{ active: $route.name === 'AdminLearningManage' }">
+          <router-link to="/admin-learning-manage">
+            <i class="bx bx-brain"></i>
+            <span class="text">Learning Management</span>
+          </router-link>
+        </li>
       </ul>
       <ul class="side-menu">
         <li>

@@ -14,6 +14,7 @@ import UserInfo from "@/views/user/userinfo.vue";
 import Homepage from "@/views/homepage.vue";
 import AdminMapManage from "@/views/Admin/AdminMapManage.vue";
 import AdminAnalytics from "@/views/Admin/AdminAnalytics.vue";
+import AdminLearningManage from "@/views/Admin/AdminLearningManage.vue";
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
@@ -106,6 +107,15 @@ const router = createRouter({
       path: "/admin-feedback",
       name: "AdminFeedback",
       component: AdminFeedback,
+      meta: {
+        requiresAuth: true,
+        roles: ["admin"],
+      },
+    },
+    {
+      path: "/admin-learning-manage",
+      name: "AdminLearningManage",
+      component: AdminLearningManage,
       meta: {
         requiresAuth: true,
         roles: ["admin"],
