@@ -76,6 +76,10 @@
             <i class="bx bx-list-ul"></i>
             Waypoints
           </button>
+          <router-link to="/admin-qr-generator" class="tab-btn">
+            <i class="bx bx-qr-scan"></i>
+            QR Generator
+          </router-link>
         </div>
 
         <!-- Add/Edit Waypoint Form -->

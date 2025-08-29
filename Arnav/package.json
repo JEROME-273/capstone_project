@@ -16,6 +16,8 @@
     "html2pdf.js": "^0.10.3",
     "three": "^0.150.1",
     "vue": "^3.2.13",
+    "vue-qr": "^4.0.9",
+    "vue-qrcode-reader": "^5.7.3",
     "vue-router": "^4.0.3",
     "vue-toastification": "^2.0.0-rc.5"
   },

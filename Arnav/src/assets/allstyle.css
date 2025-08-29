@@ -29,18 +29,13 @@
 
 /* Base styles */
 .locapp-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
   color: var(--locapp-text);
   background-color: var(--locapp-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
 /* Navbar Styles */
@@ -50,7 +45,7 @@
   left: 0;
   right: 0;
   height: 60px;
-  background-color: #ffffff;
+  background-color: var(--navbar-bg, #ffffff);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: space-between;
@@ -73,41 +68,175 @@
 .farm-name {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #333;
+  font-style: normal;
+  font-family: "Quicksand", sans-serif;
+  color: #184f03;
 }
 
+/* Shared styles for icons (dark mode + profile) */
+.navbar-actions button,
 .user-profile-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 28px;
-  color: #4caf50;
-  transition: all 0.3s ease;
-  width: 40px;
-  height: 40px;
+  font-size: 22px;
+  color: var(--icon-color, #000000);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
+  transition: color 0.2s ease;
 }
 
-.user-profile-btn:hover {
-  color: #45a049;
-  transform: scale(1.1);
-  background-color: #f5f5f5;
+/* Notification bell only */
+.navbar-actions .notification-bell {
+  font-size: 18px; /* smaller bell */
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  color: var(--icon-color, #000000);
+}
+
+/* Light mode */
+:root {
+  --navbar-bg: #ffffff;
+  --icon-color: #000000;
+}
+
+/* Dark mode */
+.dark-mode {
+  --navbar-bg: #1a1a1a;
+  --icon-color: #ffffff;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .user-profile-btn:active {
   transform: scale(0.95);
 }
 
-/* Map styles */
-.locapp-map {
-  position: absolute;
+/* Weather Widget Styles */
+.weather-hero {
   width: 100%;
-  height: 100%;
-  border: none;
-  z-index: 1;
+  background: linear-gradient(to bottom, #2c3e50, #34495e);
+  color: white;
+  padding: 80px 15px 30px; /* top padding accounts for navbar */
+  min-height: 280px;
+  border-radius: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+/* Flex container */
+.weather-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 15px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Left side */
+.weather-left {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.temp-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.temp {
+  font-size: clamp(28px, 5vw, 45px);
+  font-weight: bold;
+  line-height: 1;
+}
+
+.condition-icon {
+  font-size: clamp(22px, 4vw, 35px);
+}
+
+/* Feels like */
+.feels-like {
+  font-size: clamp(12px, 2.5vw, 14px);
+  opacity: 0.9;
+  margin-top: 6px;
+}
+
+/* Right side */
+.weather-right {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+.condition {
+  font-size: clamp(16px, 3vw, 18px);
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.detail {
+  font-size: clamp(12px, 2.2vw, 14px);
+  opacity: 0.9;
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+/* Weather background icons */
+.weather-bg {
+  margin-top: 15px;
+  font-size: clamp(18px, 4vw, 22px);
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .weather-hero {
+    padding: 70px 15px 20px;
+    min-height: 220px;
+  }
+
+  .weather-content {
+    gap: 10px;
+  }
+
+  .temp {
+    font-size: clamp(24px, 6vw, 32px);
+  }
+
+  .condition-icon {
+    font-size: clamp(20px, 5vw, 28px);
+  }
+
+  .condition {
+    font-size: clamp(14px, 4vw, 16px);
+  }
+
+  .detail {
+    font-size: clamp(11px, 3vw, 13px);
+  }
+
+  .feels-like {
+    font-size: clamp(11px, 3vw, 12px);
+  }
 }
 
 /* feedback.css - Dedicated styles for feedback components */
@@ -145,7 +274,8 @@
   font-size: 20px;
 }
 
-/* Bottom Sheet Styles */
+/* Bottom Sheet Styles - DISABLED (using direct content layout) */
+/*
 .locapp-sheet {
   position: fixed;
   left: 0;
@@ -156,14 +286,14 @@
   border-radius: var(--locapp-border-radius-lg) var(--locapp-border-radius-lg) 0
     0;
   box-shadow: 0 -8px 30px var(--locapp-shadow-color);
-  transition: none; /* Changed from transition-bounce to none for better drag feel */
+  transition: none;
   transform: translateY(calc(100% - 130px));
   z-index: 10;
   overflow: hidden;
   touch-action: none;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  will-change: transform; /* Add this for better performance */
+  will-change: transform;
 }
 
 .locapp-sheet.animating {
@@ -180,7 +310,7 @@
   justify-content: center;
   padding: var(--locapp-spacing) 0;
   cursor: pointer;
-  height: 40px; /* Increased touch target */
+  height: 40px;
   align-items: center;
 }
 
@@ -196,14 +326,13 @@
   width: 24px;
   opacity: 0.5;
 }
+*/
 
+/* Content styles (direct layout, not sheet) */
 .locapp-content {
   padding: 0 var(--locapp-spacing) var(--locapp-spacing-lg);
-  height: calc(100% - 50px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  max-height: calc(100vh - 50px); /* Ensure content doesn't overflow */
 }
 
 .locapp-content::-webkit-scrollbar {
@@ -213,55 +342,82 @@
 /* Search bar */
 .locapp-search {
   position: relative;
-  margin-bottom: var(--locapp-spacing-lg);
+  display: flex;
+  align-items: center;
+  margin: 0 auto;
+  padding-top: 50px; /* space at the top */
+  width: 90%; /* adjust as needed */
+  max-width: 600px;
+  margin-bottom: 40px; /* increased gap below search bar */
 }
 
+/* Search input pill shape */
 .locapp-search-input {
-  width: 100%;
-  height: 50px;
-  background-color: rgba(255, 255, 255, 0.08);
-  border: none;
-  border-radius: var(--locapp-border-radius);
-  padding: 0 var(--locapp-spacing) 0 48px;
+  flex: 1;
+  height: 45px;
+  padding: 0 45px 0 40px; /* left for icon, right for buttons */
+  border: 2px solid #000;
+  border-radius: 999px; /* pill shape */
+  outline: none;
   font-size: 16px;
+  background: transparent;
   color: var(--locapp-text);
-  transition: background-color var(--locapp-transition-fast);
 }
 
 .locapp-search-input:focus {
   outline: none;
-  background-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0 0 2px rgba(62, 220, 151, 0.3);
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .locapp-search-input::placeholder {
   color: var(--locapp-text-secondary);
 }
 
+/* Search icon */
 .locapp-search-icon {
   position: absolute;
-  left: var(--locapp-spacing);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--locapp-text-secondary);
-  font-size: 18px;
+  left: 15px;
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 50%;
+  padding: 6px;
+  font-size: 14px;
+  background: #fff;
 }
 
+/* Voice search button */
+.voice-search-btn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #000;
+}
+
+/* Clear button (hidden by default) */
 .locapp-search-clear {
   position: absolute;
-  right: var(--locapp-spacing);
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #000;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--locapp-text-secondary);
-  font-size: 16px;
-  cursor: pointer;
   padding: 4px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.locapp-search-clear:hover {
+  background: rgba(107, 114, 128, 0.1);
+  color: #374151;
 }
 
 /* Section styles */
@@ -271,9 +427,19 @@
 
 .locapp-section-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: center; /* center everything inside */
   align-items: center;
+  gap: 1rem;
   margin-bottom: var(--locapp-spacing);
+}
+
+.cate {
+  font-style: normal;
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.5rem;
+  text-align: center;
+  flex: 1 1 100%; /* force it to take full row for proper centering */
 }
 
 .locapp-title {
@@ -281,6 +447,18 @@
   font-weight: 600;
   margin: 0;
   color: var(--locapp-text);
+}
+
+/* Save Places Header */
+.saveplace {
+  font-style: normal;
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  text-align: center;
+  flex: 1 1 100%;
+  margin-bottom: 20px; /* space below header */
+  color: #333;
 }
 
 .locapp-view-all {
@@ -299,52 +477,104 @@
   background-color: var(--locapp-primary-light);
 }
 
-/* Categories */
+/* Categories Container */
 .locapp-category-list {
   display: flex;
-  gap: var(--locapp-spacing-sm);
+  gap: 15px;
   overflow-x: auto;
-  padding: var(--locapp-spacing-xs) 0;
-  margin: 0 -var(--locapp-spacing);
-  padding: 0 var(--locapp-spacing);
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  padding: 20px;
+  margin: 0 auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 .locapp-category-list::-webkit-scrollbar {
-  display: none;
+  display: none; /* Chrome, Safari */
 }
 
+/* Category Card */
 .locapp-category-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
-  height: 80px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--locapp-border);
-  border-radius: var(--locapp-border-radius);
-  color: var(--locapp-text);
-  font-size: 12px;
-  font-weight: 500;
+  min-width: 80px; /* minimum width for horizontal layout */
+  width: 80px; /* fixed width */
+  height: 80px; /* fixed height, making it square */
+  border-radius: 15px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
   cursor: pointer;
-  transition: all var(--locapp-transition-fast);
-  padding: var(--locapp-spacing-sm);
-  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  padding: 8px;
+  border: none;
+  color: #333;
+  flex-shrink: 0; /* prevent shrinking in flex layout */
 }
 
+/* Icon inside card */
 .locapp-category-btn i {
   font-size: 24px;
-  margin-bottom: var(--locapp-spacing-xs);
-  color: var(--locapp-text-secondary);
-  transition: color var(--locapp-transition-fast);
+  margin-bottom: 6px;
+  transition: transform 0.2s ease;
 }
 
-.locapp-category-btn:hover,
-.locapp-category-btn:active {
-  background-color: rgba(255, 255, 255, 0.08);
+/* Hover effect */
+.locapp-category-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
+
+/* Pastel backgrounds with darker icons */
+.locapp-category-btn:nth-child(1) {
+  background-color: #e0f7fa;
+  color: #006064;
+} /* Teal */
+.locapp-category-btn:nth-child(2) {
+  background-color: #fbe9e7;
+  color: #bf360c;
+} /* Orange */
+.locapp-category-btn:nth-child(3) {
+  background-color: #e8eaf6;
+  color: #283593;
+} /* Indigo */
+.locapp-category-btn:nth-child(4) {
+  background-color: #e0f2f1;
+  color: #004d40;
+} /* Aqua Green */
+.locapp-category-btn:nth-child(5) {
+  background-color: #fce4ec;
+  color: #880e4f;
+} /* Pink */
+.locapp-category-btn:nth-child(6) {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+} /* Blue */
+.locapp-category-btn:nth-child(7) {
+  background-color: #ffebee;
+  color: #b71c1c;
+} /* Red */
+.locapp-category-btn:nth-child(8) {
+  background-color: #e1f5fe;
+  color: #01579b;
+} /* Light Blue */
+.locapp-category-btn:nth-child(9) {
+  background-color: #f3e5f5;
+  color: #4a148c;
+} /* Purple */
+.locapp-category-btn:nth-child(10) {
+  background-color: #f1f8e9;
+  color: #33691e;
+} /* Green */
+.locapp-category-btn:nth-child(11) {
+  background-color: #fff3e0;
+  color: #e65100;
+} /* Amber */
+.locapp-category-btn:nth-child(12) {
+  background-color: #f9fbe7;
+  color: #827717;
+} /* Lime */
 
 .locapp-category-btn.active {
   background-color: var(--locapp-primary-light);
@@ -356,14 +586,14 @@
   color: var(--locapp-primary);
 }
 
-/* Places */
+/* Places Container */
 .locapp-place {
   display: flex;
   align-items: center;
-  padding: var(--locapp-spacing);
-  background-color: rgba(255, 255, 255, 0.03);
+  padding: 14px 16px;
+  background-color: rgba(255, 255, 255, 0.02);
   border-radius: var(--locapp-border-radius);
-  margin-bottom: var(--locapp-spacing);
+  margin-bottom: 12px;
   cursor: pointer;
   transition: background-color var(--locapp-transition-fast),
     transform var(--locapp-transition-fast);
@@ -371,87 +601,117 @@
   overflow: hidden;
 }
 
-.locapp-place:hover,
-.locapp-place:active {
-  background-color: rgba(255, 255, 255, 0.06);
+/* Hover effect on row */
+.locapp-place:hover {
+  background-color: rgba(255, 215, 0, 0.1); /* soft gold glow */
   transform: translateY(-2px);
 }
-
 .locapp-place:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(0) scale(0.97);
 }
 
+/* Gold Icon Box */
 .locapp-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background-color: var(--locapp-primary-light);
-  color: var(--locapp-primary);
-  border-radius: var(--locapp-border-radius-sm);
-  margin-right: var(--locapp-spacing);
+  width: 42px;
+  height: 42px;
+  background-color: rgba(255, 215, 0, 0.15); /* soft gold bg */
+  color: #d4af37; /* gold */
+  border-radius: 12px;
+  margin-right: 14px;
   font-size: 18px;
   flex-shrink: 0;
 }
 
+/* Place Info (Minimalist style) */
 .locapp-place-text {
   flex: 1;
   min-width: 0;
 }
 
 .locapp-place-name {
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 500;
+  font-size: 15px;
   margin-bottom: 2px;
+  color: #222; /* darker, clean */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .locapp-place-address {
-  color: var(--locapp-text-secondary);
+  color: #777; /* softer gray */
   font-size: 13px;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Distance in gold accent */
 .locapp-distance {
-  font-size: 13px;
-  color: var(--locapp-primary);
+  font-size: 12px;
+  color: #d4af37;
   font-weight: 500;
-  margin-left: var(--locapp-spacing);
+  margin-left: 10px;
   flex-shrink: 0;
 }
 
+/* Add New Place Button */
 .locapp-add-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: var(--locapp-spacing);
-  background-color: var(--locapp-primary-light);
-  border: 1px dashed var(--locapp-primary);
+  padding: 14px;
+  background-color: rgba(255, 215, 0, 0.08);
+  border: 1px dashed #d4af37;
   border-radius: var(--locapp-border-radius);
-  color: var(--locapp-primary);
-  font-size: 15px;
+  color: #d4af37;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--locapp-transition-fast);
 }
 
 .locapp-add-btn i {
-  margin-right: var(--locapp-spacing-sm);
+  margin-right: 6px;
 }
 
-.locapp-add-btn:hover,
+.locapp-add-btn:hover {
+  background-color: rgba(255, 215, 0, 0.15);
+}
 .locapp-add-btn:active {
-  background-color: rgba(62, 220, 151, 0.15);
+  transform: scale(0.97);
 }
 
-.locapp-add-btn:active {
-  transform: scale(0.98);
+/* Gold pulse animation for icon */
+@keyframes goldPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+  }
+}
+
+.locapp-place:hover .locapp-icon {
+  animation: goldPulse 1.2s infinite;
+}
+
+/* Direct content styling (not sheet) */
+.locapp-content {
+  padding: 0 var(--locapp-spacing) var(--locapp-spacing-lg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Responsive Adjustments */

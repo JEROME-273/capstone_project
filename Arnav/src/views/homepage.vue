@@ -15,7 +15,7 @@
           src="../assets/logo.png"
           alt="Demo Farm Logo"
           class="navbar-logo" />
-        <span class="farm-name">Demo Farm</span>
+        <span class="farm-name">BULUSAN PARK</span>
       </div>
       <div class="navbar-actions">
         <!-- Learning Progress Button -->
@@ -34,6 +34,15 @@
 
         <!-- Notification Bell -->
         <NotificationBell @startNavigation="handleNotificationNavigation" />
+
+        <!-- QR Code Scanner Button -->
+        <router-link
+          to="/qr-scan"
+          class="qr-scan-btn"
+          aria-label="Scan QR Code">
+          <i class="fas fa-qrcode"></i>
+        </router-link>
+
         <button
           class="darkmode-btn"
           @click="toggleDarkMode"
@@ -48,65 +57,90 @@
       </div>
     </nav>
 
-    <!-- Weather Advice Banner -->
-    <div
-      v-if="rainReminder.show"
-      class="weather-banner"
-      role="status"
-      aria-live="polite">
-      <div class="weather-banner-content">
-        <i class="fas fa-cloud-rain"></i>
-        <span class="weather-banner-text">{{ rainReminder.text }}</span>
+    <!-- Weather Widget (now contains floating banner) -->
+    <div class="weather-hero">
+      <!-- Floating Weather Advice Banner -->
+      <div
+        v-if="rainReminder.show"
+        class="weather-banner"
+        role="status"
+        aria-live="polite">
+        <div class="weather-banner-content">
+          <i class="fas fa-cloud-rain"></i>
+          <span class="weather-banner-text">{{ rainReminder.text }}</span>
+        </div>
+        <button
+          class="weather-banner-close"
+          @click="dismissRainReminder"
+          aria-label="Dismiss weather reminder">
+          ×
+        </button>
       </div>
-      <button
-        class="weather-banner-close"
-        @click="dismissRainReminder"
-        aria-label="Dismiss weather reminder">
-        ×
-      </button>
-    </div>
+      <div class="weather-content">
+        <!-- Left side -->
+        <div class="weather-left">
+          <div class="temp-icon">
+            <span class="temp">{{
+              weather.temp !== null ? weather.temp + "°" : "--"
+            }}</span>
+            <span class="condition-icon">
+              <!-- Dynamically choose icon based on description -->
+              {{
+                weather.condition.toLowerCase().includes("rain")
+                  ? "�️"
+                  : weather.condition.toLowerCase().includes("sun") ||
+                    weather.condition.toLowerCase().includes("clear")
+                  ? "☀️"
+                  : weather.condition.toLowerCase().includes("cloud")
+                  ? "☁️"
+                  : "🌡️"
+              }}
+            </span>
+          </div>
+          <div class="feels-like">
+            Feels like
+            {{ weather.feelsLike !== null ? weather.feelsLike + "°" : "--" }}
+          </div>
+        </div>
 
-    <!-- Full-screen Map -->
-    <iframe
-      class="locapp-map"
-      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.1234567890123!2d121.12345678901234!3d13.12345678901234!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd4b0c0c0c0c0c%3A0x0c0c0c0c0c0c0c0c!2sProvincial%20Agriculture%20Center%2C%20PDF%2C%20Merit%20Victoria%2C%20Oriental%20Mindoro!5e0!3m2!1sen!2sph!4v1698192000000!5m2!1sen!2sph"
-      allowfullscreen
-      loading="lazy"
-      aria-label="Google Map"></iframe>
+        <!-- Right side -->
+        <div class="weather-right">
+          <div class="condition">{{ weather.condition || "--" }}</div>
+          <div class="detail">
+            Precip:
+            {{ weather.precip !== null ? weather.precip + " mm" : "--" }}
+          </div>
+          <div class="detail">
+            Humidity:
+            {{ weather.humidity !== null ? weather.humidity + "%" : "--" }}
+          </div>
+          <div class="detail">
+            Wind: {{ weather.wind !== null ? weather.wind + " km/h" : "--" }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Background weather icons -->
+      <div class="weather-bg">���</div>
+    </div>
 
     <!-- Floating Feedback Button (icon only) -->
     <router-link to="/help-center" class="feedback-btn" aria-label="Feedback">
       <i class="fas fa-comment-alt"></i>
     </router-link>
 
-    <!-- Bottom Sheet -->
-    <div
-      class="locapp-sheet"
-      :class="{ 'locapp-sheet-expanded': isExpanded }"
-      :style="sheetStyle"
-      @touchstart.stop="startDrag"
-      @touchmove.stop="onDrag"
-      @touchend.stop="endDrag"
-      @mousedown.stop="startDrag"
-      @mousemove.stop="onDrag"
-      @mouseup.stop="endDrag"
-      @mouseleave="endDrag">
-      <!-- Handle -->
-      <div class="locapp-handle-wrapper" @click.stop="toggleSheet">
-        <div class="locapp-handle"></div>
-      </div>
-
-      <div class="locapp-content" @click.stop>
+    <br />
+    <div class="locapp-content" @click.stop>
+      <!-- Fixed (non-scrolling) header: Search + Categories -->
+      <div class="locapp-fixed-header">
         <!-- Search -->
         <div class="locapp-search">
           <i class="fas fa-search locapp-search-icon"></i>
           <input
             type="text"
             class="locapp-search-input"
-            placeholder="Search locations, categories, descriptions..."
-            v-model="searchQuery"
-            @focus="expandSheet" />
-
+            placeholder="Search locations..."
+            v-model="searchQuery" />
           <!-- Voice Search Button -->
           <button
             @click="toggleVoiceSearch"
@@ -116,7 +150,6 @@
             <span v-if="isVoiceSearchListening" class="pulse"></span>
             <i class="fas fa-microphone"></i>
           </button>
-
           <button
             class="locapp-search-clear"
             v-if="searchQuery"
@@ -124,8 +157,7 @@
             <i class="fas fa-times"></i>
           </button>
         </div>
-
-        <!-- Voice Search Status -->
+        <!-- Voice Search Status (show beneath search if listening) -->
         <div v-if="isVoiceSearchListening" class="voice-search-status">
           <div class="voice-indicator">
             <div class="voice-animation">
@@ -139,7 +171,31 @@
             >
           </div>
         </div>
-
+        <!-- Categories -->
+        <div class="locapp-section locapp-categories-header">
+          <div class="locapp-section-header">
+            <h2 class="locapp-title cate">CATEGORIES</h2>
+            <button
+              class="locapp-view-all"
+              @click="showAllCategories = !showAllCategories">
+              {{ showAllCategories ? "Show Less" : "View All" }}
+            </button>
+          </div>
+          <div class="locapp-category-list">
+            <button
+              class="locapp-category-btn"
+              v-for="category in categories"
+              :key="category.key"
+              @click="selectCategory(category.key)"
+              :class="{ active: selectedCategory === category.key }">
+              <i :class="['fas', 'fa-' + category.icon]"></i>
+              {{ category.name }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Scrollable results area -->
+      <div class="locapp-results-scroll">
         <!-- Search Results -->
         <div
           v-if="searchQuery && searchResults.length > 0"
@@ -168,7 +224,6 @@
                   "
                   :alt="location.name"
                   class="location-img" />
-                <!-- Maintenance overlay -->
                 <div
                   v-if="location.isUnderMaintenance === true"
                   class="maintenance-overlay">
@@ -192,7 +247,6 @@
                     {{ location.coordinates.y.toFixed(4) }}</span
                   >
                 </div>
-                <!-- Status indicator -->
                 <div
                   v-if="location.isUnderMaintenance === true"
                   class="status-badge maintenance">
@@ -203,7 +257,6 @@
             </div>
           </div>
         </div>
-
         <!-- No Search Results -->
         <div
           v-if="searchQuery && searchResults.length === 0"
@@ -218,30 +271,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Categories -->
-        <div class="locapp-section">
-          <div class="locapp-section-header">
-            <h2 class="locapp-title">Categories</h2>
-            <button
-              class="locapp-view-all"
-              @click="showAllCategories = !showAllCategories">
-              {{ showAllCategories ? "Show Less" : "View All" }}
-            </button>
-          </div>
-          <div class="locapp-category-list">
-            <button
-              class="locapp-category-btn"
-              v-for="category in categories"
-              :key="category.key"
-              @click="selectCategory(category.key)"
-              :class="{ active: selectedCategory === category.key }">
-              <i :class="['fas', 'fa-' + category.icon]"></i>
-              {{ category.name }}
-            </button>
-          </div>
-        </div>
-
         <!-- Admin Locations by Category -->
         <div
           v-if="selectedCategory && filteredAdminLocations.length > 0"
@@ -274,7 +303,6 @@
                   "
                   :alt="location.name"
                   class="location-img" />
-                <!-- Maintenance overlay -->
                 <div
                   v-if="location.isUnderMaintenance === true"
                   class="maintenance-overlay">
@@ -298,7 +326,6 @@
                     {{ location.coordinates.y.toFixed(4) }}</span
                   >
                 </div>
-                <!-- Status indicator -->
                 <div
                   v-if="location.isUnderMaintenance === true"
                   class="status-badge maintenance">
@@ -309,11 +336,10 @@
             </div>
           </div>
         </div>
-
         <!-- Saved Places -->
         <div class="locapp-section">
           <div class="locapp-section-header">
-            <h2 class="locapp-title">My Saved Places</h2>
+            <h2 class="locapp-title saveplace">SAVE PLACES</h2>
             <button class="locapp-view-all">View All</button>
           </div>
           <div
@@ -492,16 +518,6 @@ import { checkRainSoon } from "@/services/WeatherService";
 import NotificationService from "@/services/NotificationService";
 import VoiceService from "@/services/VoiceService";
 
-// Sheet state
-const sheetY = ref(0);
-const isExpanded = ref(false);
-const isDragging = ref(false);
-const startY = ref(0);
-const currentY = ref(0);
-const sheetHeight = ref(0);
-const minSheetHeight = ref(100);
-const maxSheetHeight = ref(0);
-
 // App state
 const searchQuery = ref("");
 const selectedCategory = ref(null);
@@ -512,6 +528,21 @@ const isLoading = ref(true);
 const isDarkMode = ref(false);
 const showAddPlaceModal = ref(false);
 const newPlaceName = ref("");
+
+// Weather state
+const weather = ref({
+  temp: null,
+  feelsLike: null,
+  condition: "",
+  precip: null,
+  humidity: null,
+  wind: null,
+  date: new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }),
+});
 
 const showLocationModal = ref(false);
 const selectedLocationDetails = ref(null);
@@ -558,19 +589,6 @@ const categories = ref([
 ]);
 
 // Computed properties
-const sheetStyle = computed(() => {
-  if (isDragging.value) {
-    return {
-      transform: `translateY(${sheetY.value}px)`,
-      transition: "none",
-    };
-  }
-  return {
-    transform: `translateY(${sheetY.value}px)`,
-    transition: "transform 0.3s ease-out",
-  };
-});
-
 const filteredAdminLocations = computed(() => {
   if (!selectedCategory.value) return [];
 
@@ -616,10 +634,6 @@ const searchResults = computed(() => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  updateSheetDimensions();
-  window.addEventListener("resize", updateSheetDimensions);
-  sheetY.value = window.innerHeight * 0.6;
-
   // Initialize voice search
   initializeVoiceSearch();
 
@@ -652,10 +666,12 @@ onMounted(async () => {
 
   // Kick off a weather check after initial UI is ready
   checkWeatherReminder();
+
+  // Load weather data
+  getWeather();
 });
 
 onUnmounted(() => {
-  window.removeEventListener("resize", updateSheetDimensions);
   cleanupVoiceSearch();
 });
 
@@ -682,7 +698,6 @@ function setupVoiceSearchRecognition() {
   voiceSearchRecognition.value.onstart = () => {
     isVoiceSearchListening.value = true;
     voiceSearchTranscript.value = "";
-    expandSheet(); // Expand sheet when voice search starts
   };
 
   voiceSearchRecognition.value.onresult = (event) => {
@@ -902,11 +917,6 @@ async function loadAdminLocations() {
 }
 
 // Utility methods
-function updateSheetDimensions() {
-  maxSheetHeight.value = window.innerHeight * 0.9;
-  sheetHeight.value = window.innerHeight * 0.9;
-}
-
 function getCategoryIcon(categoryKey) {
   const category = categories.value.find((cat) => cat.key === categoryKey);
   return category ? category.icon : "map-marker-alt";
@@ -930,70 +940,9 @@ function getCategoryCount(categoryKey) {
   ).length;
 }
 
-function toggleSheet() {
-  isExpanded.value = !isExpanded.value;
-  animateSheet();
-}
-
-function expandSheet() {
-  if (!isExpanded.value) {
-    isExpanded.value = true;
-    animateSheet();
-  }
-}
-
-function animateSheet() {
-  const targetY = isExpanded.value ? 0 : window.innerHeight * 0.6;
-  sheetY.value = targetY;
-}
-
-function startDrag(event) {
-  if (
-    event.target.closest(".locapp-content") &&
-    !event.target.closest(".locapp-handle-wrapper")
-  ) {
-    return;
-  }
-
-  event.preventDefault();
-  isDragging.value = true;
-  startY.value = event.type.includes("mouse")
-    ? event.clientY
-    : event.touches[0].clientY;
-}
-
-function onDrag(event) {
-  if (!isDragging.value) return;
-
-  event.preventDefault();
-  currentY.value = event.type.includes("mouse")
-    ? event.clientY
-    : event.touches[0].clientY;
-
-  const diff = currentY.value - startY.value;
-  const newY = Math.min(
-    Math.max(sheetY.value + diff, 0),
-    window.innerHeight * 0.8
-  );
-  sheetY.value = newY;
-  startY.value = currentY.value;
-}
-
-function endDrag() {
-  if (!isDragging.value) return;
-  isDragging.value = false;
-
-  const threshold = window.innerHeight * 0.3;
-  isExpanded.value = sheetY.value < threshold;
-  animateSheet();
-}
-
 function selectCategory(category) {
   selectedCategory.value =
     selectedCategory.value === category ? null : category;
-  if (selectedCategory.value) {
-    expandSheet();
-  }
 }
 
 function clearSearch() {
@@ -1281,46 +1230,111 @@ async function loadUserLearningStreak() {
     console.error("Error loading user learning streak:", error);
   }
 }
+
+// Weather API function
+async function getWeather() {
+  try {
+    const apiKey = "64b4ab73cd533e2a0a33c48c9cd93ee5";
+    const city = "Calapan,PH";
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Network response was not ok");
+
+    const data = await response.json();
+
+    if (data && data.main) {
+      weather.value.temp = Math.round(data.main.temp);
+      weather.value.feelsLike = Math.round(data.main.feels_like);
+      weather.value.condition = data.weather[0].description;
+      weather.value.humidity = data.main.humidity;
+      weather.value.wind = data.wind.speed;
+      weather.value.precip = data.rain ? data.rain["1h"] || 0 : 0; // rainfall in mm
+    }
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+  }
+}
 </script>
 
 <style scoped>
 @import "@/assets/allstyle.css";
+@import "@/assets/responsive.css";
 
-/* Weather Banner */
+/* Weather Banner (floating inside weather hero) */
+.weather-hero {
+  position: relative;
+}
 .weather-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: linear-gradient(90deg, #2196f3 0%, #6ec6ff 100%);
+  gap: 10px;
+  background: rgba(33, 150, 243, 0.9);
+  background: linear-gradient(135deg, #2196f3, #6ec6ff);
   color: #fff;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 14px 8px 12px;
+  border-radius: 40px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  animation: banner-slide-in 0.4s ease;
+}
+@keyframes banner-slide-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 .weather-banner-content {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 13px;
 }
 .weather-banner-content i {
-  font-size: 18px;
+  font-size: 16px;
 }
 .weather-banner-text {
-  line-height: 1.4;
+  line-height: 1.3;
+  font-weight: 500;
 }
 .weather-banner-close {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border: none;
   color: #fff;
-  font-size: 18px;
-  width: 28px;
-  height: 28px;
+  font-size: 16px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .weather-banner-close:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.3);
+}
+@media (max-width: 600px) {
+  .weather-banner {
+    top: 6px;
+    padding: 6px 12px;
+  }
+  .weather-banner-text {
+    font-size: 12px;
+  }
+}
+body.dark-mode .weather-banner {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Learning Progress Button Styles */
@@ -2064,9 +2078,39 @@ body.dark-mode .loading-overlay p {
 
 .locapp-content {
   height: calc(90vh - 30px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 0 16px 16px;
+}
+
+/* New fixed header section (inside sheet) */
+.locapp-fixed-header {
+  position: sticky; /* relative to scroll container parent */
+  top: 0;
+  z-index: 20;
+  background: inherit;
+  padding-top: 12px;
+  padding-bottom: 8px;
+  backdrop-filter: blur(6px);
+}
+
+.locapp-results-scroll {
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding-bottom: 24px;
+}
+
+/* Compact categories header spacing when fixed */
+.locapp-categories-header {
+  padding-top: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .locapp-categories-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .darkmode-btn {
@@ -2076,6 +2120,23 @@ body.dark-mode .loading-overlay p {
   font-size: 1.5rem;
   margin-left: 8px;
   cursor: pointer;
+}
+
+.qr-scan-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 1.5rem;
+  margin-left: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+}
+
+.qr-scan-btn:hover {
+  color: #2563eb;
 }
 
 body.dark-mode {
