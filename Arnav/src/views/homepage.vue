@@ -493,7 +493,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   getFirestore,
   collection,
@@ -555,6 +556,8 @@ const voiceSearchTranscript = ref("");
 // AR Navigation state
 const isARActive = ref(false);
 const arDestination = ref(null);
+const route = useRoute();
+const router = useRouter();
 
 // Learning Progress state
 const showLearningProgress = ref(false);
@@ -911,10 +914,33 @@ async function loadAdminLocations() {
     });
 
     console.log(`Loaded ${adminLocations.value.length} admin locations`);
+    attemptAutoStartFromQR();
   } catch (error) {
     console.error("Error loading admin locations:", error);
   }
 }
+
+function attemptAutoStartFromQR() {
+  const startId = route.query.startAr;
+  if (!startId) return;
+  const matched = adminLocations.value.find((l) => l.id === startId);
+  if (matched && !isARActive.value) {
+    goToLocation(matched);
+    // Clean param to prevent repeated trigger
+    const newQuery = { ...route.query };
+    delete newQuery.startAr;
+    router.replace({ query: newQuery });
+  }
+}
+
+watch(
+  () => route.query.startAr,
+  (val) => {
+    if (val) {
+      if (adminLocations.value.length > 0) attemptAutoStartFromQR();
+    }
+  }
+);
 
 // Utility methods
 function getCategoryIcon(categoryKey) {

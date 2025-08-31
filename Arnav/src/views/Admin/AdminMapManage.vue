@@ -76,10 +76,7 @@
             <i class="bx bx-list-ul"></i>
             Waypoints
           </button>
-          <router-link to="/admin-qr-generator" class="tab-btn">
-            <i class="bx bx-qr-scan"></i>
-            QR Generator
-          </router-link>
+          <!-- QR Generator tab removed -->
         </div>
 
         <!-- Add/Edit Waypoint Form -->
@@ -328,6 +325,43 @@
                 Delete
               </button>
             </div>
+
+            <!-- Auto-generated QR preview after creating a waypoint -->
+            <div
+              v-if="lastGeneratedWaypoint && qrPreviewDataUrl"
+              class="qr-latest-wrapper">
+              <h3 class="qr-title">
+                <i class="bx bx-qr"></i> QR Code (Auto) for
+                {{ lastGeneratedWaypoint.name }}
+              </h3>
+              <div class="qr-latest-preview">
+                <img
+                  :src="qrPreviewDataUrl"
+                  :alt="`QR for ${lastGeneratedWaypoint.name}`" />
+                <div class="qr-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary btn-sm"
+                    @click="
+                      downloadQR(qrPreviewDataUrl, lastGeneratedWaypoint.name)
+                    ">
+                    <i class="bx bx-download"></i> Download
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-secondary btn-sm"
+                    @click="
+                      printQR(qrPreviewDataUrl, lastGeneratedWaypoint.name)
+                    ">
+                    <i class="bx bx-printer"></i> Print
+                  </button>
+                </div>
+                <small class="qr-hint"
+                  >Ilagay ang QR sa mismong lokasyon. Kapag na-scan, automatic
+                  magsa-start ang AR navigation.</small
+                >
+              </div>
+            </div>
           </form>
         </div>
 
@@ -484,6 +518,12 @@
                   ">
                   <i class="bx bx-wrench"></i>
                 </button>
+                <button
+                  @click="openQRModal(wp)"
+                  class="btn-qr"
+                  title="Show QR Code">
+                  <i class="bx bx-qr"></i>
+                </button>
                 <button @click="editWaypoint(wp)" class="btn-edit">
                   <i class="bx bx-edit"></i>
                 </button>
@@ -527,6 +567,37 @@
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- QR Modal -->
+    <div v-if="showQRModal" class="modal-overlay" @click="closeQRModal">
+      <div class="modal-content qr-modal" @click.stop>
+        <div class="modal-header">
+          <h3><i class="bx bx-qr"></i> QR Code: {{ qrModalWaypoint?.name }}</h3>
+          <button class="btn-secondary btn-close" @click="closeQRModal">
+            <i class="bx bx-x"></i>
+          </button>
+        </div>
+        <div class="modal-body qr-modal-body" v-if="qrModalDataUrl">
+          <img :src="qrModalDataUrl" :alt="`QR for ${qrModalWaypoint?.name}`" />
+          <div class="qr-actions">
+            <button
+              class="btn-secondary btn-sm"
+              @click="downloadQR(qrModalDataUrl, qrModalWaypoint.name)">
+              <i class="bx bx-download"></i> Download
+            </button>
+            <button
+              class="btn-secondary btn-sm"
+              @click="printQR(qrModalDataUrl, qrModalWaypoint.name)">
+              <i class="bx bx-printer"></i> Print
+            </button>
+          </div>
+          <small>Scan to start AR navigation directly to this waypoint.</small>
+        </div>
+        <div class="modal-body" v-else>
+          <i class="bx bx-loader-alt bx-spin"></i> Generating QR...
+        </div>
+      </div>
     </div>
   </AdminLayout>
 </template>
@@ -601,6 +672,13 @@ const uploading = ref(false);
 const imagePreview = ref("");
 const isAuthenticated = ref(false);
 const isLoading = ref(true);
+// QR state
+const qrPreviewDataUrl = ref("");
+const lastGeneratedWaypoint = ref(null);
+const showQRModal = ref(false);
+const qrModalDataUrl = ref("");
+const qrModalWaypoint = ref(null);
+const qrCache = ref({});
 
 // Enhanced location capture state
 const capturing = ref(false);
@@ -896,6 +974,9 @@ const handleSubmit = async () => {
         console.error("Error creating notification:", notificationError);
         // Don't fail the waypoint creation if notification fails
       }
+
+      // Auto-generate QR for new waypoint (no extra form fields)
+      await generateQRCodeForWaypoint(docRef.id, waypoint.value.name, true);
     }
 
     await loadWaypoints();
@@ -1415,6 +1496,74 @@ onMounted(async () => {
     isLoading.value = false;
   }
 });
+
+// QR generation functions
+async function generateQRCodeForWaypoint(id, name, setAsLatest = false) {
+  try {
+    // Cache first
+    if (qrCache.value[id]) {
+      if (setAsLatest) {
+        qrPreviewDataUrl.value = qrCache.value[id];
+        lastGeneratedWaypoint.value = { id, name };
+      }
+      return qrCache.value[id];
+    }
+    const { default: QRCode } = await import("qrcode");
+    const payload = JSON.stringify({
+      locationId: id,
+      ar: true,
+      ts: Date.now(),
+    });
+    const dataUrl = await QRCode.toDataURL(payload, {
+      width: 256,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    });
+    qrCache.value[id] = dataUrl;
+    if (setAsLatest) {
+      qrPreviewDataUrl.value = dataUrl;
+      lastGeneratedWaypoint.value = { id, name };
+      toast.success("QR code generated");
+    }
+    return dataUrl;
+  } catch (e) {
+    console.error("QR generation failed", e);
+    toast.error("Failed to generate QR code");
+  }
+}
+
+function openQRModal(wp) {
+  showQRModal.value = true;
+  qrModalWaypoint.value = wp;
+  qrModalDataUrl.value = "";
+  generateQRCodeForWaypoint(wp.id, wp.name).then((d) => {
+    qrModalDataUrl.value = d;
+  });
+}
+
+function closeQRModal() {
+  showQRModal.value = false;
+  qrModalWaypoint.value = null;
+  qrModalDataUrl.value = "";
+}
+
+function downloadQR(dataUrl, name = "waypoint") {
+  if (!dataUrl) return;
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = `${name}-qr.png`;
+  a.click();
+}
+
+function printQR(dataUrl, name = "waypoint") {
+  if (!dataUrl) return;
+  const w = window.open("");
+  w.document.write(
+    `<title>QR Code - ${name}</title><img src="${dataUrl}" style="width:256px;height:256px"/>`
+  );
+  w.print();
+  w.close();
+}
 </script>
 
 <style scoped>

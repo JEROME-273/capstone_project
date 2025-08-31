@@ -17,7 +17,6 @@ import AdminAnalytics from "@/views/Admin/AdminAnalytics.vue";
 import AdminLearningManage from "@/views/Admin/AdminLearningManage.vue";
 import QRScanPage from "@/views/QRScanPage.vue";
 import LocationView from "@/views/LocationView.vue";
-import QRGenerator from "@/views/Admin/QRGenerator.vue";
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
@@ -119,15 +118,6 @@ const router = createRouter({
       path: "/admin-learning-manage",
       name: "AdminLearningManage",
       component: AdminLearningManage,
-      meta: {
-        requiresAuth: true,
-        roles: ["admin"],
-      },
-    },
-    {
-      path: "/admin-qr-generator",
-      name: "QRGenerator",
-      component: QRGenerator,
       meta: {
         requiresAuth: true,
         roles: ["admin"],
