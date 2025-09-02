@@ -7,10 +7,9 @@
         </router-link>
         <h1 class="profile-title">My Profile</h1>
         <div class="header-actions">
-          <!-- Notification Bell -->
-          <NotificationBell />
+          <!-- Dark Mode -->
           <button class="icon-theme" @click="toggleTheme">
-            <i class="fas fa-sun ml-1"></i>
+            <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'"></i>
           </button>
         </div>
       </div>

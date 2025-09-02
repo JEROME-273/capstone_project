@@ -1,4 +1,5 @@
 /* HOMEPAGE */
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css");
 :root {
   /* Modern color palette */
   --locapp-primary: #3edc97;
@@ -11,31 +12,543 @@
   --locapp-text-secondary: #a0a0a8;
   --locapp-border: rgba(255, 255, 255, 0.08);
   --locapp-shadow-color: rgba(0, 0, 0, 0.4);
-
-  /* Sizing and spacing */
-  --locapp-border-radius-sm: 8px;
-  --locapp-border-radius: 16px;
-  --locapp-border-radius-lg: 24px;
-  --locapp-spacing-xs: 4px;
-  --locapp-spacing-sm: 8px;
-  --locapp-spacing: 16px;
-  --locapp-spacing-lg: 24px;
-
-  /* Animation */
-  --locapp-transition-fast: 0.15s ease;
-  --locapp-transition: 0.3s cubic-bezier(0.2, 0, 0, 1);
-  --locapp-transition-bounce: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-/* Base styles */
-.locapp-container {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+/*Notification Bell */
+::v-deep(.notification-bell i),
+::v-deep(.notification-bell svg) {
+  color: #ffd700 !important; /* yellow */
+  font-size: 28px !important; /* bigger */
+}
+
+/*User Profile Icon */
+.user-icon {
+  color: #ffffff !important; /* white */
+  font-size: 30px !important; /* adjustable size */
+  background: none !important; /* no background */
+  border: none !important;
+  cursor: pointer;
+}
+
+/* Hero Section */
+.weather-hero {
+  width: 100%;
+  background: linear-gradient(to bottom, #2c3e50, #34495e);
+  color: white;
+  padding: 20px 15px 30px; /* smaller top padding, navbar is inside now */
+  min-height: 300px; /* taller hero to fit navbar + content */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* content starts from top */
+  box-sizing: border-box;
+}
+
+/* Hero Header (replacing navbar) */
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px; /* space between header and weather content */
+}
+
+/* Keep existing navbar styles but remove fixed positioning */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.farm-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-family: "Quicksand", sans-serif;
+  color: #e0f3d2; /* lighter green for hero bg contrast */
+}
+
+/* Weather content stays the same */
+.weather-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: nowrap;
+}
+
+/* Temperature + Icon */
+.temp-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.temp {
+  font-size: clamp(55px, 9vw, 90px); /* much larger highlight */
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 10px;
+}
+
+.condition-icon {
+  font-size: clamp(30px, 6vw, 50px);
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Feels like */
+.feels-like {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+/* Right side condition + details */
+.condition {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-transform: capitalize;
+}
+
+.detail {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 5px;
+}
+
+/* Weather hero spacing */
+.weather-content {
+  margin-top: auto;
+  margin-bottom: 15px;
+}
+
+/* Wrapper to align search bar and voice button side by side */
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 0 16px;
+}
+
+/* Search Container */
+.locapp-search {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--locapp-card-bg);
+  border: 2px solid var(--locapp-border);
+  border-radius: 16px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+/* Input */
+.locapp-search-input {
+  flex: 1;
+  background: none;
+  border: none;
   color: var(--locapp-text);
-  background-color: var(--locapp-bg);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  font-size: 16px;
+  outline: none;
+  padding: 0;
+  margin: 0 12px;
+}
+
+/* Search Icon */
+.locapp-search-icon {
+  color: var(--locapp-text-secondary);
+  font-size: 18px;
+  pointer-events: none;
+}
+
+/* Clear Button */
+.locapp-search-clear {
+  background: none;
+  border: none;
+  color: var(--locapp-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+/* Voice Search Button */
+.voice-search-btn {
+  min-width: 48px;
+  height: 48px;
+  background: var(--locapp-primary);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.voice-search-btn.hidden {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+.voice-search-btn.listening {
+  background: #e74c3c;
+  animation: pulse 1.5s infinite;
+}
+
+.voice-text {
+  color: var(--locapp-text-secondary);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.empty-search-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--locapp-text-secondary);
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
+
+.pulse {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+/* Feedback Button */
+.feedback-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  background: var(--locapp-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: white;
+  font-size: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.feedback-btn:hover {
+  background: var(--locapp-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.feedback-btn:active {
+  transform: translateY(0);
+}
+
+.feedback-btn i {
+  font-size: 22px;
+}
+
+/* Section styles */
+.locapp-section {
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.locapp-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cate {
+  color: var(--locapp-text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.locapp-title {
+  color: var(--locapp-text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.locapp-view-all {
+  background: none;
+  border: none;
+  color: var(--locapp-primary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.locapp-view-all:hover {
+  background: var(--locapp-primary-light);
+}
+
+/* Categories Container */
+.locapp-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+/* Category Card */
+.locapp-category-btn {
+  background: var(--locapp-card-bg);
+  border: 2px solid var(--locapp-border);
+  border-radius: 16px;
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 80px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--locapp-text);
+}
+
+/* Icon inside card */
+.locapp-category-btn i {
+  font-size: 24px;
+  margin-bottom: 4px;
+  color: inherit;
+}
+
+/* Hover effect */
+.locapp-category-btn:hover {
+  border-color: var(--locapp-primary);
+  background: var(--locapp-primary-light);
+}
+
+/* Pastel backgrounds with darker icons */
+.locapp-category-btn:nth-child(1) {
+  background-color: #e0f7fa;
+  color: #006064;
+} /* Teal */
+.locapp-category-btn:nth-child(2) {
+  background-color: #fbe9e7;
+  color: #bf360c;
+} /* Orange */
+.locapp-category-btn:nth-child(3) {
+  background-color: #e8eaf6;
+  color: #283593;
+} /* Indigo */
+.locapp-category-btn:nth-child(4) {
+  background-color: #e0f2f1;
+  color: #004d40;
+} /* Aqua Green */
+.locapp-category-btn:nth-child(5) {
+  background-color: #fce4ec;
+  color: #880e4f;
+} /* Pink */
+.locapp-category-btn:nth-child(6) {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+} /* Blue */
+.locapp-category-btn:nth-child(7) {
+  background-color: #ffebee;
+  color: #b71c1c;
+} /* Red */
+.locapp-category-btn:nth-child(8) {
+  background-color: #e1f5fe;
+  color: #01579b;
+} /* Light Blue */
+.locapp-category-btn:nth-child(9) {
+  background-color: #f3e5f5;
+  color: #4a148c;
+} /* Purple */
+.locapp-category-btn:nth-child(10) {
+  background-color: #f1f8e9;
+  color: #33691e;
+} /* Green */
+.locapp-category-btn:nth-child(11) {
+  background-color: #fff3e0;
+  color: #e65100;
+} /* Amber */
+.locapp-category-btn:nth-child(12) {
+  background-color: #f9fbe7;
+  color: #827717;
+} /* Lime */
+
+/* Places Container */
+.locapp-place {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--locapp-card-bg);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid var(--locapp-border);
+}
+
+/* Save Places Header */
+.saveplace {
+  color: var(--locapp-text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Hover effect on row */
+.locapp-place:hover {
+  background: var(--locapp-card-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.locapp-place:active {
+  transform: translateY(0);
+}
+
+/* Gold Icon Box */
+.locapp-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  margin-right: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Place Info (Minimalist style) */
+.locapp-place-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.locapp-place-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--locapp-text);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locapp-place-address {
+  font-size: 13px;
+  color: var(--locapp-text-secondary);
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+/* Distance in gold accent */
+.locapp-distance {
+  font-size: 12px;
+  color: #ffd700;
+  font-weight: 500;
+}
+
+/* Add New Place Button */
+.locapp-add-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--locapp-card-bg);
+  border: 2px dashed var(--locapp-border);
+  border-radius: 12px;
+  color: var(--locapp-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.locapp-add-btn i {
+  font-size: 18px;
+}
+
+.locapp-add-btn:hover {
+  border-color: var(--locapp-primary);
+  color: var(--locapp-primary);
+  background: var(--locapp-primary-light);
+}
+.locapp-add-btn:active {
+  transform: scale(0.98);
+}
+
+/* Gold pulse animation for icon */
+@keyframes goldPulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 15px rgba(255, 215, 0, 0.6);
+  }
+}
+
+.locapp-place:hover .locapp-icon {
+  animation: goldPulse 2s infinite;
+}
+
+.locapp-view-all-btn {
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: 1px solid var(--locapp-border);
+  border-radius: 8px;
+  color: var(--locapp-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+}
+
+.locapp-view-all-btn:hover {
+  background: var(--locapp-primary-light);
+  border-color: var(--locapp-primary);
+}
+
+.locapp-view-all-btn:active {
+  transform: scale(0.98);
 }
 
 /* Navbar Styles */
@@ -58,11 +571,6 @@
   display: flex;
   align-items: center;
   gap: 15px;
-}
-
-.navbar-logo {
-  height: 40px;
-  width: auto;
 }
 
 .farm-name {

@@ -8,57 +8,48 @@
         @close="showTipsModal = false"
         @seen="onTipsSeen" />
     </teleport>
-    <!-- Navbar -->
-    <nav class="locapp-navbar">
-      <div class="navbar-left">
-        <img
-          src="../assets/logo.png"
-          alt="Demo Farm Logo"
-          class="navbar-logo" />
-        <span class="farm-name">BULUSAN PARK</span>
-      </div>
-      <div class="navbar-actions">
-        <!-- Learning Progress Button -->
-        <button
-          class="learning-progress-btn"
-          @click="toggleLearningProgress"
-          :class="{ active: showLearningProgress }"
-          aria-label="Learning Progress">
-          <div class="learning-icon">
-            <i class="bx bx-brain"></i>
-            <div v-if="userLearningStreak > 0" class="streak-badge">
-              {{ userLearningStreak }}
+    <!-- Weather Hero Section with integrated navbar -->
+    <section class="weather-hero">
+      <!-- Hero Header (replacing navbar) -->
+      <div class="hero-header">
+        <div class="navbar-left">
+          <span class="farm-name">BULUSAN PARK</span>
+        </div>
+
+        <div class="navbar-actions">
+          <!-- Learning Progress Button -->
+          <button
+            class="learning-progress-btn"
+            @click="toggleLearningProgress"
+            :class="{ active: showLearningProgress }"
+            aria-label="Learning Progress">
+            <div class="learning-icon">
+              <i class="bx bx-brain"></i>
+              <div v-if="userLearningStreak > 0" class="streak-badge">
+                {{ userLearningStreak }}
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
 
-        <!-- Notification Bell -->
-        <NotificationBell @startNavigation="handleNotificationNavigation" />
+          <!-- Notification Bell -->
+          <NotificationBell
+            class="notification-bell"
+            @startNavigation="handleNotificationNavigation" />
 
-        <!-- QR Code Scanner Button -->
-        <router-link
-          to="/qr-scan"
-          class="qr-scan-btn"
-          aria-label="Scan QR Code">
-          <i class="fas fa-qrcode"></i>
-        </router-link>
+          <!-- QR Code Scanner Button -->
+          <router-link
+            to="/qr-scan"
+            class="qr-scan-btn"
+            aria-label="Scan QR Code">
+            <i class="fas fa-qrcode"></i>
+          </router-link>
 
-        <button
-          class="darkmode-btn"
-          @click="toggleDarkMode"
-          :aria-label="
-            isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'
-          ">
-          <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
-        </button>
-        <router-link to="/userinfo" class="user-profile-btn">
-          <i class="fas fa-user-circle"></i>
-        </router-link>
+          <!-- User Profile -->
+          <router-link to="/userinfo" class="user-profile-btn">
+            <i class="fas fa-user-circle user-icon"></i>
+          </router-link>
+        </div>
       </div>
-    </nav>
-
-    <!-- Weather Widget (now contains floating banner) -->
-    <div class="weather-hero">
       <!-- Floating Weather Advice Banner -->
       <div
         v-if="rainReminder.show"
@@ -122,7 +113,7 @@
 
       <!-- Background weather icons -->
       <div class="weather-bg">���</div>
-    </div>
+    </section>
 
     <!-- Floating Feedback Button (icon only) -->
     <router-link to="/help-center" class="feedback-btn" aria-label="Feedback">
@@ -131,25 +122,17 @@
 
     <br />
     <div class="locapp-content" @click.stop>
-      <!-- Fixed (non-scrolling) header: Search + Categories -->
-      <div class="locapp-fixed-header">
-        <!-- Search -->
+      <!-- Search Container -->
+      <div class="search-wrapper">
         <div class="locapp-search">
-          <i class="fas fa-search locapp-search-icon"></i>
           <input
             type="text"
             class="locapp-search-input"
             placeholder="Search locations..."
             v-model="searchQuery" />
-          <!-- Voice Search Button -->
-          <button
-            @click="toggleVoiceSearch"
-            class="voice-search-btn"
-            :class="{ listening: isVoiceSearchListening }"
-            aria-label="Voice search">
-            <span v-if="isVoiceSearchListening" class="pulse"></span>
-            <i class="fas fa-microphone"></i>
-          </button>
+
+          <i class="fas fa-search locapp-search-icon"></i>
+
           <button
             class="locapp-search-clear"
             v-if="searchQuery"
@@ -157,213 +140,231 @@
             <i class="fas fa-times"></i>
           </button>
         </div>
-        <!-- Voice Search Status (show beneath search if listening) -->
-        <div v-if="isVoiceSearchListening" class="voice-search-status">
-          <div class="voice-indicator">
-            <div class="voice-animation">
-              <span class="voice-bar"></span>
-              <span class="voice-bar"></span>
-              <span class="voice-bar"></span>
-              <span class="voice-bar"></span>
-            </div>
-            <span class="voice-text"
-              >Listening... {{ voiceSearchTranscript }}</span
-            >
+
+        <!-- Voice Search Button (beside search bar) -->
+        <button
+          @click="toggleVoiceSearch"
+          class="voice-search-btn"
+          :class="{ hidden: searchQuery, listening: isVoiceSearchListening }"
+          aria-label="Voice search">
+          <span v-if="isVoiceSearchListening" class="pulse"></span>
+          <i class="fas fa-microphone"></i>
+        </button>
+      </div>
+
+      <!-- Voice Search Status -->
+      <div v-if="isVoiceSearchListening" class="voice-search-status">
+        <div class="voice-indicator">
+          <div class="voice-animation">
+            <span class="voice-bar"></span>
+            <span class="voice-bar"></span>
+            <span class="voice-bar"></span>
+            <span class="voice-bar"></span>
           </div>
+          <span class="voice-text">
+            Listening... {{ voiceSearchTranscript }}
+          </span>
         </div>
-        <!-- Categories -->
-        <div class="locapp-section locapp-categories-header">
-          <div class="locapp-section-header">
-            <h2 class="locapp-title cate">CATEGORIES</h2>
-            <button
-              class="locapp-view-all"
-              @click="showAllCategories = !showAllCategories">
-              {{ showAllCategories ? "Show Less" : "View All" }}
-            </button>
-          </div>
-          <div class="locapp-category-list">
-            <button
-              class="locapp-category-btn"
-              v-for="category in categories"
-              :key="category.key"
-              @click="selectCategory(category.key)"
-              :class="{ active: selectedCategory === category.key }">
-              <i :class="['fas', 'fa-' + category.icon]"></i>
-              {{ category.name }}
-            </button>
+      </div>
+      <!-- Search Results -->
+      <div
+        v-if="searchQuery && searchResults.length > 0"
+        class="locapp-section">
+        <div class="locapp-section-header">
+          <h2>Search Results</h2>
+          <span class="search-count">{{ searchResults.length }} found</span>
+        </div>
+        <div class="locapp-locations-grid">
+          <div
+            class="locapp-location-card"
+            v-for="location in searchResults"
+            :key="location.id"
+            :class="{
+              'maintenance-mode': location.isUnderMaintenance === true,
+            }"
+            @click="
+              location.isUnderMaintenance === true
+                ? handleMaintenanceClick(location)
+                : goToLocation(location)
+            ">
+            <div class="location-image">
+              <img
+                :src="
+                  location.imageUrl || '/placeholder.svg?height=80&width=80'
+                "
+                :alt="location.name"
+                class="location-img" />
+              <div
+                v-if="location.isUnderMaintenance === true"
+                class="maintenance-overlay">
+                <i class="fas fa-tools"></i>
+                <span>Under Maintenance</span>
+              </div>
+              <button
+                @click.stop="showLocationDetails(location)"
+                class="location-info-btn-image"
+                aria-label="View location details">
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+            <div class="location-info">
+              <h3 class="location-name">{{ location.name }}</h3>
+              <p class="location-description">{{ location.description }}</p>
+              <div class="location-coordinates">
+                <i class="fas fa-map-marker-alt"></i>
+                <span
+                  >{{ location.coordinates.x.toFixed(4) }},
+                  {{ location.coordinates.y.toFixed(4) }}</span
+                >
+              </div>
+              <div
+                v-if="location.isUnderMaintenance === true"
+                class="status-badge maintenance">
+                <i class="fas fa-exclamation-triangle"></i>
+                Under Maintenance - Navigation Disabled
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <!-- Scrollable results area -->
-      <div class="locapp-results-scroll">
-        <!-- Search Results -->
-        <div
-          v-if="searchQuery && searchResults.length > 0"
-          class="locapp-section">
-          <div class="locapp-section-header">
-            <h2 class="locapp-title">Search Results</h2>
-            <span class="search-count">{{ searchResults.length }} found</span>
-          </div>
-          <div class="locapp-locations-grid">
-            <div
-              class="locapp-location-card"
-              v-for="location in searchResults"
-              :key="location.id"
-              :class="{
-                'maintenance-mode': location.isUnderMaintenance === true,
-              }"
-              @click="
-                location.isUnderMaintenance === true
-                  ? handleMaintenanceClick(location)
-                  : goToLocation(location)
-              ">
-              <div class="location-image">
-                <img
-                  :src="
-                    location.imageUrl || '/placeholder.svg?height=80&width=80'
-                  "
-                  :alt="location.name"
-                  class="location-img" />
-                <div
-                  v-if="location.isUnderMaintenance === true"
-                  class="maintenance-overlay">
-                  <i class="fas fa-tools"></i>
-                  <span>Under Maintenance</span>
-                </div>
-                <button
-                  @click.stop="showLocationDetails(location)"
-                  class="location-info-btn-image"
-                  aria-label="View location details">
-                  <i class="fas fa-info-circle"></i>
-                </button>
-              </div>
-              <div class="location-info">
-                <h3 class="location-name">{{ location.name }}</h3>
-                <p class="location-description">{{ location.description }}</p>
-                <div class="location-coordinates">
-                  <i class="fas fa-map-marker-alt"></i>
-                  <span
-                    >{{ location.coordinates.x.toFixed(4) }},
-                    {{ location.coordinates.y.toFixed(4) }}</span
-                  >
-                </div>
-                <div
-                  v-if="location.isUnderMaintenance === true"
-                  class="status-badge maintenance">
-                  <i class="fas fa-exclamation-triangle"></i>
-                  Under Maintenance - Navigation Disabled
-                </div>
-              </div>
-            </div>
-          </div>
+
+      <!-- No Search Results -->
+      <div
+        v-if="searchQuery && searchResults.length === 0"
+        class="locapp-section">
+        <div class="empty-search-state">
+          <i class="fas fa-search"></i>
+          <h3>No locations found</h3>
+          <p>Try searching with different keywords or check the spelling</p>
         </div>
-        <!-- No Search Results -->
-        <div
-          v-if="searchQuery && searchResults.length === 0"
-          class="locapp-section">
-          <div class="empty-search-state">
-            <i class="fas fa-search"></i>
-            <h3>No locations found</h3>
-            <p>Try searching with different keywords or check the spelling</p>
-            <button @click="clearSearch" class="clear-search-btn">
-              <i class="fas fa-times"></i>
-              Clear Search
-            </button>
-          </div>
+      </div>
+
+      <br />
+
+      <!-- Categories -->
+      <div class="locapp-section">
+        <div class="locapp-section-header">
+          <h2 class="locapp-title cate">CATEGORIES</h2>
+          <button
+            class="locapp-view-all"
+            @click="showAllCategories = !showAllCategories">
+            {{ showAllCategories ? "Show Less" : "View All" }}
+          </button>
         </div>
-        <!-- Admin Locations by Category -->
-        <div
-          v-if="selectedCategory && filteredAdminLocations.length > 0"
-          class="locapp-section">
-          <div class="locapp-section-header">
-            <h2 class="locapp-title">
-              {{ getCategoryDisplayName(selectedCategory) }} Locations
-            </h2>
-            <button class="locapp-view-all" @click="selectedCategory = null">
-              Show All Categories
-            </button>
-          </div>
-          <div class="locapp-locations-grid">
-            <div
-              class="locapp-location-card"
-              v-for="location in filteredAdminLocations"
-              :key="location.id"
-              :class="{
-                'maintenance-mode': location.isUnderMaintenance === true,
-              }"
-              @click="
-                location.isUnderMaintenance === true
-                  ? handleMaintenanceClick(location)
-                  : goToLocation(location)
-              ">
-              <div class="location-image">
-                <img
-                  :src="
-                    location.imageUrl || '/placeholder.svg?height=80&width=80'
-                  "
-                  :alt="location.name"
-                  class="location-img" />
-                <div
-                  v-if="location.isUnderMaintenance === true"
-                  class="maintenance-overlay">
-                  <i class="fas fa-tools"></i>
-                  <span>Under Maintenance</span>
-                </div>
-                <button
-                  @click.stop="showLocationDetails(location)"
-                  class="location-info-btn-image"
-                  aria-label="View location details">
-                  <i class="fas fa-info-circle"></i>
-                </button>
-              </div>
-              <div class="location-info">
-                <h3 class="location-name">{{ location.name }}</h3>
-                <p class="location-description">{{ location.description }}</p>
-                <div class="location-coordinates">
-                  <i class="fas fa-map-marker-alt"></i>
-                  <span
-                    >{{ location.coordinates.x.toFixed(4) }},
-                    {{ location.coordinates.y.toFixed(4) }}</span
-                  >
-                </div>
-                <div
-                  v-if="location.isUnderMaintenance === true"
-                  class="status-badge maintenance">
-                  <i class="fas fa-exclamation-triangle"></i>
-                  Under Maintenance - Navigation Disabled
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Saved Places -->
-        <div class="locapp-section">
-          <div class="locapp-section-header">
-            <h2 class="locapp-title saveplace">SAVE PLACES</h2>
-            <button class="locapp-view-all">View All</button>
-          </div>
-          <div
-            class="locapp-place"
-            v-for="place in savedPlaces"
-            :key="place.id"
-            @click="goToPlace(place)">
-            <i class="fas fa-bookmark locapp-icon"></i>
-            <div class="locapp-place-text">
-              <div class="locapp-place-name">{{ place.name }}</div>
-              <div class="locapp-place-address">
-                Lat: {{ place.latitude }}, Lng: {{ place.longitude }}
-              </div>
-              <div class="locapp-place-timestamp">
-                {{ formatDate(place.timestamp) }}
-              </div>
-            </div>
-          </div>
-          <button class="locapp-add-btn" @click="showAddPlaceModal = true">
-            <i class="fas fa-plus"></i>
-            Add New Place
+        <div class="locapp-category-list">
+          <button
+            class="locapp-category-btn"
+            v-for="category in categories"
+            :key="category.key"
+            @click="selectCategory(category.key)"
+            :class="{ active: selectedCategory === category.key }">
+            <i :class="['fas', 'fa-' + category.icon]"></i>
+            {{ category.name }}
           </button>
         </div>
       </div>
+
+      <!-- Admin Locations by Category -->
+      <div
+        v-if="selectedCategory && filteredAdminLocations.length > 0"
+        class="locapp-section">
+        <div class="locapp-section-header">
+          <h2>{{ getCategoryDisplayName(selectedCategory) }} Locations</h2>
+        </div>
+
+        <div class="locapp-locations-grid">
+          <div
+            class="locapp-location-card"
+            v-for="location in filteredAdminLocations"
+            :key="location.id"
+            :class="{
+              'maintenance-mode': location.isUnderMaintenance === true,
+            }"
+            @click="
+              location.isUnderMaintenance === true
+                ? handleMaintenanceClick(location)
+                : goToLocation(location)
+            ">
+            <div class="location-image">
+              <img
+                :src="
+                  location.imageUrl || '/placeholder.svg?height=80&width=80'
+                "
+                :alt="location.name"
+                class="location-img" />
+              <div
+                v-if="location.isUnderMaintenance === true"
+                class="maintenance-overlay">
+                <i class="fas fa-tools"></i>
+                <span>Under Maintenance</span>
+              </div>
+              <button
+                @click.stop="showLocationDetails(location)"
+                class="location-info-btn-image"
+                aria-label="View location details">
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+            <div class="location-info">
+              <h3 class="location-name">{{ location.name }}</h3>
+              <p class="location-description">{{ location.description }}</p>
+              <div class="location-coordinates">
+                <i class="fas fa-map-marker-alt"></i>
+                <span
+                  >{{ location.coordinates.x.toFixed(4) }},
+                  {{ location.coordinates.y.toFixed(4) }}</span
+                >
+              </div>
+              <div
+                v-if="location.isUnderMaintenance === true"
+                class="status-badge maintenance">
+                <i class="fas fa-exclamation-triangle"></i>
+                Under Maintenance - Navigation Disabled
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br />
+
+      <!-- Saved Places -->
+      <section class="locapp-section">
+        <header class="locapp-section-header">
+          <h2 class="saveplace">SAVED PLACES</h2>
+        </header>
+
+        <!-- Show only top 3 places -->
+        <div
+          class="locapp-place"
+          v-for="place in savedPlaces.slice(0, 3)"
+          :key="place.id"
+          @click="goToPlace(place)">
+          <i class="fas fa-bookmark locapp-icon"></i>
+          <div class="locapp-place-text">
+            <div class="locapp-place-name">{{ place.name }}</div>
+            <div class="locapp-place-address">
+              Lat: {{ place.latitude }}, Lng: {{ place.longitude }}
+            </div>
+            <div class="locapp-place-timestamp">
+              {{ formatDate(place.timestamp) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- View All button (if more than 3 saved places) -->
+        <button
+          v-if="savedPlaces.length > 3"
+          class="locapp-view-all-btn"
+          @click="showAllPlaces = true">
+          View All
+        </button>
+
+        <!-- Add New Place button -->
+        <button class="locapp-add-btn" @click="showAddPlaceModal = true">
+          <i class="fas fa-plus"></i>
+          Add New Place
+        </button>
+      </section>
     </div>
 
     <!-- Add New Place Modal -->
@@ -526,7 +527,6 @@ const showAllCategories = ref(false);
 const savedPlaces = ref([]);
 const adminLocations = ref([]);
 const isLoading = ref(true);
-const isDarkMode = ref(false);
 const showAddPlaceModal = ref(false);
 const newPlaceName = ref("");
 
@@ -980,15 +980,6 @@ function goToPlace(place) {
   // Implement navigation to user saved place
 }
 
-function toggleDarkMode() {
-  isDarkMode.value = !isDarkMode.value;
-  if (isDarkMode.value) {
-    document.body.classList.add("dark-mode");
-  } else {
-    document.body.classList.remove("dark-mode");
-  }
-}
-
 function formatDate(date) {
   if (!date) return "";
   const d = new Date(date);
@@ -1285,7 +1276,7 @@ async function getWeather() {
 
 <style scoped>
 @import "@/assets/allstyle.css";
-@import "@/assets/responsive.css";
+@import "@/assets/responsive_final.css";
 
 /* Weather Banner (floating inside weather hero) */
 .weather-hero {
@@ -2137,15 +2128,6 @@ body.dark-mode .loading-overlay p {
 
 body.dark-mode .locapp-categories-header {
   border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.darkmode-btn {
-  background: none;
-  border: none;
-  color: #22c55e;
-  font-size: 1.5rem;
-  margin-left: 8px;
-  cursor: pointer;
 }
 
 .qr-scan-btn {
