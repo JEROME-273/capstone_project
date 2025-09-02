@@ -374,6 +374,7 @@ export default {
       oldPasswordValid: false,
       recentDestinations: [],
       showPersonalInfoModal: false,
+      isDarkMode: false,
       editableInfo: {
         email: "",
         firstName: "",
@@ -479,10 +480,14 @@ export default {
         this.arrivalHistory = [];
       }
     }
+
+    // Initialize dark mode state based on current body class
+    this.isDarkMode = document.body.classList.contains("dark-mode");
   },
   methods: {
     toggleTheme() {
       document.body.classList.toggle("dark-mode");
+      this.isDarkMode = document.body.classList.contains("dark-mode");
     },
     toggleDropdown(section) {
       this.openDropdown = this.openDropdown === section ? null : section;
