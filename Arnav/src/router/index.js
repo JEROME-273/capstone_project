@@ -15,6 +15,7 @@ import Homepage from "@/views/homepage.vue";
 import AdminMapManage from "@/views/Admin/AdminMapManage.vue";
 import AdminAnalytics from "@/views/Admin/AdminAnalytics.vue";
 import AdminLearningManage from "@/views/Admin/AdminLearningManage.vue";
+import AdminAnimalManage from "@/views/Admin/AdminAnimalManage.vue";
 import QRScanPage from "@/views/QRScanPage.vue";
 import LocationView from "@/views/LocationView.vue";
 const router = createRouter({
@@ -118,6 +119,15 @@ const router = createRouter({
       path: "/admin-learning-manage",
       name: "AdminLearningManage",
       component: AdminLearningManage,
+      meta: {
+        requiresAuth: true,
+        roles: ["admin"],
+      },
+    },
+    {
+      path: "/admin-animal-manage",
+      name: "AdminAnimalManage",
+      component: AdminAnimalManage,
       meta: {
         requiresAuth: true,
         roles: ["admin"],

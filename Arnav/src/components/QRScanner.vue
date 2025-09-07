@@ -9,7 +9,15 @@
     </div>
     <div v-else class="scanner-active">
       <div class="scan-frame" :class="{ 'qr-detected': qrDetected }">
+        <!-- Manual camera fallback video -->
+        <video
+          v-if="useManualCamera"
+          ref="manualVideo"
+          autoplay
+          playsinline
+          class="manual-video"></video>
         <qrcode-stream
+          v-else
           :key="constraintsKey"
           :constraints="videoConstraints"
           @decode="onDecode"
@@ -78,6 +86,9 @@ export default {
     const processing = ref(false);
     const decodedInfo = ref(null);
     const constraintsKey = ref(0); // Key to force component refresh when constraints change
+    const useManualCamera = ref(false);
+    const manualVideo = ref(null);
+    const manualStream = ref(null);
 
     // Simple camera cleanup - no complex device enumeration
     const cleanupExistingStreams = async () => {
@@ -90,11 +101,10 @@ export default {
     const videoConstraints = ref({
       audio: false,
       video: {
-        facingMode: { ideal: "environment" }, // Use ideal instead of exact for better mobile compatibility
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        // Mobile Chrome specific constraints
-        advanced: [{ facingMode: { exact: "environment" } }],
+        facingMode: { exact: "environment" }, // Force back camera
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        aspectRatio: { ideal: 16 / 9 },
       },
     });
 
@@ -196,20 +206,64 @@ export default {
         clearTimeout(qrDetectionTimeout.value);
         qrDetectionTimeout.value = null;
       }
+      // Stop manual camera if active
+      if (manualStream.value) {
+        manualStream.value.getTracks().forEach((t) => t.stop());
+        manualStream.value = null;
+      }
+    };
+
+    // Manual camera initializer (from SimpleQRScanner)
+    const initManualCamera = async () => {
+      try {
+        const constraints = { video: { facingMode: { exact: "environment" } } };
+        manualStream.value = await navigator.mediaDevices.getUserMedia(
+          constraints
+        );
+      } catch (err) {
+        try {
+          const fallbackConstraints = { video: true };
+          manualStream.value = await navigator.mediaDevices.getUserMedia(
+            fallbackConstraints
+          );
+        } catch (error) {
+          error.value = "Camera access failed: " + error.message;
+          return;
+        }
+      }
+      if (manualVideo.value) {
+        manualVideo.value.srcObject = manualStream.value;
+      }
     };
 
     function extractLocationId(raw) {
       console.log("Trying to extract location ID from:", raw); // Debug log
 
-      // Try JSON first
+      // Check for animal QR code first
       try {
         const obj = JSON.parse(raw);
+        if (obj.type === "animal" && obj.animalId) {
+          console.log("Found animal QR code:", obj.animalId); // Debug log
+          return { type: "animal", id: obj.animalId, ar: false };
+        }
         if (obj.locationId || obj.id) {
           console.log("Found ID in JSON:", obj.locationId || obj.id); // Debug log
-          return { id: obj.locationId || obj.id, ar: !!obj.ar };
+          return {
+            type: "location",
+            id: obj.locationId || obj.id,
+            ar: !!obj.ar,
+          };
         }
       } catch (_) {
         console.log("Not a JSON format"); // Debug log
+      }
+
+      // Check for animal prefix pattern (e.g., "animal:tiger", "animal_tiger", "ANIMAL-TIGER")
+      const animalPattern = /^animal[:\-_](.+)$/i;
+      const animalMatch = raw.trim().match(animalPattern);
+      if (animalMatch) {
+        console.log("Found animal pattern:", animalMatch[1]); // Debug log
+        return { type: "animal", id: animalMatch[1], ar: false };
       }
 
       // URL patterns
@@ -217,10 +271,23 @@ export default {
       if (urlLike) {
         try {
           const u = new URL(raw.trim());
+          // check for animal parameter
+          if (u.searchParams.get("animal")) {
+            console.log(
+              "Found animal ID in URL query:",
+              u.searchParams.get("animal")
+            ); // Debug log
+            return {
+              type: "animal",
+              id: u.searchParams.get("animal"),
+              ar: false,
+            };
+          }
           // check query parameter
           if (u.searchParams.get("id")) {
             console.log("Found ID in URL query:", u.searchParams.get("id")); // Debug log
             return {
+              type: "location",
               id: u.searchParams.get("id"),
               ar: u.searchParams.get("ar") === "true",
             };
@@ -231,7 +298,7 @@ export default {
           if (maybe && maybe.length >= 5) {
             // Reduced minimum length from 10 to 5
             console.log("Found ID in URL path:", maybe); // Debug log
-            return { id: maybe, ar: false };
+            return { type: "location", id: maybe, ar: false };
           }
         } catch (_) {
           console.log("Invalid URL format"); // Debug log
@@ -241,7 +308,7 @@ export default {
       // Plain pattern (more flexible: letters+digits, length 5-50)
       if (/^[A-Za-z0-9_-]{5,50}$/.test(raw.trim())) {
         console.log("Found plain ID:", raw.trim()); // Debug log
-        return { id: raw.trim(), ar: false };
+        return { type: "location", id: raw.trim(), ar: false };
       }
 
       // Path style location/<id>
@@ -249,7 +316,7 @@ export default {
         const parts = raw.split("location/")[1].split(/[\n\r\s?&#]/)[0];
         if (parts) {
           console.log("Found ID in location path:", parts); // Debug log
-          return { id: parts, ar: false };
+          return { type: "location", id: parts, ar: false };
         }
       }
 
@@ -257,7 +324,7 @@ export default {
       const trimmed = raw.trim();
       if (trimmed && trimmed.length >= 3 && /^[A-Za-z0-9_-]+$/.test(trimmed)) {
         console.log("Using fallback ID extraction:", trimmed); // Debug log
-        return { id: trimmed, ar: false };
+        return { type: "location", id: trimmed, ar: false };
       }
 
       console.log("Could not extract location ID from:", raw); // Debug log
@@ -314,10 +381,10 @@ export default {
       }
 
       const result = extractLocationId(decodedString);
-      console.log("Extracted location result:", result); // Debug log
+      console.log("Extracted result:", result); // Debug log
 
       if (!result) {
-        console.log("Failed to extract location ID, trying direct approach"); // Debug log
+        console.log("Failed to extract ID, trying direct approach"); // Debug log
         // If extraction fails, try to use the decoded string directly as location ID
         const directId = decodedString.trim();
         if (directId && directId.length > 5) {
@@ -341,6 +408,18 @@ export default {
         return;
       }
 
+      // Handle animal QR codes
+      if (result.type === "animal") {
+        console.log("Processing animal QR code:", result.id);
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        // Emit animal scan event
+        emit("animal-scanned", result.id);
+        stopScanning();
+        return;
+      }
+
+      // Handle location QR codes (existing logic)
       // Always set ar to true to automatically start AR navigation
       decodedInfo.value = { locationId: result.id, ar: true };
       if (navigator.vibrate) navigator.vibrate(40);
@@ -398,7 +477,10 @@ export default {
               constraintsKey.value++;
               error.value = "Switching to rear camera...";
 
-              return;
+              // Fall back to manual camera handling instead of retry loop
+              useManualCamera.value = true;
+              await initManualCamera();
+              return; // stop further processing
             }
 
             console.log("✅ REAR CAMERA CONFIRMED:", settings.facingMode);
@@ -409,23 +491,17 @@ export default {
         console.error("Camera initialization error:", err);
 
         // Enhanced error handling for mobile Chrome
-        if (err.name === "OverconstrainedError") {
-          console.log("📱 Mobile Chrome: Trying fallback constraints...");
-
-          // Fallback constraints for problematic mobile Chrome versions
-          videoConstraints.value = {
-            audio: false,
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: "environment", // Simple constraint as last resort
-            },
-          };
-
-          constraintsKey.value++;
-          error.value = "Retrying camera access...";
+        // Switch to manual camera fallback immediately
+        useManualCamera.value = true;
+        await initManualCamera();
+        if (!manualStream.value) {
+          if (err.name === "OverconstrainedError") {
+            error.value = "Rear camera not available.";
+          } else {
+            error.value = `Camera error: ${err.message}`;
+          }
         } else {
-          error.value = `Camera error: ${err.message}`;
+          error.value = ""; // cleared because manual camera succeeded
         }
       }
     };
@@ -452,6 +528,8 @@ export default {
       onDetect,
       onInit,
       qrDetected,
+      useManualCamera,
+      manualVideo,
     };
   },
 };
@@ -493,6 +571,12 @@ export default {
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
   border: 2px dashed rgba(255, 255, 255, 0.4);
   border-radius: 16px;
+}
+
+.manual-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .success-overlay {

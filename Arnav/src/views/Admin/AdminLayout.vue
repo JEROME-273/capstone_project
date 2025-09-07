@@ -49,6 +49,12 @@
             <span class="text">Learning Management</span>
           </router-link>
         </li>
+        <li :class="{ active: $route.name === 'AdminAnimalManage' }">
+          <router-link to="/admin-animal-manage">
+            <i class="bx bxs-cat"></i>
+            <span class="text">Animal Management</span>
+          </router-link>
+        </li>
       </ul>
       <ul class="side-menu">
         <li>
