@@ -400,7 +400,13 @@
                 '/placeholder.svg?height=200&width=400'
               "
               :alt="selectedLocationDetails.name"
-              class="modal-img" />
+              class="modal-img clickable-image"
+              @click="open360Viewer(selectedLocationDetails)"
+              title="Click to view in 360°" />
+            <div class="image-overlay-hint">
+              <i class="fas fa-expand-arrows-alt"></i>
+              <span>Click for 360° view</span>
+            </div>
             <div class="modal-type-badge">
               {{ formatCategoryName(selectedLocationDetails.type) }}
             </div>
@@ -481,6 +487,47 @@
 
     <!-- Tracker mounts inside the modal; real-time will re-run when opened -->
 
+    <!-- 360 Image Viewer Modal -->
+    <div v-if="show360Viewer" class="image-360-modal" @click="close360Viewer">
+      <div class="image-360-container" @click.stop>
+        <div class="image-360-header">
+          <h3>{{ current360Image?.name || 'Location 360° View' }}</h3>
+          <button @click="close360Viewer" class="close-360-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="image-360-viewer" ref="viewer360">
+          <canvas 
+            ref="canvas360" 
+            @mousedown="startDrag"
+            @mousemove="drag"
+            @mouseup="endDrag"
+            @mouseleave="endDrag"
+            @touchstart="startTouch"
+            @touchmove="moveTouch"
+            @touchend="endTouch"
+            @wheel="zoom">
+          </canvas>
+          <div class="viewer-controls">
+            <button @click="resetView" class="control-btn">
+              <i class="fas fa-undo"></i> Reset View
+            </button>
+            <div class="zoom-controls">
+              <button @click="zoomIn" class="control-btn">
+                <i class="fas fa-plus"></i>
+              </button>
+              <button @click="zoomOut" class="control-btn">
+                <i class="fas fa-minus"></i>
+              </button>
+            </div>
+          </div>
+          <div class="viewer-instructions">
+            <p><i class="fas fa-mouse"></i> Drag to rotate • <i class="fas fa-search-plus"></i> Scroll to zoom</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="loading-spinner">
@@ -492,7 +539,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   getFirestore,
@@ -546,6 +593,10 @@ const weather = ref({
 
 const showLocationModal = ref(false);
 const selectedLocationDetails = ref(null);
+
+// 360 Image Viewer state
+const show360Viewer = ref(false);
+const current360Image = ref(null);
 
 // Animal modal state
 const showAnimalModal = ref(false);
@@ -670,6 +721,9 @@ onMounted(async () => {
 
   // Load weather data
   getWeather();
+  
+  // Add resize handler for 360 viewer
+  window.addEventListener('resize', handle360Resize);
 });
 
 onUnmounted(() => {
@@ -677,6 +731,12 @@ onUnmounted(() => {
   // Clean up modal event listeners and body scroll
   document.removeEventListener("keydown", handleModalKeydown);
   document.body.classList.remove("modal-open");
+  // Remove resize handler
+  window.removeEventListener('resize', handle360Resize);
+  // Clean up 360 viewer
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
 });
 
 // Voice Search methods
@@ -1048,6 +1108,247 @@ function closeLocationModal() {
   selectedLocationDetails.value = null;
 }
 
+// 360 Image Viewer methods
+const canvas360 = ref(null);
+const viewer360 = ref(null);
+let isDragging = false;
+let lastX = 0;
+let rotationX = 0;
+let scale = 1;
+let velocity = 0; // For momentum scrolling
+let img360 = null;
+let animationId = null;
+
+function open360Viewer(location) {
+  current360Image.value = location;
+  show360Viewer.value = true;
+  
+  // Wait for the next tick to ensure the canvas is rendered
+  nextTick(() => {
+    init360Viewer();
+  });
+}
+
+function close360Viewer() {
+  show360Viewer.value = false;
+  current360Image.value = null;
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+  resetViewerState();
+}
+
+function resetViewerState() {
+  rotationX = 0;
+  // Remove rotationY since we're only doing horizontal 360
+  scale = 1;
+  isDragging = false;
+}
+
+function init360Viewer() {
+  if (!canvas360.value) return;
+  
+  const canvas = canvas360.value;
+  const ctx = canvas.getContext('2d');
+  
+  // Set canvas size
+  canvas.width = viewer360.value.clientWidth;
+  canvas.height = viewer360.value.clientHeight;
+  
+  // Load the image
+  img360 = new Image();
+  img360.crossOrigin = 'anonymous';
+  img360.onload = () => {
+    draw360Image();
+  };
+  
+  // Use the location's imageUrl or a default 360 image
+  // For demo purposes, we'll simulate a 360 effect with the regular image
+  img360.src = current360Image.value?.imageUrl || '/placeholder.svg?height=400&width=800';
+}
+
+function draw360Image() {
+  if (!canvas360.value || !img360) return;
+  
+  const canvas = canvas360.value;
+  const ctx = canvas.getContext('2d');
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Save context state
+  ctx.save();
+  
+  // Apply transformations (only horizontal movement and scale)
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.scale(scale, scale);
+  // Remove vertical rotation - only horizontal panning
+  
+  // Calculate image dimensions to fit canvas while maintaining aspect ratio
+  const imgAspect = img360.width / img360.height;
+  const canvasAspect = canvas.width / canvas.height;
+  
+  let drawWidth, drawHeight;
+  if (imgAspect > canvasAspect) {
+    drawHeight = canvas.height / scale;
+    drawWidth = drawHeight * imgAspect;
+  } else {
+    drawWidth = canvas.width / scale;
+    drawHeight = drawWidth / imgAspect;
+  }
+  
+  // Apply horizontal rotation effect by offsetting the image
+  // Make the movement smoother and more predictable
+  const normalizedRotation = (rotationX % (drawWidth * 2)) / 2;
+  const offsetX = normalizedRotation;
+  
+  // Draw the image multiple times to create seamless horizontal rotation
+  // Use a wider coverage to ensure smooth transitions
+  ctx.drawImage(img360, -drawWidth / 2 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
+  ctx.drawImage(img360, drawWidth / 2 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
+  ctx.drawImage(img360, -drawWidth * 1.5 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
+  ctx.drawImage(img360, drawWidth * 1.5 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
+  
+  // Restore context state
+  ctx.restore();
+}
+
+// Mouse event handlers
+function startDrag(event) {
+  isDragging = true;
+  lastX = event.clientX;
+  velocity = 0; // Reset velocity when starting new drag
+  
+  // Stop any ongoing momentum animation
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+  
+  event.preventDefault();
+}
+
+function drag(event) {
+  if (!isDragging) return;
+  
+  const deltaX = event.clientX - lastX;
+  // Only allow horizontal rotation (no vertical)
+  
+  const movement = deltaX * 1.5; // Increased sensitivity for faster movement
+  rotationX += movement;
+  velocity = movement * 0.15; // Store velocity for momentum
+  
+  lastX = event.clientX;
+  
+  draw360Image();
+  event.preventDefault();
+}
+
+function endDrag() {
+  isDragging = false;
+  // Start momentum if there's velocity (lowered threshold for better responsiveness)
+  if (Math.abs(velocity) > 0.05) {
+    startMomentum();
+  }
+}
+
+function startMomentum() {
+  function animate() {
+    if (Math.abs(velocity) < 0.05) {
+      velocity = 0;
+      return;
+    }
+    
+    rotationX += velocity;
+    velocity *= 0.92; // Reduced friction for longer momentum
+    
+    draw360Image();
+    animationId = requestAnimationFrame(animate);
+  }
+  
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+  animationId = requestAnimationFrame(animate);
+}
+
+// Touch event handlers
+function startTouch(event) {
+  if (event.touches.length === 1) {
+    const touch = event.touches[0];
+    isDragging = true;
+    lastX = touch.clientX;
+    velocity = 0; // Reset velocity when starting new touch
+    
+    // Stop any ongoing momentum animation
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+  }
+  event.preventDefault();
+}
+
+function moveTouch(event) {
+  if (!isDragging || event.touches.length !== 1) return;
+  
+  const touch = event.touches[0];
+  const deltaX = touch.clientX - lastX;
+  // Only allow horizontal rotation (no vertical)
+  
+  const movement = deltaX * 1.5; // Increased sensitivity for faster movement
+  rotationX += movement;
+  velocity = movement * 0.15; // Store velocity for momentum
+  
+  lastX = touch.clientX;
+  
+  draw360Image();
+  event.preventDefault();
+}
+
+function endTouch() {
+  isDragging = false;
+  // Start momentum if there's velocity (lowered threshold for better responsiveness)
+  if (Math.abs(velocity) > 0.05) {
+    startMomentum();
+  }
+}
+
+// Zoom handlers
+function zoom(event) {
+  const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+  scale *= zoomFactor;
+  scale = Math.max(0.5, Math.min(3, scale)); // Limit zoom range
+  
+  draw360Image();
+  event.preventDefault();
+}
+
+function zoomIn() {
+  scale *= 1.2;
+  scale = Math.min(3, scale);
+  draw360Image();
+}
+
+function zoomOut() {
+  scale *= 0.8;
+  scale = Math.max(0.5, scale);
+  draw360Image();
+}
+
+function resetView() {
+  resetViewerState();
+  draw360Image();
+}
+
+function handle360Resize() {
+  if (show360Viewer.value && canvas360.value && viewer360.value) {
+    canvas360.value.width = viewer360.value.clientWidth;
+    canvas360.value.height = viewer360.value.clientHeight;
+    draw360Image();
+  }
+}
+
 // AR Navigation methods
 function goToLocation(location) {
   // Check if location is under maintenance
@@ -1300,4 +1601,276 @@ async function getWeather() {
 <style scoped>
 @import "@/assets/allstyle.css";
 @import "@/assets/responsive_final.css";
+
+/* Image Clickable Hint */
+.location-modal-image {
+  position: relative;
+}
+
+.clickable-image {
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.clickable-image:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.image-overlay-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.location-modal-image:hover .image-overlay-hint {
+  opacity: 1;
+}
+
+/* 360 Image Viewer Modal */
+.image-360-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+
+.image-360-container {
+  width: 95%;
+  height: 95%;
+  max-width: 1200px;
+  max-height: 800px;
+  background: #1a1a1a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.image-360-header {
+  background: linear-gradient(135deg, #2c3e50, #3498db);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.image-360-header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.close-360-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 18px;
+}
+
+.close-360-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.image-360-viewer {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+canvas {
+  flex: 1;
+  cursor: grab;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* Prevent default touch behaviors */
+}
+
+canvas:active {
+  cursor: grabbing;
+}
+
+.viewer-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(10px);
+}
+
+.control-btn:hover {
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.viewer-instructions {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.viewer-instructions p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewer-instructions i {
+  color: #3498db;
+}
+
+/* Clickable image styling */
+.modal-img {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.modal-img:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.location-modal-image {
+  position: relative;
+}
+
+.location-modal-image::after {
+  content: "🔄 Click for 360° View";
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.location-modal-image:hover::after {
+  opacity: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .image-360-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  
+  .image-360-header {
+    padding: 15px;
+  }
+  
+  .image-360-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .viewer-controls {
+    bottom: 15px;
+    left: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .control-btn {
+    padding: 8px;
+    font-size: 12px;
+  }
+  
+  .viewer-instructions {
+    bottom: 15px;
+    right: 15px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  
+  .image-overlay-hint {
+    font-size: 10px;
+    padding: 6px 8px;
+    bottom: 5px;
+    right: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .viewer-controls {
+    position: static;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    justify-content: center;
+  }
+  
+  .viewer-instructions {
+    position: static;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    text-align: center;
+    border-radius: 0;
+  }
+}
 </style>
