@@ -22,6 +22,70 @@
           <img :src="animal.imageUrl" :alt="animal.name" class="animal-image" />
         </div>
 
+        <!-- Animal Sound Player -->
+        <div class="animal-sound-section" v-if="animal.soundUrl">
+          <h3 class="sound-title">
+            <i class="fas fa-volume-up"></i>
+            Listen to {{ animal.name }}
+          </h3>
+          <div class="sound-player">
+            <audio
+              ref="audioPlayer"
+              :src="animal.soundUrl"
+              preload="metadata"
+              @loadedmetadata="onAudioLoaded"
+              @timeupdate="onTimeUpdate"
+              @ended="onAudioEnded">
+              Your browser does not support the audio element.
+            </audio>
+
+            <div class="audio-controls">
+              <button
+                @click="togglePlay"
+                class="play-button"
+                :class="{ playing: isPlaying }"
+                :disabled="!audioLoaded">
+                <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+              </button>
+
+              <div class="audio-progress">
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    :style="{ width: progressPercent + '%' }"></div>
+                  <input
+                    type="range"
+                    min="0"
+                    :max="audioDuration"
+                    v-model="currentTime"
+                    @input="seekAudio"
+                    class="progress-slider"
+                    :disabled="!audioLoaded" />
+                </div>
+                <div class="time-display">
+                  <span class="current-time">{{
+                    formatTime(currentTime)
+                  }}</span>
+                  <span class="duration">{{ formatTime(audioDuration) }}</span>
+                </div>
+              </div>
+
+              <div class="volume-control">
+                <i class="fas fa-volume-down"></i>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  v-model="volume"
+                  @input="updateVolume"
+                  class="volume-slider" />
+                <i class="fas fa-volume-up"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Animal Details -->
         <div class="animal-details">
           <div class="detail-list">
@@ -105,6 +169,8 @@
 </template>
 
 <script>
+import { ref, watch, nextTick } from "vue";
+
 export default {
   name: "AnimalInfoModal",
   props: {
@@ -118,12 +184,122 @@ export default {
     },
   },
   emits: ["close"],
-  methods: {
-    closeModal() {
-      this.$emit("close");
-    },
+  setup(props, { emit }) {
+    // Audio player state
+    const audioPlayer = ref(null);
+    const isPlaying = ref(false);
+    const audioLoaded = ref(false);
+    const currentTime = ref(0);
+    const audioDuration = ref(0);
+    const volume = ref(1);
+    const progressPercent = ref(0);
 
-    getStatusClass(status) {
+    // Watch for modal visibility changes
+    watch(
+      () => props.visible,
+      (newVisible) => {
+        if (!newVisible && isPlaying.value) {
+          stopAudio();
+        }
+      }
+    );
+
+    // Watch for animal changes
+    watch(
+      () => props.animal,
+      () => {
+        resetAudioState();
+      }
+    );
+
+    const resetAudioState = () => {
+      isPlaying.value = false;
+      audioLoaded.value = false;
+      currentTime.value = 0;
+      audioDuration.value = 0;
+      progressPercent.value = 0;
+    };
+
+    const onAudioLoaded = () => {
+      if (audioPlayer.value) {
+        audioLoaded.value = true;
+        audioDuration.value = audioPlayer.value.duration || 0;
+        audioPlayer.value.volume = volume.value;
+      }
+    };
+
+    const onTimeUpdate = () => {
+      if (audioPlayer.value) {
+        currentTime.value = audioPlayer.value.currentTime;
+        progressPercent.value =
+          audioDuration.value > 0
+            ? (currentTime.value / audioDuration.value) * 100
+            : 0;
+      }
+    };
+
+    const onAudioEnded = () => {
+      isPlaying.value = false;
+      currentTime.value = 0;
+      progressPercent.value = 0;
+    };
+
+    const togglePlay = async () => {
+      if (!audioPlayer.value || !audioLoaded.value) return;
+
+      try {
+        if (isPlaying.value) {
+          audioPlayer.value.pause();
+          isPlaying.value = false;
+        } else {
+          await audioPlayer.value.play();
+          isPlaying.value = true;
+        }
+      } catch (error) {
+        console.error("Error playing audio:", error);
+        alert("Unable to play audio. Please check your internet connection.");
+      }
+    };
+
+    const stopAudio = () => {
+      if (audioPlayer.value) {
+        audioPlayer.value.pause();
+        audioPlayer.value.currentTime = 0;
+        isPlaying.value = false;
+        currentTime.value = 0;
+        progressPercent.value = 0;
+      }
+    };
+
+    const seekAudio = (event) => {
+      if (audioPlayer.value && audioLoaded.value) {
+        const seekTime = parseFloat(event.target.value);
+        audioPlayer.value.currentTime = seekTime;
+        currentTime.value = seekTime;
+      }
+    };
+
+    const updateVolume = (event) => {
+      const newVolume = parseFloat(event.target.value);
+      volume.value = newVolume;
+      if (audioPlayer.value) {
+        audioPlayer.value.volume = newVolume;
+      }
+    };
+
+    const formatTime = (seconds) => {
+      if (isNaN(seconds) || seconds === 0) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    };
+
+    const closeModal = () => {
+      stopAudio();
+      emit("close");
+    };
+
+    const getStatusClass = (status) => {
       if (!status) return "";
       const lowerStatus = status.toLowerCase();
       if (lowerStatus.includes("extinct")) return "extinct";
@@ -131,23 +307,23 @@ export default {
       if (lowerStatus.includes("vulnerable")) return "vulnerable";
       if (lowerStatus.includes("concern")) return "concern";
       return "stable";
-    },
+    };
 
-    shareAnimal() {
-      if (!this.animal) return;
+    const shareAnimal = () => {
+      if (!props.animal) return;
 
       if (navigator.share) {
         navigator
           .share({
-            title: `Learn about ${this.animal.name}`,
-            text: `Check out this information about ${this.animal.name}!`,
+            title: `Learn about ${props.animal.name}`,
+            text: `Check out this information about ${props.animal.name}!`,
             url: window.location.href,
           })
           .catch(console.error);
       } else {
         // Fallback: copy to clipboard
-        const text = `Learn about ${this.animal.name}! ${
-          this.animal.description || ""
+        const text = `Learn about ${props.animal.name}! ${
+          props.animal.description || ""
         }`;
         navigator.clipboard
           .writeText(text)
@@ -158,7 +334,33 @@ export default {
             alert("Unable to share. Please try again.");
           });
       }
-    },
+    };
+
+    return {
+      // Audio player refs and state
+      audioPlayer,
+      isPlaying,
+      audioLoaded,
+      currentTime,
+      audioDuration,
+      volume,
+      progressPercent,
+
+      // Audio methods
+      onAudioLoaded,
+      onTimeUpdate,
+      onAudioEnded,
+      togglePlay,
+      stopAudio,
+      seekAudio,
+      updateVolume,
+      formatTime,
+
+      // Other methods
+      closeModal,
+      getStatusClass,
+      shareAnimal,
+    };
   },
 };
 </script>
@@ -537,5 +739,211 @@ body.dark-mode .close-modal-btn {
 
 body.dark-mode .close-modal-btn:hover {
   background: #333;
+}
+
+/* Animal Sound Player Styles */
+.animal-sound-section {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  margin: 0 24px 20px 24px;
+  color: white;
+}
+
+.sound-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sound-title i {
+  color: #ffd700;
+  animation: pulse 2s infinite;
+}
+
+.sound-player {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.play-button {
+  background: #ffd700;
+  color: #333;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.play-button:hover {
+  background: #ffed4e;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+}
+
+.play-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.play-button.playing {
+  background: #ff6b6b;
+  color: white;
+}
+
+.play-button.playing:hover {
+  background: #ff5252;
+}
+
+.audio-progress {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #ffd700;
+  border-radius: 3px;
+  transition: width 0.1s ease;
+}
+
+.progress-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  background: #ffd700;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.volume-control i {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.volume-slider {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #ffd700;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #ffd700;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Responsive Design for Sound Player */
+@media (max-width: 768px) {
+  .audio-controls {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .volume-control {
+    min-width: 100px;
+    order: 3;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+
+  .play-button {
+    width: 45px;
+    height: 45px;
+  }
+
+  .animal-sound-section {
+    margin: 0 16px 20px 16px;
+    padding: 15px;
+  }
+}
+
+/* Dark mode support for sound player */
+body.dark-mode .animal-sound-section {
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+}
+
+body.dark-mode .sound-player {
+  background: rgba(0, 0, 0, 0.3);
 }
 </style>

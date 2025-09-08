@@ -19,11 +19,13 @@
       <div class="animals-grid">
         <div v-for="animal in animals" :key="animal.id" class="animal-card">
           <div class="animal-image">
+            <div v-if="!animal.imageUrl" class="no-image-placeholder">
+              <i class="bx bx-image"></i>
+              <span>No Image</span>
+            </div>
             <img
-              :src="
-                animal.imageUrl ||
-                'https://via.placeholder.com/300x200?text=No+Image'
-              "
+              v-else
+              :src="animal.imageUrl"
               :alt="animal.name"
               @error="handleImageError" />
           </div>
@@ -40,6 +42,16 @@
           <div class="animal-actions">
             <button class="btn btn-edit" @click="editAnimal(animal)">
               <i class="bx bx-edit"></i> Edit
+            </button>
+            <button
+              v-if="animal.soundUrl"
+              class="btn btn-sound"
+              @click="playSound(animal.soundUrl)"
+              :disabled="playingSounds.includes(animal.id)">
+              <i class="bx bx-volume-full"></i>
+              {{
+                playingSounds.includes(animal.id) ? "Playing..." : "Play Sound"
+              }}
             </button>
             <button class="btn btn-qr" @click="generateQR(animal)">
               <i class="bx bx-qr"></i> QR Code
@@ -147,11 +159,101 @@
               </div>
 
               <div class="form-group">
-                <label>Image URL</label>
-                <input
-                  v-model="animalForm.imageUrl"
-                  type="url"
-                  placeholder="https://example.com/image.jpg" />
+                <label>Image Upload</label>
+                <div class="image-upload-container">
+                  <!-- Image Preview -->
+                  <div v-if="imagePreview" class="image-preview">
+                    <img
+                      :src="imagePreview"
+                      alt="Preview"
+                      style="max-width: 100%; height: auto" />
+                    <button
+                      type="button"
+                      class="remove-image-btn"
+                      @click="removeImage">
+                      <i class="bx bx-x"></i>
+                    </button>
+                  </div>
+
+                  <!-- Upload Area -->
+                  <div
+                    v-else
+                    class="upload-area"
+                    @click="triggerFileInput"
+                    @dragover.prevent
+                    @drop.prevent="handleFileDrop">
+                    <i class="bx bx-cloud-upload"></i>
+                    <p>Click to upload or drag and drop</p>
+                    <span>Supports: JPG, PNG, GIF (Max 10MB)</span>
+                  </div>
+
+                  <!-- Hidden File Input -->
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/*"
+                    @change="handleFileUpload"
+                    style="display: none" />
+
+                  <!-- Upload Progress -->
+                  <div v-if="uploading" class="upload-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill"></div>
+                    </div>
+                    <span>Uploading image...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Animal Sound Upload</label>
+                <div class="audio-upload-container">
+                  <!-- Audio Preview -->
+                  <div v-if="audioPreview" class="audio-preview">
+                    <div class="audio-player">
+                      <audio controls :src="audioPreview" preload="metadata">
+                        Your browser does not support the audio element.
+                      </audio>
+                      <div class="audio-info">
+                        <span class="file-name">{{ audioFileName }}</span>
+                        <button
+                          type="button"
+                          class="remove-audio-btn"
+                          @click="removeAudio">
+                          <i class="bx bx-x"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Upload Area -->
+                  <div
+                    v-else
+                    class="upload-area audio-upload"
+                    @click="triggerAudioInput"
+                    @dragover.prevent
+                    @drop.prevent="handleAudioDrop">
+                    <i class="bx bx-music"></i>
+                    <p>Click to upload or drag and drop</p>
+                    <span>Supports: MP3, WAV, OGG (Max 10MB)</span>
+                  </div>
+
+                  <!-- Hidden Audio Input -->
+                  <input
+                    ref="audioInput"
+                    type="file"
+                    accept="audio/*"
+                    @change="handleAudioUpload"
+                    style="display: none" />
+
+                  <!-- Upload Progress -->
+                  <div v-if="audioUploading" class="upload-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill"></div>
+                    </div>
+                    <span>Uploading audio...</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -238,7 +340,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, nextTick } from "vue";
+import { ref, onMounted, computed, nextTick, watch } from "vue";
 import {
   getFirestore,
   collection,
@@ -267,6 +369,28 @@ export default {
     const showQRModal = ref(false);
     const selectedAnimal = ref(null);
     const qrCanvas = ref(null);
+    const playingSounds = ref([]);
+    const previewPlaying = ref(false);
+    const uploading = ref(false);
+    const imagePreview = ref("");
+    const fileInput = ref(null);
+
+    // Audio upload variables
+    const audioUploading = ref(false);
+    const audioPreview = ref("");
+    const audioFileName = ref("");
+    const audioInput = ref(null);
+
+    // Debug watcher for imagePreview
+    watch(imagePreview, (newValue, oldValue) => {
+      console.log("imagePreview changed from:", oldValue, "to:", newValue);
+    });
+
+    // Cloudinary configuration
+    const CLOUDINARY_CLOUD_NAME =
+      import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dhkztfwiw";
+    const CLOUDINARY_UPLOAD_PRESET =
+      import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "my_unsigned_preset";
 
     const animalForm = ref({
       name: "",
@@ -279,6 +403,7 @@ export default {
       description: "",
       funFacts: [],
       imageUrl: "",
+      soundUrl: "",
     });
 
     const funFactsText = ref("");
@@ -311,10 +436,17 @@ export default {
         }
 
         const querySnapshot = await getDocs(collection(db, "animals"));
-        animals.value = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        animals.value = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          // Clean up any old placeholder URLs
+          if (data.imageUrl && data.imageUrl.includes("via.placeholder.com")) {
+            data.imageUrl = "";
+          }
+          return {
+            id: doc.id,
+            ...data,
+          };
+        });
       } catch (error) {
         console.error("Error loading animals:", error);
         if (error.code === "permission-denied") {
@@ -389,11 +521,221 @@ export default {
       }
     };
 
-    // Edit animal
+    // File upload functions
+    const handleFileUpload = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size must be less than 10MB");
+        if (fileInput.value) fileInput.value.value = "";
+        return;
+      }
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imagePreview.value = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      uploading.value = true;
+      try {
+        // Method 1: Try with your existing preset
+        let response = await uploadToCloudinary(file, CLOUDINARY_UPLOAD_PRESET);
+
+        // Method 2: If that fails, try with a different approach
+        if (!response.ok) {
+          console.log("First upload method failed, trying alternative...");
+          response = await uploadToCloudinaryAlternative(file);
+        }
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error.message || "Upload failed");
+        }
+
+        animalForm.value.imageUrl = data.secure_url;
+        imagePreview.value = data.secure_url; // Update preview with Cloudinary URL
+        console.log("Image uploaded successfully! URL:", data.secure_url);
+        console.log("Image preview set to:", imagePreview.value);
+        alert("Image uploaded successfully!");
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        alert(`Failed to upload image: ${error.message}`);
+        animalForm.value.imageUrl = "";
+        imagePreview.value = ""; // Clear preview on error
+      } finally {
+        uploading.value = false;
+        if (fileInput.value) fileInput.value.value = "";
+      }
+    };
+
+    // Primary upload method
+    const uploadToCloudinary = async (file, uploadPreset) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+
+      return await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    };
+
+    // Alternative upload method with different preset
+    const uploadToCloudinaryAlternative = async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "ml_default"); // Cloudinary's default unsigned preset
+
+      return await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    };
+
+    const triggerFileInput = () => {
+      fileInput.value?.click();
+    };
+
+    const handleFileDrop = (event) => {
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith("image/")) {
+          // Simulate file input change
+          const fakeEvent = { target: { files: [file] } };
+          handleFileUpload(fakeEvent);
+        } else {
+          alert("Please drop an image file");
+        }
+      }
+    };
+
+    const removeImage = () => {
+      imagePreview.value = "";
+      animalForm.value.imageUrl = "";
+      if (fileInput.value) fileInput.value.value = "";
+      alert("Image removed");
+    };
+
+    // Audio upload functions
+    const handleAudioUpload = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validate file type
+      if (!file.type.startsWith("audio/")) {
+        alert("Please select an audio file (MP3, WAV, OGG)");
+        if (audioInput.value) audioInput.value.value = "";
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size must be less than 10MB");
+        if (audioInput.value) audioInput.value.value = "";
+        return;
+      }
+
+      // Show preview immediately using local URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        audioPreview.value = e.target.result;
+        audioFileName.value = file.name;
+      };
+      reader.readAsDataURL(file);
+
+      audioUploading.value = true;
+      try {
+        console.log("Starting audio upload to Cloudinary...");
+
+        // Upload to Cloudinary (same as images but for audio)
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+        formData.append("resource_type", "video"); // Use 'video' for audio files in Cloudinary
+
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error.message || "Upload failed");
+        }
+
+        animalForm.value.soundUrl = data.secure_url;
+        audioPreview.value = data.secure_url; // Use Cloudinary URL for final preview
+        console.log("Audio uploaded successfully to Cloudinary! URL:", data.secure_url);
+        alert("Audio uploaded successfully!");
+      } catch (error) {
+        console.error("Error uploading audio:", error);
+        alert(`Failed to upload audio: ${error.message}`);
+        animalForm.value.soundUrl = "";
+        audioPreview.value = "";
+        audioFileName.value = "";
+      } finally {
+        audioUploading.value = false;
+        if (audioInput.value) audioInput.value.value = "";
+      }
+    };
+
+    const triggerAudioInput = () => {
+      audioInput.value?.click();
+    };
+
+    const handleAudioDrop = (event) => {
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith("audio/")) {
+          // Simulate file input change
+          const fakeEvent = { target: { files: [file] } };
+          handleAudioUpload(fakeEvent);
+        } else {
+          alert("Please drop an audio file");
+        }
+      }
+    };
+
+    const removeAudio = () => {
+      audioPreview.value = "";
+      audioFileName.value = "";
+      animalForm.value.soundUrl = "";
+      if (audioInput.value) audioInput.value.value = "";
+      alert("Audio removed");
+    };
+
+    // Edit animal - update to handle both image and audio preview
     const editAnimal = (animal) => {
       selectedAnimal.value = animal;
       animalForm.value = { ...animal };
       funFactsText.value = animal.funFacts ? animal.funFacts.join("\n") : "";
+      imagePreview.value = animal.imageUrl || "";
+      audioPreview.value = animal.soundUrl || "";
+      audioFileName.value = animal.soundUrl ? "Existing audio file" : "";
       showEditModal.value = true;
     };
 
@@ -487,6 +829,87 @@ export default {
       }
     };
 
+    // Play animal sound
+    const playSound = async (soundUrl) => {
+      if (!soundUrl) return;
+
+      // Find the animal ID for tracking
+      const animal = animals.value.find((a) => a.soundUrl === soundUrl);
+      if (!animal) return;
+
+      try {
+        // Add to playing sounds
+        playingSounds.value.push(animal.id);
+
+        // Create audio element
+        const audio = new Audio(soundUrl);
+
+        // Handle audio events
+        audio.addEventListener("ended", () => {
+          // Remove from playing sounds when finished
+          const index = playingSounds.value.indexOf(animal.id);
+          if (index > -1) {
+            playingSounds.value.splice(index, 1);
+          }
+        });
+
+        audio.addEventListener("error", (e) => {
+          console.error("Error playing sound:", e);
+          alert("Error playing sound. Please check the sound URL.");
+          // Remove from playing sounds on error
+          const index = playingSounds.value.indexOf(animal.id);
+          if (index > -1) {
+            playingSounds.value.splice(index, 1);
+          }
+        });
+
+        // Play the audio
+        await audio.play();
+      } catch (error) {
+        console.error("Error playing sound:", error);
+        alert(
+          "Error playing sound. Please ensure the URL is valid and accessible."
+        );
+        // Remove from playing sounds on error
+        const index = playingSounds.value.indexOf(animal.id);
+        if (index > -1) {
+          playingSounds.value.splice(index, 1);
+        }
+      }
+    };
+
+    // Preview sound in form
+    const previewSound = async (soundUrl) => {
+      if (!soundUrl || previewPlaying.value) return;
+
+      try {
+        previewPlaying.value = true;
+
+        // Create audio element
+        const audio = new Audio(soundUrl);
+
+        // Handle audio events
+        audio.addEventListener("ended", () => {
+          previewPlaying.value = false;
+        });
+
+        audio.addEventListener("error", (e) => {
+          console.error("Error previewing sound:", e);
+          alert("Error previewing sound. Please check the sound URL.");
+          previewPlaying.value = false;
+        });
+
+        // Play the audio
+        await audio.play();
+      } catch (error) {
+        console.error("Error previewing sound:", error);
+        alert(
+          "Error previewing sound. Please ensure the URL is valid and accessible."
+        );
+        previewPlaying.value = false;
+      }
+    };
+
     // Close modals
     const closeModals = () => {
       showAddModal.value = false;
@@ -509,8 +932,28 @@ export default {
         description: "",
         funFacts: [],
         imageUrl: "",
+        soundUrl: "",
       };
       funFactsText.value = "";
+      imagePreview.value = "";
+      if (fileInput.value) fileInput.value.value = "";
+    };
+
+    // Handle image loading errors
+    const handleImageError = (event) => {
+      console.log("Image error for URL:", event.target.src);
+      // Hide the image and show placeholder
+      if (!event.target.dataset.errorHandled) {
+        event.target.dataset.errorHandled = "true";
+        event.target.style.display = "none";
+
+        // Create and show placeholder
+        const placeholder = document.createElement("div");
+        placeholder.className = "no-image-placeholder";
+        placeholder.innerHTML =
+          '<i class="bx bx-image"></i><span>Image Failed</span>';
+        event.target.parentNode.appendChild(placeholder);
+      }
     };
 
     // Get conservation status class
@@ -557,14 +1000,34 @@ export default {
       funFactsText,
       qrData,
       qrCanvas,
+      playingSounds,
+      previewPlaying,
+      uploading,
+      imagePreview,
+      fileInput,
+      audioUploading,
+      audioPreview,
+      audioFileName,
+      audioInput,
       saveAnimal,
       editAnimal,
       deleteAnimal,
       generateQR,
       downloadQR,
       printQR,
+      playSound,
+      previewSound,
+      handleFileUpload,
+      triggerFileInput,
+      handleFileDrop,
+      removeImage,
+      handleAudioUpload,
+      triggerAudioInput,
+      handleAudioDrop,
+      removeAudio,
       closeModals,
       getStatusClass,
+      handleImageError,
       logout,
     };
   },
@@ -627,6 +1090,20 @@ export default {
   background: #388e3c;
 }
 
+.btn-sound {
+  background: #9c27b0;
+  color: white;
+}
+
+.btn-sound:hover {
+  background: #7b1fa2;
+}
+
+.btn-sound:disabled {
+  background: #ba68c8;
+  cursor: not-allowed;
+}
+
 .btn-delete {
   background: #f44336;
   color: white;
@@ -684,6 +1161,29 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.no-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+}
+
+.no-image-placeholder i {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.no-image-placeholder span {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .animal-info h3 {
@@ -866,6 +1366,152 @@ export default {
   border-color: #2196f3;
 }
 
+.input-with-button {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.btn-preview {
+  background: #3f51b5;
+  color: white;
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.btn-preview:hover {
+  background: #303f9f;
+}
+
+.btn-preview:disabled {
+  background: #7986cb;
+  cursor: not-allowed;
+}
+
+/* Image Upload Styles */
+.image-upload-container {
+  margin-top: 8px;
+}
+
+.image-preview {
+  position: relative;
+  max-width: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #ddd;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.remove-image-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #f44336;
+}
+
+.upload-area {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fafafa;
+}
+
+.upload-area:hover {
+  border-color: #2196f3;
+  background: #f0f8ff;
+}
+
+.upload-area i {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.upload-area:hover i {
+  color: #2196f3;
+}
+
+.upload-area p {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+.upload-area span {
+  font-size: 14px;
+  color: #999;
+}
+
+.upload-progress {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #f0f0f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2196f3, #21cbf3);
+  animation: progress-animation 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-animation {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.upload-progress span {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
@@ -954,5 +1600,89 @@ export default {
   .form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Audio Upload Styles */
+.audio-upload-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.audio-upload {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.audio-upload:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.audio-upload i {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  opacity: 0.8;
+}
+
+.audio-preview {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.audio-player {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.audio-player audio {
+  width: 100%;
+  border-radius: 5px;
+}
+
+.audio-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  border: 1px solid #e0e0e0;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: #666;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-audio-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 10px;
+}
+
+.remove-audio-btn:hover {
+  background: #c82333;
+  transform: scale(1.1);
+}
+
+.remove-audio-btn i {
+  font-size: 1rem;
 }
 </style>
