@@ -17,12 +17,20 @@
         @close="showAnimalModal = false" />
     </teleport>
 
+    <!-- Feedback Modal (teleported to body) -->
+    <teleport to="body">
+      <FeedbackModal
+        :visible="showFeedbackModal"
+        @close="showFeedbackModal = false" />
+    </teleport>
+
     <!-- Weather Hero Section with integrated navbar -->
-    <section class="weather-hero">
+    <section class="weather-hero" :class="weatherClass">
       <!-- Navbar contents placed at the top -->
       <div class="hero-header">
         <div class="navbar-left">
-          <span class="farm-name">BP</span>
+          <img src="@/assets/final_logo.png" alt="BARIS" class="farm-logo" />
+          BARIS
         </div>
 
         <div class="navbar-actions">
@@ -42,7 +50,7 @@
 
           <!-- QR Code Scanner Button -->
           <router-link
-            to="/qr-scan"
+            to="/qr-scan-aw"
             class="qr-scan-btn"
             aria-label="Scan QR Code">
             <i class="fas fa-qrcode"></i>
@@ -106,9 +114,12 @@
     </section>
 
     <!-- Floating Feedback Button (icon only) -->
-    <router-link to="/help-center" class="feedback-btn" aria-label="Feedback">
+    <button
+      @click="openFeedbackModal"
+      class="feedback-btn"
+      aria-label="Feedback">
       <i class="fas fa-comment-alt"></i>
-    </router-link>
+    </button>
 
     <br />
     <div class="locapp-content" @click.stop>
@@ -491,14 +502,14 @@
     <div v-if="show360Viewer" class="image-360-modal" @click="close360Viewer">
       <div class="image-360-container" @click.stop>
         <div class="image-360-header">
-          <h3>{{ current360Image?.name || 'Location 360° View' }}</h3>
+          <h3>{{ current360Image?.name || "Location 360° View" }}</h3>
           <button @click="close360Viewer" class="close-360-btn">
             <i class="fas fa-times"></i>
           </button>
         </div>
         <div class="image-360-viewer" ref="viewer360">
-          <canvas 
-            ref="canvas360" 
+          <canvas
+            ref="canvas360"
             @mousedown="startDrag"
             @mousemove="drag"
             @mouseup="endDrag"
@@ -522,7 +533,10 @@
             </div>
           </div>
           <div class="viewer-instructions">
-            <p><i class="fas fa-mouse"></i> Drag to rotate • <i class="fas fa-search-plus"></i> Scroll to zoom</p>
+            <p>
+              <i class="fas fa-mouse"></i> Drag to rotate •
+              <i class="fas fa-search-plus"></i> Scroll to zoom
+            </p>
           </div>
         </div>
       </div>
@@ -562,6 +576,7 @@ import NotificationBell from "@/components/NotificationBell.vue";
 import LearningProgressTracker from "@/components/LearningProgressTracker.vue";
 import LearningTipsModal from "@/components/LearningTipsModal.vue";
 import AnimalInfoModal from "@/components/AnimalInfoModal.vue";
+import FeedbackModal from "@/components/FeedbackModal.vue";
 import { checkRainSoon } from "@/services/WeatherService";
 import NotificationService from "@/services/NotificationService";
 import VoiceService from "@/services/VoiceService";
@@ -601,6 +616,9 @@ const current360Image = ref(null);
 // Animal modal state
 const showAnimalModal = ref(false);
 const selectedAnimal = ref(null);
+
+// Feedback modal state
+const showFeedbackModal = ref(false);
 
 // Voice Search state
 const voiceSearchRecognition = ref(null);
@@ -684,6 +702,30 @@ const searchResults = computed(() => {
   );
 });
 
+// Weather class computed property
+const weatherClass = computed(() => {
+  if (!weather.value.condition) return "cloudy-weather"; // changed default to cloudy for testing
+
+  const condition = weather.value.condition.toLowerCase();
+  console.log("Current weather condition:", condition); // debug log
+
+  if (
+    condition.includes("rain") ||
+    condition.includes("drizzle") ||
+    condition.includes("shower")
+  ) {
+    return "rainy-weather";
+  } else if (condition.includes("sun") || condition.includes("clear")) {
+    return "sunny-weather";
+  } else if (condition.includes("cloud") || condition.includes("overcast")) {
+    return "cloudy-weather";
+  } else if (condition.includes("wind")) {
+    return "windy-weather";
+  } else {
+    return "cloudy-weather"; // changed default to cloudy for better visibility
+  }
+});
+
 // Lifecycle hooks
 onMounted(async () => {
   // Initialize voice search
@@ -721,9 +763,9 @@ onMounted(async () => {
 
   // Load weather data
   getWeather();
-  
+
   // Add resize handler for 360 viewer
-  window.addEventListener('resize', handle360Resize);
+  window.addEventListener("resize", handle360Resize);
 });
 
 onUnmounted(() => {
@@ -732,7 +774,7 @@ onUnmounted(() => {
   document.removeEventListener("keydown", handleModalKeydown);
   document.body.classList.remove("modal-open");
   // Remove resize handler
-  window.removeEventListener('resize', handle360Resize);
+  window.removeEventListener("resize", handle360Resize);
   // Clean up 360 viewer
   if (animationId) {
     cancelAnimationFrame(animationId);
@@ -1108,6 +1150,10 @@ function closeLocationModal() {
   selectedLocationDetails.value = null;
 }
 
+function openFeedbackModal() {
+  showFeedbackModal.value = true;
+}
+
 // 360 Image Viewer methods
 const canvas360 = ref(null);
 const viewer360 = ref(null);
@@ -1122,7 +1168,7 @@ let animationId = null;
 function open360Viewer(location) {
   current360Image.value = location;
   show360Viewer.value = true;
-  
+
   // Wait for the next tick to ensure the canvas is rendered
   nextTick(() => {
     init360Viewer();
@@ -1147,47 +1193,48 @@ function resetViewerState() {
 
 function init360Viewer() {
   if (!canvas360.value) return;
-  
+
   const canvas = canvas360.value;
-  const ctx = canvas.getContext('2d');
-  
+  const ctx = canvas.getContext("2d");
+
   // Set canvas size
   canvas.width = viewer360.value.clientWidth;
   canvas.height = viewer360.value.clientHeight;
-  
+
   // Load the image
   img360 = new Image();
-  img360.crossOrigin = 'anonymous';
+  img360.crossOrigin = "anonymous";
   img360.onload = () => {
     draw360Image();
   };
-  
+
   // Use the location's imageUrl or a default 360 image
   // For demo purposes, we'll simulate a 360 effect with the regular image
-  img360.src = current360Image.value?.imageUrl || '/placeholder.svg?height=400&width=800';
+  img360.src =
+    current360Image.value?.imageUrl || "/placeholder.svg?height=400&width=800";
 }
 
 function draw360Image() {
   if (!canvas360.value || !img360) return;
-  
+
   const canvas = canvas360.value;
-  const ctx = canvas.getContext('2d');
-  
+  const ctx = canvas.getContext("2d");
+
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+
   // Save context state
   ctx.save();
-  
+
   // Apply transformations (only horizontal movement and scale)
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.scale(scale, scale);
   // Remove vertical rotation - only horizontal panning
-  
+
   // Calculate image dimensions to fit canvas while maintaining aspect ratio
   const imgAspect = img360.width / img360.height;
   const canvasAspect = canvas.width / canvas.height;
-  
+
   let drawWidth, drawHeight;
   if (imgAspect > canvasAspect) {
     drawHeight = canvas.height / scale;
@@ -1196,19 +1243,43 @@ function draw360Image() {
     drawWidth = canvas.width / scale;
     drawHeight = drawWidth / imgAspect;
   }
-  
+
   // Apply horizontal rotation effect by offsetting the image
   // Make the movement smoother and more predictable
   const normalizedRotation = (rotationX % (drawWidth * 2)) / 2;
   const offsetX = normalizedRotation;
-  
+
   // Draw the image multiple times to create seamless horizontal rotation
   // Use a wider coverage to ensure smooth transitions
-  ctx.drawImage(img360, -drawWidth / 2 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
-  ctx.drawImage(img360, drawWidth / 2 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
-  ctx.drawImage(img360, -drawWidth * 1.5 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
-  ctx.drawImage(img360, drawWidth * 1.5 - offsetX, -drawHeight / 2, drawWidth, drawHeight);
-  
+  ctx.drawImage(
+    img360,
+    -drawWidth / 2 - offsetX,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight
+  );
+  ctx.drawImage(
+    img360,
+    drawWidth / 2 - offsetX,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight
+  );
+  ctx.drawImage(
+    img360,
+    -drawWidth * 1.5 - offsetX,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight
+  );
+  ctx.drawImage(
+    img360,
+    drawWidth * 1.5 - offsetX,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight
+  );
+
   // Restore context state
   ctx.restore();
 }
@@ -1218,28 +1289,28 @@ function startDrag(event) {
   isDragging = true;
   lastX = event.clientX;
   velocity = 0; // Reset velocity when starting new drag
-  
+
   // Stop any ongoing momentum animation
   if (animationId) {
     cancelAnimationFrame(animationId);
     animationId = null;
   }
-  
+
   event.preventDefault();
 }
 
 function drag(event) {
   if (!isDragging) return;
-  
+
   const deltaX = event.clientX - lastX;
   // Only allow horizontal rotation (no vertical)
-  
+
   const movement = deltaX * 1.5; // Increased sensitivity for faster movement
   rotationX += movement;
   velocity = movement * 0.15; // Store velocity for momentum
-  
+
   lastX = event.clientX;
-  
+
   draw360Image();
   event.preventDefault();
 }
@@ -1258,14 +1329,14 @@ function startMomentum() {
       velocity = 0;
       return;
     }
-    
+
     rotationX += velocity;
     velocity *= 0.92; // Reduced friction for longer momentum
-    
+
     draw360Image();
     animationId = requestAnimationFrame(animate);
   }
-  
+
   if (animationId) {
     cancelAnimationFrame(animationId);
   }
@@ -1279,7 +1350,7 @@ function startTouch(event) {
     isDragging = true;
     lastX = touch.clientX;
     velocity = 0; // Reset velocity when starting new touch
-    
+
     // Stop any ongoing momentum animation
     if (animationId) {
       cancelAnimationFrame(animationId);
@@ -1291,17 +1362,17 @@ function startTouch(event) {
 
 function moveTouch(event) {
   if (!isDragging || event.touches.length !== 1) return;
-  
+
   const touch = event.touches[0];
   const deltaX = touch.clientX - lastX;
   // Only allow horizontal rotation (no vertical)
-  
+
   const movement = deltaX * 1.5; // Increased sensitivity for faster movement
   rotationX += movement;
   velocity = movement * 0.15; // Store velocity for momentum
-  
+
   lastX = touch.clientX;
-  
+
   draw360Image();
   event.preventDefault();
 }
@@ -1319,7 +1390,7 @@ function zoom(event) {
   const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
   scale *= zoomFactor;
   scale = Math.max(0.5, Math.min(3, scale)); // Limit zoom range
-  
+
   draw360Image();
   event.preventDefault();
 }
@@ -1822,33 +1893,33 @@ canvas:active {
     height: 100%;
     border-radius: 0;
   }
-  
+
   .image-360-header {
     padding: 15px;
   }
-  
+
   .image-360-header h3 {
     font-size: 1.2rem;
   }
-  
+
   .viewer-controls {
     bottom: 15px;
     left: 15px;
     flex-wrap: wrap;
   }
-  
+
   .control-btn {
     padding: 8px;
     font-size: 12px;
   }
-  
+
   .viewer-instructions {
     bottom: 15px;
     right: 15px;
     padding: 8px 12px;
     font-size: 11px;
   }
-  
+
   .image-overlay-hint {
     font-size: 10px;
     padding: 6px 8px;
@@ -1864,7 +1935,7 @@ canvas:active {
     padding: 10px;
     justify-content: center;
   }
-  
+
   .viewer-instructions {
     position: static;
     background: rgba(0, 0, 0, 0.8);

@@ -2190,4 +2190,463 @@ select {
     font-size: 0.9rem;
   }
 }
+
+/* ===========================
+   ENHANCED RESPONSIVE STYLES
+   =========================== */
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .ar-controls-bar {
+    padding: 15px 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .settings-panel {
+    min-width: 350px;
+  }
+
+  .arrival-notification {
+    max-width: 500px;
+  }
+}
+
+/* Desktop */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .ar-controls-bar {
+    padding: 12px 25px;
+  }
+
+  .control-button {
+    min-width: 50px;
+    height: 50px;
+    font-size: 18px;
+  }
+
+  .settings-panel {
+    min-width: 320px;
+  }
+}
+
+/* Tablet */
+@media (max-width: 991px) and (min-width: 768px) {
+  .ar-controls-bar {
+    padding: 10px 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .navigation-info {
+    order: 1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .navigation-settings {
+    order: 2;
+  }
+
+  .voice-controls {
+    order: 3;
+  }
+
+  .stop-navigation {
+    order: 4;
+  }
+
+  .control-button {
+    min-width: 45px;
+    height: 45px;
+    font-size: 16px;
+  }
+
+  .settings-panel {
+    min-width: 280px;
+    right: 10px;
+  }
+
+  .distance-display {
+    font-size: 16px;
+  }
+
+  .instruction-text {
+    font-size: 13px;
+  }
+
+  .arrival-notification {
+    max-width: 90%;
+    margin: 15px;
+    padding: 20px;
+  }
+}
+
+/* Mobile large */
+@media (max-width: 767px) and (min-width: 480px) {
+  .ar-navigation-container {
+    position: relative;
+  }
+
+  .ar-video,
+  .ar-three-container {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .ar-controls-bar {
+    bottom: 20px;
+    left: 10px;
+    right: 10px;
+    padding: 8px 15px;
+    border-radius: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .navigation-info {
+    order: 1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .distance-display {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .instruction-text {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .control-button {
+    min-width: 40px;
+    height: 40px;
+    font-size: 14px;
+    padding: 8px;
+    border-radius: 20px;
+    margin: 0;
+  }
+
+  .settings-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 350px;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 1001;
+  }
+
+  .setting-item {
+    margin-bottom: 15px;
+  }
+
+  .setting-item label {
+    font-size: 14px;
+  }
+
+  .volume-value {
+    font-size: 12px;
+  }
+
+  .arrival-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 400px;
+    margin: 0;
+    z-index: 1002;
+  }
+
+  .arrival-header h3 {
+    font-size: 18px;
+  }
+
+  .arrival-content p {
+    font-size: 14px;
+  }
+
+  .arrival-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .action-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
+  }
+}
+
+/* Mobile small */
+@media (max-width: 479px) {
+  .ar-controls-bar {
+    bottom: 15px;
+    left: 5px;
+    right: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  .navigation-info {
+    margin-bottom: 6px;
+  }
+
+  .distance-display {
+    font-size: 13px;
+  }
+
+  .instruction-text {
+    font-size: 11px;
+  }
+
+  .control-button {
+    min-width: 36px;
+    height: 36px;
+    font-size: 12px;
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .control-button .icon {
+    font-size: 14px;
+  }
+
+  .settings-panel {
+    width: 95vw;
+    max-height: 80vh;
+    padding: 15px;
+  }
+
+  .settings-panel h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+
+  .setting-item {
+    margin-bottom: 12px;
+  }
+
+  .setting-item label {
+    font-size: 13px;
+  }
+
+  .toggle-switch {
+    transform: scale(0.8);
+  }
+
+  input[type="range"] {
+    height: 30px;
+  }
+
+  .arrival-notification {
+    width: 95vw;
+    padding: 15px;
+  }
+
+  .arrival-header h3 {
+    font-size: 16px;
+  }
+
+  .arrival-content p {
+    font-size: 13px;
+  }
+
+  .action-btn {
+    padding: 10px;
+    font-size: 15px;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 360px) {
+  .ar-controls-bar {
+    bottom: 10px;
+    left: 3px;
+    right: 3px;
+    padding: 4px 8px;
+  }
+
+  .control-button {
+    min-width: 32px;
+    height: 32px;
+    font-size: 10px;
+    padding: 4px;
+    border-radius: 16px;
+  }
+
+  .control-button .icon {
+    font-size: 12px;
+  }
+
+  .distance-display {
+    font-size: 12px;
+  }
+
+  .instruction-text {
+    font-size: 10px;
+  }
+
+  .settings-panel {
+    padding: 12px;
+  }
+
+  .settings-panel h3 {
+    font-size: 14px;
+  }
+
+  .setting-item label {
+    font-size: 12px;
+  }
+
+  .arrival-notification {
+    padding: 12px;
+  }
+
+  .arrival-header h3 {
+    font-size: 14px;
+  }
+
+  .arrival-content p {
+    font-size: 12px;
+  }
+
+  .action-btn {
+    padding: 8px;
+    font-size: 14px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ar-controls-bar {
+    bottom: 5px;
+    left: 10px;
+    right: 10px;
+    padding: 4px 12px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+
+  .navigation-info {
+    order: 0;
+    width: auto;
+    margin-bottom: 0;
+    margin-right: auto;
+  }
+
+  .distance-display {
+    font-size: 11px;
+  }
+
+  .instruction-text {
+    font-size: 9px;
+  }
+
+  .control-button {
+    min-width: 30px;
+    height: 30px;
+    font-size: 10px;
+    padding: 4px;
+    margin: 0 2px;
+  }
+
+  .settings-panel {
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90vw;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .arrival-notification {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw;
+    max-width: 350px;
+    padding: 10px;
+  }
+
+  .arrival-header h3 {
+    font-size: 14px;
+  }
+
+  .arrival-content p {
+    font-size: 11px;
+  }
+
+  .arrival-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .control-button .icon {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ar-navigation-container *,
+  .settings-panel,
+  .arrival-notification {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for accessibility */
+.control-button:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.action-btn:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Touch-friendly adjustments for mobile */
+@media (pointer: coarse) {
+  .control-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .action-btn {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  .toggle-switch {
+    min-width: 44px;
+    min-height: 24px;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
+  }
+}
 </style>

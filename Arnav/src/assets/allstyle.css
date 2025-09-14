@@ -32,14 +32,58 @@
 /* Hero Section */
 .weather-hero {
   width: 100%;
-  background: linear-gradient(to bottom, #2c3e50, #34495e);
   color: white;
-  padding: 20px 15px 30px; /* smaller top padding, navbar is inside now */
-  min-height: 300px; /* taller hero to fit navbar + content */
+  padding: 10px 15px 30px;
+  min-height: 300px;
+  background-size: cover;
+  background-position: center;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start; /* content starts from top */
+  justify-content: flex-start;
   box-sizing: border-box;
+  position: relative;
+}
+
+.weather-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 0;
+}
+.weather-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sunny-weather {
+  background-image: url("@/assets/sunnyday.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.rainy-weather {
+  background-image: url("@/assets/cloudyday.png"); /* using cloudy as fallback for rainy */
+  background-size: cover;
+  background-position: center;
+}
+
+.cloudy-weather {
+  background-image: url("@/assets/cloudyday.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.windy-weather {
+  background-image: url("@/assets/windyday.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.default-weather {
+  background-image: url("@/assets/sunnyday.png"); /* using sunny as fallback for default */
+  background-size: cover;
+  background-position: center;
 }
 
 /* Hero Header (replacing navbar) */
@@ -54,7 +98,11 @@
 .navbar-left {
   display: flex;
   align-items: center;
-  gap: 15px;
+}
+
+.farm-logo {
+  height: 60px; /* adjust size */
+  width: auto; /* keeps aspect ratio */
 }
 
 .farm-name {

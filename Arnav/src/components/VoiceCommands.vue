@@ -298,4 +298,226 @@ function toggleHelp() {
 .close-help:hover {
   background-color: #e5e5e5;
 }
+
+/* ===========================
+   RESPONSIVE STYLES
+   =========================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .command-button {
+    width: 45px;
+    height: 45px;
+    font-size: 16px;
+  }
+
+  .listening-indicator {
+    font-size: 12px;
+    padding: 8px 12px;
+    max-width: 250px;
+  }
+
+  .commands-help {
+    width: 90vw;
+    max-width: 350px;
+    padding: 15px;
+  }
+
+  .commands-help h3 {
+    font-size: 16px;
+  }
+
+  .commands-help ul li {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .voice-commands {
+    position: relative;
+  }
+
+  .command-button {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .listening-indicator {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    max-width: 90vw;
+    text-align: center;
+    z-index: 1000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .commands-help {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 95vw;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1001;
+    padding: 20px;
+  }
+
+  .commands-help h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .commands-help ul {
+    margin-bottom: 20px;
+  }
+
+  .commands-help ul li {
+    font-size: 14px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .commands-help ul li strong {
+    color: #007bff;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .close-help {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
+    background-color: #007bff;
+    color: white;
+    border-radius: 6px;
+  }
+
+  .close-help:hover {
+    background-color: #0056b3;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 360px) {
+  .command-button {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  .listening-indicator {
+    top: 15px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .commands-help {
+    width: 98vw;
+    padding: 15px;
+  }
+
+  .commands-help h3 {
+    font-size: 16px;
+  }
+
+  .commands-help ul li {
+    font-size: 13px;
+    padding: 6px;
+  }
+
+  .close-help {
+    padding: 10px;
+    font-size: 15px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .listening-indicator {
+    top: 10px;
+    padding: 4px 12px;
+    font-size: 10px;
+  }
+
+  .commands-help {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 15px;
+  }
+
+  .commands-help h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .commands-help ul li {
+    font-size: 12px;
+    margin-bottom: 6px;
+    padding: 4px;
+  }
+
+  .close-help {
+    padding: 8px;
+    font-size: 14px;
+  }
+}
+
+/* Touch devices */
+@media (pointer: coarse) {
+  .command-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .close-help {
+    min-height: 44px;
+  }
+}
+
+/* Accessibility - high contrast mode */
+@media (prefers-contrast: high) {
+  .command-button {
+    border: 2px solid currentColor;
+  }
+
+  .listening-indicator {
+    border: 1px solid currentColor;
+  }
+
+  .commands-help {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .command-button {
+    animation: none !important;
+  }
+}
 </style>

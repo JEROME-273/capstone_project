@@ -813,4 +813,222 @@ input:disabled {
   color: #6c757d;
   cursor: not-allowed;
 }
+
+/* ===========================
+   RESPONSIVE STYLES
+   =========================== */
+
+/* Tablet and smaller */
+@media (max-width: 991px) {
+  .auth-container {
+    min-height: 100vh;
+    padding: 20px 10px;
+  }
+
+  .container {
+    max-width: 90%;
+    min-height: auto;
+  }
+
+  .form-container {
+    width: 100%;
+    position: static;
+    transform: none;
+    transition: none;
+  }
+
+  .overlay-container {
+    display: none;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form-title {
+    font-size: 24px;
+  }
+
+  .form-subtitle {
+    font-size: 14px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .auth-container {
+    padding: 15px 10px;
+  }
+
+  .container {
+    max-width: 95%;
+    box-shadow: none;
+    border-radius: 8px;
+    margin: 0 auto;
+  }
+
+  .form-content {
+    padding: 20px;
+  }
+
+  .form-title {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .form-subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .input-with-icon input {
+    padding: 12px 16px 12px 45px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .password-container input {
+    padding-right: 45px;
+  }
+
+  .visibility-icon {
+    right: 15px;
+    font-size: 18px;
+  }
+
+  .submit-btn {
+    padding: 14px;
+    font-size: 16px;
+    margin: 20px 0 15px 0;
+  }
+
+  .switch-form {
+    font-size: 14px;
+    padding: 12px 0;
+  }
+
+  .switch-form button {
+    font-size: 14px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 479px) {
+  .auth-container {
+    padding: 10px 5px;
+  }
+
+  .container {
+    max-width: 98%;
+    margin: 10px auto;
+  }
+
+  .form-content {
+    padding: 15px;
+  }
+
+  .form-title {
+    font-size: 20px;
+  }
+
+  .form-subtitle {
+    font-size: 12px;
+  }
+
+  .input-with-icon input {
+    padding: 10px 12px 10px 40px;
+    font-size: 16px;
+  }
+
+  .password-container input {
+    padding-right: 40px;
+  }
+
+  .icon {
+    width: 16px;
+    height: 16px;
+    left: 12px;
+  }
+
+  .visibility-icon {
+    right: 12px;
+    font-size: 16px;
+  }
+
+  .submit-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .form-grid {
+    gap: 10px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 360px) {
+  .form-content {
+    padding: 12px;
+  }
+
+  .form-title {
+    font-size: 18px;
+  }
+
+  .input-with-icon input {
+    padding: 8px 10px 8px 35px;
+    min-height: 44px;
+  }
+
+  .icon {
+    width: 14px;
+    height: 14px;
+    left: 10px;
+  }
+
+  .visibility-icon {
+    right: 10px;
+    font-size: 14px;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .auth-container {
+    padding: 10px;
+  }
+
+  .form-content {
+    padding: 15px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .form-title {
+    font-size: 18px;
+    margin-bottom: 5px;
+  }
+
+  .form-subtitle {
+    font-size: 12px;
+    margin-bottom: 15px;
+  }
+
+  .form-group {
+    margin-bottom: 10px;
+  }
+
+  .submit-btn {
+    margin: 10px 0;
+    padding: 10px;
+  }
+}
 </style>

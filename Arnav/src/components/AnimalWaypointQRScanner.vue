@@ -206,81 +206,151 @@ export default {
 
     processQRCode(data) {
       try {
-        // Try to parse as JSON first (structured data)
-        let parsedData;
+        // 1) Try JSON first
+        let parsed = null;
         try {
-          parsedData = JSON.parse(data);
-        } catch {
-          // If not JSON, treat as plain text
-          parsedData = { raw: data };
+          parsed = JSON.parse(data);
+        } catch (_) {
+          parsed = null;
         }
 
-        const result = {
-          rawData: data,
-          timestamp: Date.now(),
-          type: "unknown",
-          data: parsedData,
+        const normalize = (obj) => (obj && typeof obj === "object" ? obj : {});
+        const p = normalize(parsed);
+
+        const asString = typeof data === "string" ? data.trim() : String(data);
+
+        // Helper to parse URL safely
+        const tryParseUrl = (s) => {
+          try {
+            return new URL(s);
+          } catch (_) {
+            return null;
+          }
         };
 
-        // Determine type based on data structure
-        if (
-          parsedData.type === "animal" ||
-          parsedData.species ||
-          parsedData.animal_id
-        ) {
+        let result = {
+          rawData: asString,
+          timestamp: Date.now(),
+          type: "unknown",
+          data: {},
+        };
+
+        // 2) Determine ANIMAL by JSON keys
+        const jsonAnimalId =
+          p.animalId || p.animal_id || p.animal || (p.type === "animal" ? p.id : null);
+        if (jsonAnimalId || p.species || p.animal_name || p.animal_species) {
           result.type = "animal";
+          const animalIdStr = String(jsonAnimalId || p.id || "");
           result.data = {
-            name: parsedData.name || parsedData.animal_name || "Unknown Animal",
-            species:
-              parsedData.species ||
-              parsedData.animal_species ||
-              "Unknown Species",
-            location:
-              parsedData.location || parsedData.habitat || "Unknown Location",
-            description: parsedData.description || parsedData.info || "",
-            id: parsedData.id || parsedData.animal_id || null,
+            id: animalIdStr,
+            name: p.name || p.animal_name || (animalIdStr || "Unknown Animal"),
+            species: p.species || p.animal_species || "Unknown Species",
+            location: p.location || p.habitat || "Unknown Location",
+            description: p.description || p.info || "",
           };
-        } else if (
-          parsedData.type === "waypoint" ||
-          parsedData.latitude ||
-          parsedData.coordinates
-        ) {
-          result.type = "waypoint";
-          result.data = {
-            name: parsedData.name || parsedData.waypoint_name || "Waypoint",
-            latitude:
-              parsedData.latitude ||
-              parsedData.lat ||
-              parsedData.coordinates?.lat ||
-              0,
-            longitude:
-              parsedData.longitude ||
-              parsedData.lng ||
-              parsedData.coordinates?.lng ||
-              0,
-            description: parsedData.description || parsedData.info || "",
-            category: parsedData.category || parsedData.type || "general",
-            id: parsedData.id || parsedData.waypoint_id || null,
-          };
+        }
+
+        // 3) Determine WAYPOINT by JSON keys (if not already animal)
+        if (result.type === "unknown") {
+          const jsonWaypointId =
+            p.waypointId ||
+            p.waypoint_id ||
+            p.locationId ||
+            (p.type === "waypoint" ? p.id : null);
+          const hasCoords =
+            p.latitude !== undefined ||
+            p.longitude !== undefined ||
+            p.lat !== undefined ||
+            p.lng !== undefined ||
+            (p.coordinates && (p.coordinates.lat !== undefined || p.coordinates.lng !== undefined));
+
+          if (jsonWaypointId || hasCoords || p.type === "waypoint") {
+            result.type = "waypoint";
+            result.data = {
+              id: String(jsonWaypointId || p.id || ""),
+              name: p.name || p.waypoint_name || "Waypoint",
+              latitude: p.latitude ?? p.lat ?? p.coordinates?.lat ?? 0,
+              longitude: p.longitude ?? p.lng ?? p.coordinates?.lng ?? 0,
+              description: p.description || p.info || "",
+              category: p.category || (p.type === "waypoint" ? "waypoint" : "general"),
+            };
+          }
+        }
+
+        // 4) Plain-text patterns if still unknown
+        if (result.type === "unknown") {
+          // animal:ID or animal-ID or animal_ID (case-insensitive)
+          const animalMatch = asString.match(/^animal[:\-_]([A-Za-z0-9_\-]+)$/i);
+          if (animalMatch) {
+            result.type = "animal";
+            result.data = {
+              id: animalMatch[1],
+              name: animalMatch[1],
+              species: "",
+              location: "",
+              description: "",
+            };
+          }
+        }
+
+        // 5) URL patterns if still unknown
+        if (result.type === "unknown") {
+          const url = tryParseUrl(asString);
+          if (url) {
+            // Query params
+            const qp = url.searchParams;
+            const animalParam = qp.get("animal") || qp.get("animalId");
+            const waypointParam = qp.get("waypoint") || qp.get("waypointId");
+            const idParam = qp.get("id") || qp.get("locationId");
+
+            if (animalParam) {
+              result.type = "animal";
+              result.data = {
+                id: animalParam,
+                name: animalParam,
+                species: "",
+                location: "",
+                description: "",
+              };
+            } else if (waypointParam || idParam) {
+              result.type = "waypoint";
+              result.data = {
+                id: waypointParam || idParam,
+                name: "Waypoint",
+                latitude: 0,
+                longitude: 0,
+                description: "",
+                category: "general",
+              };
+            } else {
+              // Try path segments e.g. /animals/:id or /location/:id
+              const segments = url.pathname.split("/").filter(Boolean);
+              const last = segments[segments.length - 1];
+              const prev = segments[segments.length - 2] || "";
+              if (/animals?/i.test(prev) && last) {
+                result.type = "animal";
+                result.data = { id: last, name: last, species: "", location: "", description: "" };
+              } else if (/locations?|waypoints?/i.test(prev) && last) {
+                result.type = "waypoint";
+                result.data = { id: last, name: "Waypoint", latitude: 0, longitude: 0, description: "", category: "general" };
+              }
+            }
+          }
+        }
+
+        // 6) Fallback generic
+        if (result.type === "unknown") {
+          result.data = { raw: asString };
         }
 
         this.lastScanResult = result;
         this.setStatus(
-          `${
-            result.type === "animal"
-              ? "Animal"
-              : result.type === "waypoint"
-              ? "Waypoint"
-              : "QR Code"
-          } detected!`,
+          `${result.type === "animal" ? "Animal" : result.type === "waypoint" ? "Waypoint" : "QR Code"} detected!`,
           "success"
         );
-
-        // Emit event for parent components
-        this.$emit("qr-scanned", result);
-
-        // Optional: Stop scanning after successful scan
-        // this.stopScanner();
+  this.$emit("qr-scanned", result);
+  // Stop scanning to release camera (prevents conflicts with AR)
+  this.stopScanner();
       } catch (error) {
         this.setStatus("Error processing QR code: " + error.message, "error");
       }

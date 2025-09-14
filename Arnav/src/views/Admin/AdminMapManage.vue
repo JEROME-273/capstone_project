@@ -166,11 +166,12 @@
                   id="latitude"
                   v-model.number="waypoint.coordinates.x"
                   type="number"
-                  step="0.00000001"
+                  step="any"
                   min="-90"
                   max="90"
                   required
                   placeholder="0.00000000"
+                  inputmode="decimal"
                   @input="validateCoordinates" />
                 <small
                   class="coordinate-precision"
@@ -191,11 +192,12 @@
                   id="longitude"
                   v-model.number="waypoint.coordinates.y"
                   type="number"
-                  step="0.00000001"
+                  step="any"
                   min="-180"
                   max="180"
                   required
                   placeholder="0.00000000"
+                  inputmode="decimal"
                   @input="validateCoordinates" />
                 <small
                   class="coordinate-precision"
@@ -1180,9 +1182,22 @@ const handleFileDrop = (event) => {
 
 // Enhanced utility functions for precise location handling
 const validateCoordinates = () => {
+  // Check if coordinates exist
+  if (!waypoint.value.coordinates.x && waypoint.value.coordinates.x !== 0) {
+    toast.error("Latitude is required / Kailangan ang latitude");
+    return false;
+  }
+
+  if (!waypoint.value.coordinates.y && waypoint.value.coordinates.y !== 0) {
+    toast.error("Longitude is required / Kailangan ang longitude");
+    return false;
+  }
+
   // Validate latitude range
   if (waypoint.value.coordinates.x < -90 || waypoint.value.coordinates.x > 90) {
-    toast.error("Latitude must be between -90 and 90 degrees");
+    toast.error(
+      "Latitude must be between -90 and 90 degrees / Ang latitude ay dapat nasa pagitan ng -90 at 90 degrees"
+    );
     return false;
   }
 
@@ -1191,7 +1206,9 @@ const validateCoordinates = () => {
     waypoint.value.coordinates.y < -180 ||
     waypoint.value.coordinates.y > 180
   ) {
-    toast.error("Longitude must be between -180 and 180 degrees");
+    toast.error(
+      "Longitude must be between -180 and 180 degrees / Ang longitude ay dapat nasa pagitan ng -180 at 180 degrees"
+    );
     return false;
   }
 
@@ -1498,7 +1515,7 @@ onMounted(async () => {
 });
 
 // QR generation functions
-async function generateQRCodeForWaypoint(id, name, setAsLatest = false) {
+const generateQRCodeForWaypoint = async (id, name, setAsLatest = false) => {
   try {
     // Cache first
     if (qrCache.value[id]) {
@@ -1530,32 +1547,32 @@ async function generateQRCodeForWaypoint(id, name, setAsLatest = false) {
     console.error("QR generation failed", e);
     toast.error("Failed to generate QR code");
   }
-}
+};
 
-function openQRModal(wp) {
+const openQRModal = (wp) => {
   showQRModal.value = true;
   qrModalWaypoint.value = wp;
   qrModalDataUrl.value = "";
   generateQRCodeForWaypoint(wp.id, wp.name).then((d) => {
     qrModalDataUrl.value = d;
   });
-}
+};
 
-function closeQRModal() {
+const closeQRModal = () => {
   showQRModal.value = false;
   qrModalWaypoint.value = null;
   qrModalDataUrl.value = "";
-}
+};
 
-function downloadQR(dataUrl, name = "waypoint") {
+const downloadQR = (dataUrl, name = "waypoint") => {
   if (!dataUrl) return;
   const a = document.createElement("a");
   a.href = dataUrl;
   a.download = `${name}-qr.png`;
   a.click();
-}
+};
 
-function printQR(dataUrl, name = "waypoint") {
+const printQR = (dataUrl, name = "waypoint") => {
   if (!dataUrl) return;
   const w = window.open("");
   w.document.write(
@@ -1563,7 +1580,7 @@ function printQR(dataUrl, name = "waypoint") {
   );
   w.print();
   w.close();
-}
+};
 </script>
 
 <style scoped>
@@ -1798,5 +1815,369 @@ function printQR(dataUrl, name = "waypoint") {
 .waypoint-card .precision-info:contains("Low") {
   background: #f8d7da;
   color: #721c24;
+}
+
+/* ===========================
+   RESPONSIVE STYLES
+   =========================== */
+
+/* Large desktop */
+@media (min-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .waypoints-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+/* Desktop */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+  }
+
+  .waypoints-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .map-container {
+    height: 400px;
+  }
+}
+
+/* Tablet */
+@media (max-width: 991px) and (min-width: 768px) {
+  .map-management {
+    padding: 15px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .management-tabs {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .waypoints-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+  }
+
+  .waypoint-form {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .map-container {
+    height: 350px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Mobile large */
+@media (max-width: 767px) and (min-width: 480px) {
+  .map-management {
+    padding: 10px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 15px;
+  }
+
+  .stat-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .stat-content h3 {
+    font-size: 20px;
+  }
+
+  .stat-content p {
+    font-size: 12px;
+  }
+
+  .management-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 5px;
+  }
+
+  .tab-btn {
+    min-width: 120px;
+    padding: 10px 15px;
+    font-size: 13px;
+  }
+
+  .waypoints-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .waypoint-card {
+    padding: 15px;
+  }
+
+  .waypoint-form {
+    gap: 12px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .map-container {
+    height: 300px;
+  }
+
+  .btn {
+    padding: 12px;
+    font-size: 14px;
+    min-height: 44px; /* Touch target size */
+  }
+
+  .waypoint-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .waypoint-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Mobile small */
+@media (max-width: 479px) {
+  .map-management {
+    padding: 8px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    text-align: center;
+  }
+
+  .management-tabs {
+    flex-direction: column;
+  }
+
+  .tab-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .waypoint-card {
+    padding: 12px;
+  }
+
+  .waypoint-header h3 {
+    font-size: 16px;
+  }
+
+  .waypoint-meta {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .waypoint-form {
+    gap: 10px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 8px;
+  }
+
+  .map-container {
+    height: 250px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .qr-preview {
+    max-width: 100px;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 360px) {
+  .map-management {
+    padding: 5px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-content h3 {
+    font-size: 18px;
+  }
+
+  .waypoint-card {
+    padding: 10px;
+  }
+
+  .waypoint-header h3 {
+    font-size: 14px;
+  }
+
+  .map-container {
+    height: 200px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .qr-preview {
+    max-width: 80px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .map-management {
+    padding: 5px;
+    overflow-y: auto;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+  }
+
+  .stat-card {
+    padding: 8px;
+  }
+
+  .stat-content h3 {
+    font-size: 16px;
+  }
+
+  .stat-content p {
+    font-size: 10px;
+  }
+
+  .map-container {
+    height: 200px;
+  }
+
+  .waypoint-form {
+    gap: 8px;
+  }
+
+  .form-group {
+    margin-bottom: 8px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* QR Modal responsive */
+@media (max-width: 768px) {
+  .qr-modal .modal-content {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .qr-modal .modal-header {
+    padding: 15px;
+  }
+
+  .qr-modal .modal-body {
+    padding: 15px;
+    text-align: center;
+  }
+
+  .qr-modal .qr-display {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .qr-modal .modal-footer {
+    padding: 15px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .qr-modal .btn {
+    width: 100%;
+  }
 }
 </style>

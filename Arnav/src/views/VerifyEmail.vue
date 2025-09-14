@@ -350,4 +350,148 @@ button {
     transform: rotate(360deg);
   }
 }
+
+/* ===========================
+   RESPONSIVE STYLES
+   =========================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .verify-email-container {
+    padding: 20px 15px;
+  }
+
+  .verify-card {
+    padding: 30px 20px;
+    margin: 20px 0;
+    max-width: 90%;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .message {
+    font-size: 15px;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .resend-btn,
+  .check-btn,
+  .continue-btn,
+  .login-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .verify-email-container {
+    padding: 15px 10px;
+    min-height: 100vh;
+  }
+
+  .verify-card {
+    padding: 25px 15px;
+    margin: 10px 0;
+    max-width: 95%;
+    border-radius: 8px;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 15px;
+  }
+
+  .message {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  .actions {
+    gap: 10px;
+  }
+
+  .resend-btn,
+  .check-btn,
+  .continue-btn,
+  .login-btn {
+    padding: 14px 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
+    border-radius: 6px;
+  }
+
+  .loading-spinner {
+    width: 30px;
+    height: 30px;
+    border-width: 3px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 360px) {
+  .verify-card {
+    padding: 20px 12px;
+    margin: 5px 0;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  .message {
+    font-size: 13px;
+  }
+
+  .resend-btn,
+  .check-btn,
+  .continue-btn,
+  .login-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .verify-email-container {
+    padding: 10px;
+  }
+
+  .verify-card {
+    padding: 15px;
+    margin: 5px 0;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  h1 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .message {
+    margin-bottom: 15px;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .resend-btn,
+  .check-btn,
+  .continue-btn,
+  .login-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
 </style>

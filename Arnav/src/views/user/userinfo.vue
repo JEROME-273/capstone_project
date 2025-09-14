@@ -101,25 +101,6 @@
           </div>
         </div>
 
-        <!-- QR Scanner -->
-        <div class="section-block">
-          <div class="profile-link" @click="toggleDropdown('qrscanner')">
-            <div class="flex items-center">
-              <i class="fas fa-qrcode icon-section"></i>
-              <span class="ml-4 text-lg">QR Scanner</span>
-            </div>
-            <i
-              class="fas fa-chevron-right icon-chevron"
-              :class="{ 'rotate-90': openDropdown === 'qrscanner' }"></i>
-          </div>
-          <div v-if="openDropdown === 'qrscanner'" class="dropdown-content">
-            <SimpleQRScanner @decoded="onScanDecoded" />
-            <div v-if="lastScannedCode" class="mt-2" style="font-size:12px;color:#4caf50;word-break:break-all;">
-              Last scanned: {{ lastScannedCode }}
-            </div>
-          </div>
-        </div>
-
         <!-- Help Center -->
         <div class="section-block">
           <div class="profile-link" @click="openHelpCenterModal">
@@ -132,7 +113,10 @@
         </div>
 
         <!-- Help Center Modal -->
-        <div v-if="showHelpCenterModal" class="modal-overlay" @click="closeHelpCenterModal">
+        <div
+          v-if="showHelpCenterModal"
+          class="modal-overlay"
+          @click="closeHelpCenterModal">
           <div class="modal-content" @click.stop>
             <div class="modal-header">
               <h2>Help Center & Customer Support</h2>
@@ -617,7 +601,10 @@
         </div>
 
         <!-- Personal Info Modal -->
-        <div v-if="showPersonalInfoModal" class="modal-overlay" @click="closePersonalInfoModal">
+        <div
+          v-if="showPersonalInfoModal"
+          class="modal-overlay"
+          @click="closePersonalInfoModal">
           <div class="modal-content" @click.stop>
             <div class="modal-header">
               <h2>Edit Personal Information</h2>
@@ -704,7 +691,10 @@
       </div>
 
       <!-- Change Password Modal -->
-      <div v-if="showPasswordModal" class="modal-overlay" @click="closePasswordModal">
+      <div
+        v-if="showPasswordModal"
+        class="modal-overlay"
+        @click="closePasswordModal">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
             <h2>Change Password</h2>
@@ -754,7 +744,6 @@
 <script>
 import AuthManager from "@/components/AuthManager.vue";
 import NotificationBell from "@/components/NotificationBell.vue";
-import SimpleQRScanner from "@/components/SimpleQRScanner.vue";
 import { auth } from "@/firebase/config";
 import {
   getFirestore,
@@ -781,7 +770,6 @@ export default {
   components: {
     AuthManager,
     NotificationBell,
-  SimpleQRScanner,
   },
   data() {
     return {
@@ -857,8 +845,6 @@ export default {
         contactSupport: false,
         locationPrivacy: false,
       },
-  // QR Scanner
-  lastScannedCode: "",
     };
   },
   computed: {
@@ -871,8 +857,8 @@ export default {
   },
   async mounted() {
     // Add keyboard event listener for modals
-    document.addEventListener('keydown', this.handleKeydown);
-    
+    document.addEventListener("keydown", this.handleKeydown);
+
     const user = auth.currentUser;
     if (user) {
       const db = getFirestore();
@@ -944,14 +930,14 @@ export default {
   },
   beforeUnmount() {
     // Remove keyboard event listener
-    document.removeEventListener('keydown', this.handleKeydown);
+    document.removeEventListener("keydown", this.handleKeydown);
     // Clean up any open modals
-    document.body.classList.remove('modal-open');
+    document.body.classList.remove("modal-open");
   },
   methods: {
     // === Keyboard Handler ===
     handleKeydown(event) {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         if (this.showPersonalInfoModal) {
           this.closePersonalInfoModal();
         } else if (this.showHelpCenterModal) {
@@ -973,7 +959,7 @@ export default {
     // === Password Modal ===
     openPasswordModal() {
       this.showPasswordModal = true;
-      document.body.classList.add('modal-open');
+      document.body.classList.add("modal-open");
     },
     closePasswordModal() {
       this.showPasswordModal = false;
@@ -982,19 +968,19 @@ export default {
       this.confirmPassword = "";
       this.passwordUpdateMessage = "";
       this.oldPasswordValid = false;
-      document.body.classList.remove('modal-open');
+      document.body.classList.remove("modal-open");
     },
 
     // === Help Center Modal ===
     openHelpCenterModal() {
       this.showHelpCenterModal = true;
-      document.body.classList.add('modal-open');
+      document.body.classList.add("modal-open");
     },
     closeHelpCenterModal() {
       this.showHelpCenterModal = false;
       this.supportForm.message = "";
       this.supportSuccess = false;
-      document.body.classList.remove('modal-open');
+      document.body.classList.remove("modal-open");
     },
 
     // === Password Management ===
@@ -1087,12 +1073,12 @@ export default {
         joinedDate: this.joinedDate,
       };
       this.showPersonalInfoModal = true;
-      document.body.classList.add('modal-open');
+      document.body.classList.add("modal-open");
     },
     closePersonalInfoModal() {
       this.showPersonalInfoModal = false;
       this.updateMessage = "";
-      document.body.classList.remove('modal-open');
+      document.body.classList.remove("modal-open");
     },
     async updatePersonalInfo() {
       try {
@@ -1171,16 +1157,14 @@ export default {
         } else {
           date = new Date(timestamp);
         }
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       } catch (error) {
         console.error("Error formatting time:", error);
         return "Invalid Time";
       }
-    },
-
-    // === QR Scanner ===
-    onScanDecoded(value) {
-      this.lastScannedCode = value;
     },
   },
 };

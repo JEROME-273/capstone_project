@@ -16,8 +16,8 @@ import AdminMapManage from "@/views/Admin/AdminMapManage.vue";
 import AdminAnalytics from "@/views/Admin/AdminAnalytics.vue";
 import AdminLearningManage from "@/views/Admin/AdminLearningManage.vue";
 import AdminAnimalManage from "@/views/Admin/AdminAnimalManage.vue";
-import QRScanPage from "@/views/QRScanPage.vue";
 import LocationView from "@/views/LocationView.vue";
+import AnimalWaypointScan from "@/views/AnimalWaypointScan.vue";
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: [
@@ -143,9 +143,9 @@ const router = createRouter({
       },
     },
     {
-      path: "/qr-scan",
-      name: "QRScanPage",
-      component: QRScanPage,
+      path: "/qr-scan-aw",
+      name: "AnimalWaypointScan",
+      component: AnimalWaypointScan,
       meta: {
         requiresAuth: true,
         roles: ["user", "admin"],

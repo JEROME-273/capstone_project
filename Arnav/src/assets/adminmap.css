@@ -970,15 +970,47 @@
     grid-template-columns: 1fr;
   }
 
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .card-header h2 {
+    margin-bottom: 0;
+  }
+
   .search-filter-container {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
   .search-box,
-  .category-filter {
+  .category-filter,
+  .maintenance-filter {
     min-width: auto;
     width: 100%;
+    max-width: 100%;
+  }
+
+  .search-box {
+    order: 1;
+  }
+
+  .category-filter {
+    order: 2;
+  }
+
+  .maintenance-filter {
+    order: 3;
+  }
+
+  .btn-clear-filters {
+    order: 4;
+    width: 100%;
+    justify-content: center;
   }
 
   .waypoints-grid {
@@ -1030,9 +1062,53 @@
     gap: 8px;
   }
 
+  .search-box input,
+  .category-filter select,
+  .maintenance-filter select {
+    font-size: 13px;
+    padding: 8px 12px 8px 35px;
+  }
+
   .btn-clear-filters {
     width: 100%;
     justify-content: center;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+
+/* Extra small mobile - ensure no overflow */
+@media (max-width: 360px) {
+  .content-card {
+    padding: 12px;
+    margin: 8px;
+  }
+
+  .search-filter-container {
+    gap: 6px;
+  }
+
+  .search-box input,
+  .category-filter select,
+  .maintenance-filter select {
+    font-size: 12px;
+    padding: 6px 10px 6px 32px;
+  }
+
+  .search-box i,
+  .category-filter i,
+  .maintenance-filter i {
+    left: 8px;
+    font-size: 12px;
+  }
+
+  .btn-clear-filters {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .card-header h2 {
+    font-size: 1.2rem;
   }
 }
 

@@ -7,8 +7,7 @@
       <div class="modal-header">
         <div class="header-content">
           <h2 class="animal-name">
-            <i class="fas fa-paw"></i>
-            {{ animal.name || "Animal Information" }}
+            {{ (animal?.name || "ANIMAL INFORMATION").toUpperCase() }}
           </h2>
         </div>
         <button @click="closeModal" class="close-btn">
@@ -22,54 +21,54 @@
           <img :src="animal.imageUrl" :alt="animal.name" class="animal-image" />
         </div>
 
-<!-- Animal Sound Player -->
-<div class="animal-sound-section" v-if="animal.soundUrl">
-  <div class="sound-player">
-    <audio
-      ref="audioPlayer"
-      :src="animal.soundUrl"
-      preload="metadata"
-      @loadedmetadata="onAudioLoaded"
-      @timeupdate="onTimeUpdate"
-      @ended="onAudioEnded">
-      Your browser does not support the audio element.
-    </audio>
+        <!-- Animal Sound Player -->
+        <div class="animal-sound-section" v-if="animal.soundUrl">
+          <div class="sound-player">
+            <audio
+              ref="audioPlayer"
+              :src="animal.soundUrl"
+              preload="metadata"
+              @loadedmetadata="onAudioLoaded"
+              @timeupdate="onTimeUpdate"
+              @ended="onAudioEnded">
+              Your browser does not support the audio element.
+            </audio>
 
-    <div class="audio-controls">
-      <!-- Play Button -->
-      <button
-        @click="togglePlay"
-        class="play-button"
-        :class="{ playing: isPlaying }"
-        :disabled="!audioLoaded">
-        <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
-      </button>
+            <div class="audio-controls">
+              <!-- Play Button -->
+              <button
+                @click="togglePlay"
+                class="play-button"
+                :class="{ playing: isPlaying }"
+                :disabled="!audioLoaded">
+                <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+              </button>
 
-      <!-- Progress + Time -->
-      <div class="audio-progress">
-        <div class="progress-bar">
-          <div
-            class="progress-fill"
-            :style="{ width: progressPercent + '%' }"></div>
-          <input
-            type="range"
-            min="0"
-            :max="audioDuration"
-            v-model="currentTime"
-            @input="seekAudio"
-            class="progress-slider"
-            :disabled="!audioLoaded" />
+              <!-- Progress + Time -->
+              <div class="audio-progress">
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    :style="{ width: progressPercent + '%' }"></div>
+                  <input
+                    type="range"
+                    min="0"
+                    :max="audioDuration"
+                    v-model="currentTime"
+                    @input="seekAudio"
+                    class="progress-slider"
+                    :disabled="!audioLoaded" />
+                </div>
+                <div class="time-display">
+                  <span class="current-time">{{
+                    formatTime(currentTime)
+                  }}</span>
+                  <span class="duration">{{ formatTime(audioDuration) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="time-display">
-          <span class="current-time">{{ formatTime(currentTime) }}</span>
-          <span class="duration">{{ formatTime(audioDuration) }}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-
 
         <!-- Animal Details -->
         <div class="animal-details">
@@ -151,7 +150,6 @@
     </div>
   </div>
 </template>
-
 
 <script>
 export default {
@@ -256,7 +254,6 @@ export default {
 };
 </script>
 
-
 <style scoped>
 .animal-info-modal-overlay {
   position: fixed;
@@ -306,7 +303,8 @@ export default {
 .animal-name {
   margin: 0;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -648,7 +646,7 @@ export default {
 
 .progress-fill {
   height: 100%;
-  background: #012b01; 
+  background: #012b01;
   border-radius: 3px;
   transition: width 0.1s linear;
 }

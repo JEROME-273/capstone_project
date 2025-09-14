@@ -106,7 +106,7 @@ onUnmounted(() => {
   left: 50%;
   width: 180px;
   height: 60px;
-  background: url("@/assets/pointer.png") no-repeat center;
+  background: url("@/assets/final_logo.png") no-repeat center;
   background-size: contain;
   transform: translateX(-50%);
   z-index: 10;

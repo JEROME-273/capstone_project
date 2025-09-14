@@ -99,4 +99,134 @@ export default {
 .back-button:active {
   transform: translateY(0);
 }
+
+/* ===========================
+   RESPONSIVE STYLES
+   =========================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .unauthorized-container {
+    padding: 15px;
+  }
+
+  .unauthorized-card {
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+
+  .unauthorized-card h1 {
+    font-size: 24px;
+  }
+
+  .icon svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .unauthorized-card p {
+    font-size: 15px;
+    margin-bottom: 25px;
+  }
+
+  .back-button {
+    padding: 14px 28px;
+    font-size: 15px;
+    width: 100%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .unauthorized-container {
+    padding: 10px;
+  }
+
+  .unauthorized-card {
+    padding: 25px 15px;
+    max-width: 95%;
+    border-radius: 8px;
+  }
+
+  .unauthorized-card h1 {
+    font-size: 22px;
+    margin: 15px 0;
+  }
+
+  .icon svg {
+    width: 50px;
+    height: 50px;
+  }
+
+  .unauthorized-card p {
+    font-size: 14px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .back-button {
+    padding: 16px 20px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
+    border-radius: 6px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 360px) {
+  .unauthorized-card {
+    padding: 20px 12px;
+  }
+
+  .unauthorized-card h1 {
+    font-size: 20px;
+  }
+
+  .icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .unauthorized-card p {
+    font-size: 13px;
+  }
+
+  .back-button {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .unauthorized-container {
+    padding: 5px;
+  }
+
+  .unauthorized-card {
+    padding: 15px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .unauthorized-card h1 {
+    font-size: 18px;
+    margin: 10px 0;
+  }
+
+  .icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .unauthorized-card p {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+
+  .back-button {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
 </style>

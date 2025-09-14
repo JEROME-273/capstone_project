@@ -8,6 +8,11 @@ import { RouterView } from "vue-router";
   </div>
 </template>
 
+<style>
+/* Import global responsive styles */
+@import "@/assets/global-responsive.css";
+</style>
+
 <style scoped>
 .app-container {
   position: relative;

@@ -279,14 +279,188 @@ button:hover {
   opacity: 0.8;
 }
 
+/* ===========================
+   ENHANCED RESPONSIVE STYLES
+   =========================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .location-view-container {
+    padding: 15px;
+  }
+
+  .location-card {
+    padding: 20px;
+    border-radius: 8px;
+  }
+
+  .location-image {
+    height: 200px;
+    border-radius: 6px;
+  }
+
+  .location-title {
+    font-size: 24px;
+    margin: 15px 0 10px 0;
+  }
+
+  .location-description {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .start-navigation-btn,
+  .back-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* Mobile */
 @media (max-width: 600px) {
   .location-view-container {
     padding: 10px;
   }
 
+  .location-card {
+    padding: 15px;
+    margin: 10px 0;
+  }
+
+  .location-image {
+    height: 180px;
+  }
+
+  .location-title {
+    font-size: 22px;
+    margin: 12px 0 8px 0;
+  }
+
+  .location-description {
+    font-size: 14px;
+    margin-bottom: 15px;
+  }
+
   .action-buttons {
-    flex-direction: column;
     gap: 10px;
+    margin-top: 15px;
+  }
+
+  .start-navigation-btn,
+  .back-btn {
+    padding: 16px 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
+    border-radius: 6px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .location-view-container {
+    padding: 8px;
+  }
+
+  .location-card {
+    padding: 12px;
+    margin: 5px 0;
+  }
+
+  .location-image {
+    height: 160px;
+  }
+
+  .location-title {
+    font-size: 20px;
+    margin: 10px 0 6px 0;
+  }
+
+  .location-description {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .action-buttons {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .start-navigation-btn,
+  .back-btn {
+    padding: 14px 10px;
+    font-size: 15px;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 360px) {
+  .location-card {
+    padding: 10px;
+  }
+
+  .location-image {
+    height: 140px;
+  }
+
+  .location-title {
+    font-size: 18px;
+  }
+
+  .location-description {
+    font-size: 12px;
+  }
+
+  .start-navigation-btn,
+  .back-btn {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .location-view-container {
+    padding: 5px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+
+  .location-card {
+    padding: 10px;
+    margin: 5px 0;
+  }
+
+  .location-image {
+    height: 120px;
+  }
+
+  .location-title {
+    font-size: 16px;
+    margin: 8px 0 4px 0;
+  }
+
+  .location-description {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .start-navigation-btn,
+  .back-btn {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 }
 </style>
