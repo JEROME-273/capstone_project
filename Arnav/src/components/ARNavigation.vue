@@ -7,73 +7,6 @@
 
     <!-- Navigation Controls Bar -->
     <div class="ar-controls-bar">
-      <!-- Settings Button -->
-      <div class="navigation-settings">
-        <button
-          @click="toggleSettings"
-          class="control-button settings-button"
-          aria-label="Navigation settings">
-          <span class="icon">⚙️</span>
-        </button>
-
-        <div v-if="showSettings" class="settings-panel">
-          <h3>Navigation Settings</h3>
-
-          <div class="setting-item">
-            <label for="voice-guidance">Voice Guidance</label>
-            <div class="toggle-switch">
-              <input
-                type="checkbox"
-                id="voice-guidance"
-                v-model="settings.voiceGuidanceEnabled"
-                @change="updateSettings" />
-              <span class="slider"></span>
-            </div>
-          </div>
-
-          <div class="setting-item">
-            <label for="voice-volume">Voice Volume</label>
-            <input
-              type="range"
-              id="voice-volume"
-              min="0"
-              max="1"
-              step="0.1"
-              v-model.number="settings.voiceVolume"
-              @change="updateSettings"
-              :disabled="!settings.voiceGuidanceEnabled" />
-            <span class="volume-value"
-              >{{ Math.round(settings.voiceVolume * 100) }}%</span
-            >
-          </div>
-
-          <div class="setting-item">
-            <label for="show-arrows">Show AR Arrows</label>
-            <div class="toggle-switch">
-              <input
-                type="checkbox"
-                id="show-arrows"
-                v-model="settings.showArrows"
-                @change="updateSettings" />
-              <span class="slider"></span>
-            </div>
-          </div>
-
-          <div class="setting-item">
-            <label for="distance-unit">Distance Unit</label>
-            <select
-              id="distance-unit"
-              v-model="settings.distanceUnit"
-              @change="updateSettings">
-              <option value="metric">Metric (m/km)</option>
-              <option value="imperial">Imperial (ft/mi)</option>
-            </select>
-          </div>
-
-          <button @click="closeSettings" class="close-settings">Close</button>
-        </div>
-      </div>
-
       <!-- Voice Commands -->
       <div class="voice-commands">
         <button
@@ -136,8 +69,23 @@
       <div class="ar-destination-info">
         <h3>{{ destinationLocation?.name }}</h3>
         <p>{{ arInstructions }}</p>
-        <div class="ar-distance">
-          {{ formatDistance(distanceToDestination) }}
+
+        <!-- Accuracy / Distance block -->
+        <div class="ar-distance-block">
+          <div class="ar-distance" :class="accuracyQualityClass">
+            <template v-if="!isAccuracyReady">
+              Calibrating GPS… (±{{ currentAccuracyDisplay }})
+            </template>
+            <template v-else>
+              {{ formatDistance(distanceToDestination) }}
+              <span class="accuracy-badge">±{{ currentAccuracyDisplay }}</span>
+            </template>
+          </div>
+          <div
+            v-if="accuracyWarning && isAccuracyReady"
+            class="accuracy-warning">
+            {{ accuracyWarning }}
+          </div>
         </div>
         <div v-if="distanceToDestination <= 10" class="ar-precision-info">
           <small>📍 Marker positioned at exact coordinates</small>
@@ -219,6 +167,22 @@ const currentLocation = ref(null);
 const destinationLocation = ref(null);
 const userHeading = ref(0);
 const distanceToDestination = ref(0);
+// Raw latest accuracy from geolocation
+const latestAccuracy = ref(null); // meters
+// Whether we already have an accuracy good enough to trust distance
+const isAccuracyReady = ref(false);
+// Once we lock, we may still accept better readings but ignore worse ones beyond a tolerance
+const lockedAccuracy = ref(null);
+const accuracyLockTime = ref(null);
+// Config thresholds
+const ACC_READY_THRESHOLD = 25; // meters – must be <= this once
+const ACC_MAX_ACCEPTED = 60; // ignore readings worse than this (unless we have no fix yet)
+const ACC_ARRIVAL_REQUIRED = 10; // require for arrival detection
+const ACC_REGRESSION_TOLERANCE = 15; // meters allowed worse than locked before warning
+
+// Accuracy related UI state
+const accuracyWarning = ref("");
+
 const directionToDestination = ref(0);
 const arInstructions = ref("");
 const isLocationTracking = ref(false);
@@ -236,8 +200,7 @@ const MIN_UPDATE_INTERVAL = 100; // Minimum milliseconds between updates
 const HEADING_THRESHOLD = 2; // Degrees - ignore small heading changes
 const LOCATION_THRESHOLD = 0.5; // Meters - ignore small location changes
 
-// Settings state
-const showSettings = ref(false);
+// Settings (no settings panel UI; keep runtime flags)
 const settings = ref({
   voiceGuidanceEnabled: true,
   voiceVolume: 1,
@@ -554,16 +517,8 @@ async function logSuccessfulArrival() {
 }
 
 // Settings methods
-function toggleSettings() {
-  showSettings.value = !showSettings.value;
-}
-
-function closeSettings() {
-  showSettings.value = false;
-}
-
+// No settings panel; settings can be adjusted programmatically if needed
 function updateSettings() {
-  // Settings are automatically updated via v-model
   console.log("Settings updated:", settings.value);
 }
 
@@ -931,11 +886,59 @@ function updateCurrentLocation(position) {
   };
 
   // Apply stabilization before updating current location
-  currentLocation.value = stabilizeLocation(newLocation);
+  // Accuracy gating logic
+  latestAccuracy.value = newLocation.accuracy;
+
+  // Ignore obviously bad readings if we already have a good lock
+  if (
+    isAccuracyReady.value &&
+    newLocation.accuracy &&
+    (newLocation.accuracy > ACC_MAX_ACCEPTED ||
+      newLocation.accuracy >
+        (lockedAccuracy.value || 0) + ACC_REGRESSION_TOLERANCE)
+  ) {
+    // Keep stabilized location unchanged, show warning
+    accuracyWarning.value = `Low GPS accuracy (±${newLocation.accuracy.toFixed(
+      0
+    )}m). Move to open area.`;
+  } else {
+    accuracyWarning.value = "";
+    currentLocation.value = stabilizeLocation(newLocation);
+
+    // Lock accuracy if good enough and not yet locked
+    if (
+      !isAccuracyReady.value &&
+      newLocation.accuracy !== null &&
+      newLocation.accuracy <= ACC_READY_THRESHOLD
+    ) {
+      isAccuracyReady.value = true;
+      lockedAccuracy.value = newLocation.accuracy;
+      accuracyLockTime.value = Date.now();
+      queueAnnouncement(
+        `GPS calibrated. Accuracy ±${newLocation.accuracy.toFixed(0)} meters.`
+      );
+    }
+
+    // If locked and we get a better accuracy, update locked baseline
+    if (
+      isAccuracyReady.value &&
+      newLocation.accuracy &&
+      lockedAccuracy.value &&
+      newLocation.accuracy < lockedAccuracy.value
+    ) {
+      lockedAccuracy.value = newLocation.accuracy;
+    }
+  }
 
   // Update navigation calculations if destination exists
   if (destinationLocation.value) {
-    calculateNavigationData();
+    // Only update distance if we have at least some accuracy reading
+    if (isAccuracyReady.value) {
+      calculateNavigationData();
+    } else {
+      arInstructions.value =
+        "Calibrating GPS… please hold still or move to an open area.";
+    }
   }
 
   // Log accuracy for debugging (remove in production)
@@ -1029,8 +1032,19 @@ function calculateNavigationData() {
 
   // Check for arrival - improved logic
   if (distanceToDestination.value < 3 && !hasLoggedArrival.value) {
-    console.log("🎉 ARRIVAL DETECTED! Logging to Firebase...");
-    announceArrival();
+    // Require sufficient accuracy before confirming arrival
+    if (
+      (latestAccuracy.value || 999) <= ACC_ARRIVAL_REQUIRED &&
+      isAccuracyReady.value
+    ) {
+      console.log("🎉 ARRIVAL DETECTED! Logging to Firebase...");
+      announceArrival();
+    } else {
+      // Keep user in near-arrival state but don't trigger arrival
+      arInstructions.value = `Very close – refine position (Accuracy ±${(
+        latestAccuracy.value || 0
+      ).toFixed(0)}m)`;
+    }
   }
 }
 
@@ -1039,7 +1053,14 @@ function updateARInstructions() {
   const destination = destinationLocation.value;
 
   if (distance < 3) {
-    arInstructions.value = `You have arrived at ${destination.name}!`;
+    if (
+      (latestAccuracy.value || 999) <= ACC_ARRIVAL_REQUIRED &&
+      isAccuracyReady.value
+    ) {
+      arInstructions.value = `You have arrived at ${destination.name}!`;
+    } else {
+      arInstructions.value = `Almost there… refine GPS (±${currentAccuracyDisplay})`;
+    }
     // Show arrival options
     if (!hasArrived.value) {
       hasArrived.value = true;
@@ -1371,6 +1392,22 @@ function formatDistance(distance) {
   }
 }
 
+// Accuracy helpers
+const currentAccuracyDisplay = computed(() => {
+  if (!latestAccuracy.value) return "--";
+  if (latestAccuracy.value >= 1000) return ">1km";
+  if (latestAccuracy.value >= 100) return latestAccuracy.value.toFixed(0) + "m";
+  if (latestAccuracy.value >= 10) return latestAccuracy.value.toFixed(0) + "m";
+  return latestAccuracy.value.toFixed(1) + "m";
+});
+
+const accuracyQualityClass = computed(() => {
+  if (!latestAccuracy.value) return "acc-unknown";
+  if (latestAccuracy.value <= 10) return "acc-good";
+  if (latestAccuracy.value <= 25) return "acc-fair";
+  return "acc-poor";
+});
+
 function updateCanvasDimensions() {
   canvasWidth.value = window.innerWidth;
   canvasHeight.value = window.innerHeight;
@@ -1438,7 +1475,6 @@ function stopARNavigation() {
   distanceToDestination.value = 0;
   directionToDestination.value = 0;
   arInstructions.value = "";
-  showSettings.value = false;
   showCommandsHelp.value = false;
   announcementQueue.value = [];
   isProcessingQueue.value = false;
@@ -1528,7 +1564,7 @@ function formatNavigationTime() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 10001;
+  z-index: 10005; /* Ensure above overlays and stop button */
 }
 
 .control-button {
@@ -1589,127 +1625,7 @@ function formatNavigationTime() {
 }
 
 /* Settings Panel */
-.navigation-settings {
-  position: relative;
-}
-
-.settings-panel {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 10px;
-  background-color: rgba(255, 255, 255, 0.95);
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  width: 300px;
-  z-index: 20;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.settings-panel h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 16px;
-  color: #333;
-}
-
-.setting-item {
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.setting-item label {
-  font-size: 14px;
-  margin-right: 10px;
-  color: #333;
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #4285f4;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #4285f4;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-
-input[type="range"] {
-  width: 150px;
-}
-
-.volume-value {
-  font-size: 14px;
-  width: 40px;
-  text-align: right;
-  color: #333;
-}
-
-select {
-  padding: 5px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-  background-color: #fff;
-  font-size: 14px;
-}
-
-.close-settings {
-  margin-top: 10px;
-  padding: 8px 12px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  width: 100%;
-}
-
-.close-settings:hover {
-  background-color: #e5e5e5;
-}
+/* Settings UI removed */
 
 /* Voice Components */
 .listening-indicator {
@@ -2246,17 +2162,7 @@ select {
     margin-bottom: 10px;
   }
 
-  .navigation-settings {
-    order: 2;
-  }
-
-  .voice-controls {
-    order: 3;
-  }
-
-  .stop-navigation {
-    order: 4;
-  }
+  /* settings controls removed */
 
   .control-button {
     min-width: 45px;
@@ -2264,10 +2170,7 @@ select {
     font-size: 16px;
   }
 
-  .settings-panel {
-    min-width: 280px;
-    right: 10px;
-  }
+  /* settings panel removed */
 
   .distance-display {
     font-size: 16px;
@@ -2297,13 +2200,14 @@ select {
   }
 
   .ar-controls-bar {
-    bottom: 20px;
-    left: 10px;
+    top: 10px; /* keep on top-right */
     right: 10px;
-    padding: 8px 15px;
-    border-radius: 25px;
-    flex-wrap: wrap;
-    justify-content: center;
+    left: auto;
+    bottom: auto;
+    padding: 0;
+    border-radius: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     gap: 8px;
   }
 
@@ -2333,17 +2237,7 @@ select {
     margin: 0;
   }
 
-  .settings-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90vw;
-    max-width: 350px;
-    max-height: 70vh;
-    overflow-y: auto;
-    z-index: 1001;
-  }
+  /* settings panel removed */
 
   .setting-item {
     margin-bottom: 15px;
@@ -2392,11 +2286,12 @@ select {
 /* Mobile small */
 @media (max-width: 479px) {
   .ar-controls-bar {
-    bottom: 15px;
-    left: 5px;
-    right: 5px;
-    padding: 6px 12px;
-    border-radius: 20px;
+    top: 8px; /* pin to top-right on very small phones */
+    right: 8px;
+    left: auto;
+    bottom: auto;
+    padding: 0;
+    border-radius: 0;
   }
 
   .navigation-info {
@@ -2423,16 +2318,7 @@ select {
     font-size: 14px;
   }
 
-  .settings-panel {
-    width: 95vw;
-    max-height: 80vh;
-    padding: 15px;
-  }
-
-  .settings-panel h3 {
-    font-size: 16px;
-    margin-bottom: 15px;
-  }
+  /* settings panel removed */
 
   .setting-item {
     margin-bottom: 12px;
@@ -2442,13 +2328,7 @@ select {
     font-size: 13px;
   }
 
-  .toggle-switch {
-    transform: scale(0.8);
-  }
-
-  input[type="range"] {
-    height: 30px;
-  }
+  /* toggle/range removed */
 
   .arrival-notification {
     width: 95vw;
@@ -2498,13 +2378,7 @@ select {
     font-size: 10px;
   }
 
-  .settings-panel {
-    padding: 12px;
-  }
-
-  .settings-panel h3 {
-    font-size: 14px;
-  }
+  /* settings panel removed */
 
   .setting-item label {
     font-size: 12px;
@@ -2531,11 +2405,12 @@ select {
 /* Landscape orientation */
 @media (max-height: 500px) and (orientation: landscape) {
   .ar-controls-bar {
-    bottom: 5px;
-    left: 10px;
+    top: 5px; /* keep at top-right in landscape */
     right: 10px;
-    padding: 4px 12px;
-    flex-direction: row;
+    left: auto;
+    bottom: auto;
+    padding: 0;
+    flex-direction: column;
     flex-wrap: nowrap;
   }
 
@@ -2562,15 +2437,7 @@ select {
     margin: 0 2px;
   }
 
-  .settings-panel {
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90vw;
-    max-width: 400px;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
+  /* settings panel removed */
 
   .arrival-notification {
     top: 50%;
@@ -2610,7 +2477,6 @@ select {
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .ar-navigation-container *,
-  .settings-panel,
   .arrival-notification {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;

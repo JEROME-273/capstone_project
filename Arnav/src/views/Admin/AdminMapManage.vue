@@ -237,6 +237,21 @@
                       capturing ? 'bx-loader-alt bx-spin' : 'bx-target-lock'
                     "></i>
                   {{ capturing ? "Capturing GPS..." : "Get Precise Location" }}
+                  <span
+                    v-if="bestCaptureAccuracy && !capturing"
+                    class="gps-accuracy-badge"
+                    :class="{
+                      good: bestCaptureAccuracy <= 10,
+                      fair:
+                        bestCaptureAccuracy > 10 && bestCaptureAccuracy <= 25,
+                      poor: bestCaptureAccuracy > 25,
+                    }"
+                    >±{{
+                      bestCaptureAccuracy >= 10
+                        ? bestCaptureAccuracy.toFixed(0)
+                        : bestCaptureAccuracy.toFixed(1)
+                    }}m</span
+                  >
                 </button>
               </div>
 
@@ -685,6 +700,7 @@ const qrCache = ref({});
 // Enhanced location capture state
 const capturing = ref(false);
 const locationReadings = ref([]);
+const bestCaptureAccuracy = ref(null); // meters from last capture session
 
 // Confirmation modal state
 const showConfirmModal = ref(false);
@@ -1371,6 +1387,7 @@ const getCurrentLocationPrecise = () => {
 
   capturing.value = true;
   locationReadings.value = [];
+  bestCaptureAccuracy.value = null;
 
   // High accuracy geolocation options for precise location
   const options = {
@@ -1379,9 +1396,12 @@ const getCurrentLocationPrecise = () => {
     maximumAge: 0, // Don't use cached location, get fresh coordinates
   };
 
-  // Get multiple readings for better accuracy
-  const maxReadings = 3;
+  // Improved multi-reading capture
+  const maxReadings = 8; // attempt up to 8 readings
+  const MIN_GOOD_ACCURACY = 15; // meters – early finish if reached
+  const HARD_REQUIRED_ACCURACY = 35; // if no reading better than this, warn user
   let currentReading = 0;
+  let bestAccuracy = Infinity;
 
   const getReading = () => {
     navigator.geolocation.getCurrentPosition(
@@ -1396,50 +1416,73 @@ const getCurrentLocationPrecise = () => {
           timestamp: position.timestamp,
         });
 
-        if (currentReading < maxReadings) {
-          // Get another reading for better precision
-          setTimeout(getReading, 1000); // Wait 1 second between readings
-        } else {
-          // Calculate the most accurate position from all readings
-          const bestReading = locationReadings.value.reduce((best, current) =>
-            current.accuracy < best.accuracy ? current : best
+        if (position.coords.accuracy < bestAccuracy) {
+          bestAccuracy = position.coords.accuracy;
+          bestCaptureAccuracy.value = bestAccuracy;
+        }
+
+        const earlyGood = position.coords.accuracy <= MIN_GOOD_ACCURACY;
+        const continueNeeded = currentReading < maxReadings && !earlyGood;
+
+        if (continueNeeded) {
+          setTimeout(getReading, 1000); // spaced sampling
+          return;
+        }
+
+        // Weighted averaging by 1/accuracy^2
+        const weighted = locationReadings.value.reduce(
+          (acc, r) => {
+            const weight = r.accuracy > 0 ? 1 / (r.accuracy * r.accuracy) : 1;
+            acc.lat += r.latitude * weight;
+            acc.lng += r.longitude * weight;
+            acc.alt += (r.altitude || 0) * weight;
+            acc.weight += weight;
+            return acc;
+          },
+          { lat: 0, lng: 0, alt: 0, weight: 0 }
+        );
+
+        const avgLat = weighted.lat / weighted.weight;
+        const avgLng = weighted.lng / weighted.weight;
+        const avgAlt =
+          weighted.weight > 0 ? weighted.alt / weighted.weight : null;
+        const bestReading = locationReadings.value.reduce((b, c) =>
+          c.accuracy < b.accuracy ? c : b
+        );
+
+        waypoint.value.coordinates.x = avgLat; // store averaged
+        waypoint.value.coordinates.y = avgLng;
+        waypoint.value.altitude = avgAlt;
+
+        capturing.value = false;
+
+        const precisionLevel =
+          bestReading.accuracy <= 5
+            ? "Excellent"
+            : bestReading.accuracy <= 10
+            ? "Good"
+            : bestReading.accuracy <= 20
+            ? "Fair"
+            : "Poor";
+
+        console.log(`GPS capture complete: ${currentReading} readings.`);
+        console.log(`Best accuracy: ±${bestReading.accuracy.toFixed(1)}m`);
+        console.log(`Weighted average position stored.`);
+        console.log("All readings:", locationReadings.value);
+
+        if (bestReading.accuracy > HARD_REQUIRED_ACCURACY) {
+          toast.warning(
+            `Low GPS accuracy (±${bestReading.accuracy.toFixed(
+              0
+            )}m). Consider recapturing before saving for better AR results.`,
+            { duration: 6000 }
           );
-
-          // Store exact coordinates without rounding
-          waypoint.value.coordinates.x = bestReading.latitude;
-          waypoint.value.coordinates.y = bestReading.longitude;
-          waypoint.value.altitude = bestReading.altitude;
-
-          capturing.value = false;
-
-          // Provide detailed success feedback without toast
-          const precisionLevel =
-            bestReading.accuracy <= 5
-              ? "Excellent"
-              : bestReading.accuracy <= 10
-              ? "Good"
-              : bestReading.accuracy <= 20
-              ? "Fair"
-              : "Poor";
-
-          console.log(`${precisionLevel} GPS location captured!`);
-          console.log(`Accuracy: ±${bestReading.accuracy.toFixed(1)}m`);
-          console.log(`${maxReadings} GPS readings averaged`);
-          console.log("All readings:", locationReadings.value);
-          console.log("Best reading selected:", bestReading);
-
-          // Validate if location seems accurate enough
-          if (bestReading.accuracy > 50) {
-            toast.warning(
-              `GPS accuracy is ${bestReading.accuracy.toFixed(
-                1
-              )}m. For better precision:\n` +
-                `• Move to an open area\n` +
-                `• Ensure GPS is enabled\n` +
-                `• Try again in a few moments`,
-              { duration: 6000 }
-            );
-          }
+        } else {
+          toast.success(
+            `${precisionLevel} GPS fix captured (±${bestReading.accuracy.toFixed(
+              1
+            )}m)`
+          );
         }
       },
       (error) => {
@@ -1617,6 +1660,31 @@ const printQR = (dataUrl, name = "waypoint") => {
 
 .text-danger {
   color: #dc3545;
+}
+
+/* GPS capture badge */
+.gps-accuracy-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: #374151;
+  color: #e5e7eb;
+  line-height: 1;
+}
+.gps-accuracy-badge.good {
+  background: #065f46;
+  color: #d1fae5;
+}
+.gps-accuracy-badge.fair {
+  background: #92400e;
+  color: #fef3c7;
+}
+.gps-accuracy-badge.poor {
+  background: #7f1d1d;
+  color: #fee2e2;
 }
 
 .btn-danger {

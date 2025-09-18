@@ -204,6 +204,19 @@
   font-size: clamp(45px, 8vw, 75px); /* make weather icon match size */
 }
 
+/* Hide weather condition icon when notifications dropdown is open */
+body.notifications-open .condition-icon {
+  /* Using !important to override scoped or inline sizing */
+  display: none !important;
+}
+
+/* Hide the entire weather section (texts + icon) when notifications are open.
+   Using visibility so layout/spacing doesn't jump; switch to display:none if you want content below to move up. */
+body.notifications-open .weather-content {
+  visibility: hidden !important;
+  pointer-events: none; /* prevent any interaction while hidden */
+}
+
 /* Feels like */
 .feels-like {
   font-size: clamp(16px, 3vw, 20px); /* make it larger */

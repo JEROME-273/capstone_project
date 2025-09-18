@@ -1,9 +1,7 @@
 <template>
   <div class="loading-wrapper">
     <div class="container">
-      <div class="map">
-        <div class="pointer"></div>
-      </div>
+      <div class="pointer"></div>
       <button v-if="showButton" id="continue-btn" @click="goToRegister">
         Continue
       </button>
@@ -90,27 +88,18 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-.map {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url("@/assets/map2.png") no-repeat center;
-  background-size: contain;
-}
-
 .pointer {
   position: absolute;
-  bottom: 40%;
+  top: 50%;
   left: 50%;
-  width: 180px;
-  height: 60px;
+  width: clamp(360px, 55vw, 520px); /* responsive base width */
+  height: clamp(120px, 18vw, 180px); /* maintain aspect */
   background: url("@/assets/final_logo.png") no-repeat center;
   background-size: contain;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 10;
   animation: moveUpDown 1.5s ease-in-out infinite;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 #continue-btn {
@@ -157,11 +146,10 @@ onUnmounted(() => {
   }
 
   .pointer {
-    width: 70vw;
-    height: 20vw;
-    max-width: 120px;
-    max-height: 40px;
-    bottom: 35%;
+    width: 95vw; /* fuller */
+    height: 36vw; /* proportional height */
+    max-width: 300px; /* bigger cap */
+    max-height: 100px; /* bigger cap */
   }
 
   #continue-btn {
@@ -183,9 +171,9 @@ onUnmounted(() => {
 
   .pointer {
     width: 100vw;
-    height: 33vw;
-    max-width: 600px;
-    max-height: 200px;
+    height: 42vw;
+    max-width: 780px;
+    max-height: 270px;
   }
 }
 
@@ -197,8 +185,8 @@ onUnmounted(() => {
   }
 
   .pointer {
-    width: 600px;
-    height: 200px;
+    width: 900px;
+    height: 300px;
   }
 }
 
@@ -212,10 +200,10 @@ onUnmounted(() => {
   }
 
   .pointer {
-    width: 80vh;
-    height: 27vh;
-    max-width: 600px;
-    max-height: 200px;
+    width: 95vh;
+    height: 35vh;
+    max-width: 780px;
+    max-height: 270px;
   }
 
   #continue-btn {

@@ -153,24 +153,32 @@ export default {
 .header {
   width: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 20px;
+  padding: 10px 0;
   position: relative;
 }
 
 .back-button {
-  position: absolute;
-  left: 0;
-  top: 0;
-  background: none;
-  border: none;
+  background: #2196f3;
+  border: 2px solid #2196f3;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 16px;
   cursor: pointer;
-  color: #2196f3;
+  color: white;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.back-button:hover {
+  background: #1976d2;
+  border-color: #1976d2;
+  transform: scale(1.05);
 }
 
 .back-icon {
@@ -178,8 +186,10 @@ export default {
 }
 
 h1 {
-  margin: 10px 0;
+  margin: 0;
   text-align: center;
+  flex: 1;
+  padding: 0 20px;
 }
 
 .scanner-wrapper {

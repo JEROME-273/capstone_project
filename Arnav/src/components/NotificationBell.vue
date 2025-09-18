@@ -144,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useToast } from "vue-toastification";
 import NotificationService from "@/services/NotificationService";
 
@@ -180,7 +180,21 @@ onUnmounted(() => {
     unsubscribeListener();
   }
   document.removeEventListener("click", handleClickOutside);
+  // Ensure body class is removed when component unmounts
+  document.body.classList.remove("notifications-open");
 });
+
+// Watch for dropdown visibility to toggle a body class used to hide weather icon
+watch(
+  () => showNotifications.value,
+  (val) => {
+    if (val) {
+      document.body.classList.add("notifications-open");
+    } else {
+      document.body.classList.remove("notifications-open");
+    }
+  }
+);
 
 // Load notifications
 const loadNotifications = async () => {
@@ -612,26 +626,44 @@ const formatTime = (timestamp) => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e3f2fd;
+  background: linear-gradient(135deg, #fffbe0 0%, #e3ffd6 55%, #ffeaa3 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 12px;
   flex-shrink: 0;
+  border: 1px solid #e5edc8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 0 0 3px rgba(255, 191, 0, 0.18);
+  transition: background 0.4s ease, transform 0.25s ease, box-shadow 0.3s ease;
 }
 
+/* Slight variant for waypoint notifications (a bit more green) */
 .waypoint-notification .notification-icon {
-  background: #e8f5e8;
-  color: #4caf50;
+  background: linear-gradient(140deg, #e9ffe2 0%, #fff9d3 60%, #fff1a8 100%);
 }
 
 .notification-icon i {
   font-size: 18px;
-  color: #2196f3;
+  /* Fallback color */
+  color: #4caf50;
+  /* Gradient text for modern browsers */
+  background: linear-gradient(135deg, #4caf50 0%, #ffbf00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 0 4px rgba(255, 191, 0, 0.55);
 }
 
 .waypoint-notification .notification-icon i {
-  color: #4caf50;
+  background: linear-gradient(135deg, #43a047 0%, #ffc400 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.notification-icon:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), 0 0 0 4px rgba(255, 191, 0, 0.25);
 }
 
 .notification-details {

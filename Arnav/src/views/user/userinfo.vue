@@ -58,17 +58,21 @@
         </div>
 
         <!-- History -->
-        <div class="section-block">
-          <div class="profile-link" @click="toggleDropdown('history')">
+        <div class="section-block history-section">
+          <div class="profile-link dropdown-header" @click="toggleDropdown('history')">
             <div class="flex items-center">
               <i class="fas fa-history icon-section"></i>
               <span class="ml-4 text-lg">History of Visit</span>
             </div>
             <i
-              class="fas fa-chevron-right icon-chevron"
-              :class="{ 'rotate-90': openDropdown === 'history' }"></i>
+              class="fas fa-chevron-down icon-chevron dropdown-arrow"
+              :class="{ 'rotate-180': openDropdown === 'history' }"></i>
           </div>
-          <div v-if="openDropdown === 'history'" class="dropdown-content">
+          
+          <!-- Dropdown content appears below -->
+          <div 
+            v-if="openDropdown === 'history'" 
+            class="dropdown-content history-dropdown">
             <div v-if="recentDestinations.length">
               <div
                 v-for="(dest, idx) in recentDestinations"
@@ -1173,4 +1177,115 @@ export default {
 <style scoped>
 @import "@/assets/allstyle.css";
 @import "@/assets/responsive.css";
+
+/* Dropdown specific styles */
+.history-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.dropdown-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-arrow {
+  transition: transform 0.3s ease;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.history-dropdown {
+  animation: slideDown 0.3s ease-out;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-content {
+  width: 100%;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 0 0 8px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: none;
+  box-sizing: border-box;
+}
+
+.visit-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.visit-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.visit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.visit-status {
+  background: #4CAF50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.visit-address {
+  color: #666;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.visit-details {
+  display: flex;
+  gap: 15px;
+  font-size: 14px;
+  color: #555;
+}
+
+.visit-empty {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+}
+
+.visit-empty i {
+  font-size: 48px;
+  margin-bottom: 15px;
+  color: #ddd;
+}
 </style>
