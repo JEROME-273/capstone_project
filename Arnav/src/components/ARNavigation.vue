@@ -289,6 +289,23 @@ onUnmounted(() => {
   stopARNavigation();
   window.removeEventListener("resize", updateCanvasDimensions);
   cleanupVoiceServices();
+  // Log navigation abandonment if component unmounts without arrival
+  if (!hasLoggedArrival.value && destinationLocation.value) {
+    (async () => {
+      try {
+        const { logNavigationAbandoned } = await import(
+          "@/services/AnalyticsService.js"
+        );
+        await logNavigationAbandoned({
+          destinationName: destinationLocation.value.name,
+          reason: "component_unmounted",
+        });
+        console.log("📝 Logged navigation abandonment");
+      } catch (e) {
+        console.warn("Failed to log navigation abandonment", e);
+      }
+    })();
+  }
 });
 
 // Voice Services initialization
@@ -476,8 +493,6 @@ async function logSuccessfulArrival() {
       arrivalTime.getTime() - navigationStartTime.value.getTime();
 
     const arrivalData = {
-      userId: currentUser.uid,
-      userEmail: currentUser.email,
       destinationName: destinationLocation.value.name,
       destinationCoordinates: {
         lat: destinationLocation.value.lat,
@@ -488,31 +503,53 @@ async function logSuccessfulArrival() {
       navigationDuration: navigationDuration, // in milliseconds
       successful: true,
       finalDistance: distanceToDestination.value,
-      timestamp: arrivalTime,
     };
 
-    console.log("📊 Logging arrival data:", arrivalData);
-
-    console.log("🔄 Attempting to save to Firebase...");
-
-    // Add timeout for Firebase operation
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(
-        () =>
-          reject(new Error("Firebase operation timed out after 10 seconds")),
-        10000
+    // Prefer centralized AnalyticsService if available
+    try {
+      const { logArrivalEvent } = await import(
+        "@/services/AnalyticsService.js"
       );
-    });
-
-    const savePromise = addDoc(collection(db, "arrivalAnalytics"), arrivalData);
-
-    await Promise.race([savePromise, timeoutPromise]);
-
-    console.log("✅ SUCCESS! Arrival data saved to Firebase!");
+      await logArrivalEvent(arrivalData);
+      console.log("✅ SUCCESS! Arrival data saved via AnalyticsService!");
+    } catch (svcErr) {
+      console.warn(
+        "AnalyticsService not available or failed, falling back:",
+        svcErr
+      );
+      // Fallback direct write
+      await addDoc(collection(db, "arrivalAnalytics"), {
+        ...arrivalData,
+        timestamp: arrivalTime,
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+      });
+      console.log("✅ SUCCESS! Arrival data saved directly to Firebase!");
+    }
   } catch (error) {
     console.error("❌ ERROR logging arrival:", error);
     console.error("Error details:", error.message);
     console.error("Error code:", error.code);
+  }
+}
+
+// Log arrival failure (exposed for future triggers like timeout)
+async function logArrivalFailure(reason = "timeout") {
+  try {
+    const { logArrivalFailure } = await import(
+      "@/services/AnalyticsService.js"
+    );
+    await logArrivalFailure({
+      destinationName: destinationLocation.value?.name,
+      reason,
+      navigationDuration: navigationStartTime.value
+        ? Date.now() - navigationStartTime.value.getTime()
+        : null,
+      startTime: navigationStartTime.value || null,
+    });
+    console.log("⚠️ Logged arrival failure:", reason);
+  } catch (e) {
+    console.warn("Failed to log arrival failure", e);
   }
 }
 

@@ -258,6 +258,7 @@ import {
   orderBy,
   query,
   setDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import AdminLayout from "./AdminLayout.vue";
 
@@ -314,15 +315,16 @@ export default {
   },
   methods: {
     async fetchUsers() {
+      // fallback manual refresh
       const db = getFirestore();
       try {
         const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
         this.users = [];
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data();
+        querySnapshot.forEach((d) => {
+          const userData = d.data();
           this.users.push({
-            uid: doc.id,
+            uid: d.id,
             ...userData,
             createdAt: userData.createdAt?.toDate() || new Date(),
           });
@@ -330,6 +332,36 @@ export default {
       } catch (e) {
         console.error("Error fetching users:", e);
       }
+    },
+    startRealtimeUsers() {
+      const db = getFirestore();
+      const qUsers = query(
+        collection(db, "users"),
+        orderBy("createdAt", "desc")
+      );
+      // store unsubscribe on instance
+      if (this._usersUnsub) this._usersUnsub();
+      this._usersUnsub = onSnapshot(
+        qUsers,
+        (snapshot) => {
+          const next = [];
+          snapshot.forEach((d) => {
+            const userData = d.data();
+            next.push({
+              uid: d.id,
+              ...userData,
+              createdAt: userData.createdAt?.toDate() || new Date(),
+            });
+          });
+          this.users = next;
+        },
+        (err) => {
+          console.error("Realtime users listener error:", err);
+        }
+      );
+    },
+    manualRefresh() {
+      this.fetchUsers();
     },
 
     async saveUser() {
@@ -519,7 +551,10 @@ export default {
     },
   },
   mounted() {
-    this.fetchUsers();
+    this.startRealtimeUsers();
+  },
+  beforeUnmount() {
+    if (this._usersUnsub) this._usersUnsub();
   },
 };
 </script>

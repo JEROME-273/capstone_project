@@ -7,6 +7,20 @@ import { auth } from "./firebase/config";
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
+// PWA Service Worker Registration
+import { registerSW } from "virtual:pwa-register";
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm("New content available. Reload?")) {
+      updateSW(true);
+    }
+  },
+  onOfflineReady() {
+    console.log("App ready to work offline");
+  },
+});
+
 // Create Vue app
 const app = createApp(App);
 

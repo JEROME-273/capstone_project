@@ -46,11 +46,17 @@
             <button
               v-if="animal.soundUrl"
               class="btn btn-sound"
-              @click="playSound(animal.soundUrl)"
-              :disabled="playingSounds.includes(animal.id)">
-              <i class="bx bx-volume-full"></i>
+              @click="toggleSound(animal)">
+              <i
+                :class="
+                  currentAnimalId === animal.id && isPlaying
+                    ? 'bx bx-pause'
+                    : 'bx bx-play'
+                " />
               {{
-                playingSounds.includes(animal.id) ? "Playing..." : "Play Sound"
+                currentAnimalId === animal.id && isPlaying
+                  ? "Pause"
+                  : "Play Sound"
               }}
             </button>
             <button class="btn btn-qr" @click="generateQR(animal)">
@@ -311,7 +317,6 @@
                 Scan this QR code to view information about
                 {{ selectedAnimal?.name }}
               </p>
-              <div class="qr-data"><strong>QR Data:</strong> {{ qrData }}</div>
             </div>
 
             <div class="qr-code-container">
@@ -369,7 +374,12 @@ export default {
     const showQRModal = ref(false);
     const selectedAnimal = ref(null);
     const qrCanvas = ref(null);
-    const playingSounds = ref([]);
+    // Single audio playback state
+    const currentAudio = ref(null); // HTMLAudioElement
+    const currentAnimalId = ref(null); // ID of animal whose audio is loaded
+    const isPlaying = ref(false);
+    // Legacy array kept if needed elsewhere; can be removed if unused
+    const playingSounds = ref([]); // no longer used for UI state
     const previewPlaying = ref(false);
     const uploading = ref(false);
     const imagePreview = ref("");
@@ -688,7 +698,10 @@ export default {
 
         animalForm.value.soundUrl = data.secure_url;
         audioPreview.value = data.secure_url; // Use Cloudinary URL for final preview
-        console.log("Audio uploaded successfully to Cloudinary! URL:", data.secure_url);
+        console.log(
+          "Audio uploaded successfully to Cloudinary! URL:",
+          data.secure_url
+        );
         alert("Audio uploaded successfully!");
       } catch (error) {
         console.error("Error uploading audio:", error);
@@ -829,52 +842,73 @@ export default {
       }
     };
 
-    // Play animal sound
-    const playSound = async (soundUrl) => {
-      if (!soundUrl) return;
-
-      // Find the animal ID for tracking
-      const animal = animals.value.find((a) => a.soundUrl === soundUrl);
-      if (!animal) return;
+    // Toggle play/pause for an animal sound ensuring only one plays at a time
+    const toggleSound = async (animal) => {
+      if (!animal || !animal.soundUrl) return;
 
       try {
-        // Add to playing sounds
-        playingSounds.value.push(animal.id);
-
-        // Create audio element
-        const audio = new Audio(soundUrl);
-
-        // Handle audio events
-        audio.addEventListener("ended", () => {
-          // Remove from playing sounds when finished
-          const index = playingSounds.value.indexOf(animal.id);
-          if (index > -1) {
-            playingSounds.value.splice(index, 1);
+        // If the same animal is currently playing, pause it
+        if (currentAnimalId.value === animal.id) {
+          if (currentAudio.value) {
+            if (isPlaying.value) {
+              currentAudio.value.pause();
+              isPlaying.value = false;
+            } else {
+              await currentAudio.value.play();
+              isPlaying.value = true;
+            }
           }
+          return;
+        }
+
+        // Different animal: stop previous audio if exists
+        if (currentAudio.value) {
+          currentAudio.value.pause();
+          currentAudio.value.currentTime = 0;
+        }
+
+        // Create and play new audio
+        const audio = new Audio(animal.soundUrl);
+        currentAudio.value = audio;
+        currentAnimalId.value = animal.id;
+        isPlaying.value = false; // will set true after successful play
+
+        // Cleanup on end
+        audio.addEventListener("ended", () => {
+          isPlaying.value = false;
+          currentAnimalId.value = null;
+          // Reset audio reference
+          currentAudio.value = null;
+        });
+
+        audio.addEventListener("pause", () => {
+          // pause event also fires on end before ended sometimes; guard with currentTime
+          if (audio.currentTime < audio.duration) {
+            isPlaying.value = false;
+          }
+        });
+
+        audio.addEventListener("play", () => {
+          isPlaying.value = true;
         });
 
         audio.addEventListener("error", (e) => {
           console.error("Error playing sound:", e);
           alert("Error playing sound. Please check the sound URL.");
-          // Remove from playing sounds on error
-          const index = playingSounds.value.indexOf(animal.id);
-          if (index > -1) {
-            playingSounds.value.splice(index, 1);
-          }
+          isPlaying.value = false;
+          currentAnimalId.value = null;
+          currentAudio.value = null;
         });
 
-        // Play the audio
         await audio.play();
-      } catch (error) {
-        console.error("Error playing sound:", error);
+      } catch (err) {
+        console.error("Audio playback failed:", err);
         alert(
-          "Error playing sound. Please ensure the URL is valid and accessible."
+          "Unable to play the sound. User interaction may be required or the file may be inaccessible."
         );
-        // Remove from playing sounds on error
-        const index = playingSounds.value.indexOf(animal.id);
-        if (index > -1) {
-          playingSounds.value.splice(index, 1);
-        }
+        isPlaying.value = false;
+        currentAnimalId.value = null;
+        currentAudio.value = null;
       }
     };
 
@@ -1015,7 +1049,9 @@ export default {
       generateQR,
       downloadQR,
       printQR,
-      playSound,
+      toggleSound,
+      currentAnimalId,
+      isPlaying,
       previewSound,
       handleFileUpload,
       triggerFileInput,

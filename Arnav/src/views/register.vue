@@ -283,7 +283,14 @@ import {
   sendEmailVerification,
   signOut,
 } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
 import "../assets/register.css"; // Import the CSS file
 
 export default {
@@ -519,7 +526,16 @@ export default {
         // Send email verification
         await sendEmailVerification(user);
 
-        // Store additional user data in Firestore
+        // Gather environment / device metadata
+        const deviceType = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+          ? "Mobile"
+          : /Tablet|iPad/i.test(navigator.userAgent)
+          ? "Tablet"
+          : "Desktop";
+
+        const screenResolution = `${window.screen.width}x${window.screen.height}`;
+
+        // Store additional user data in Firestore (use serverTimestamp for consistency)
         await setDoc(doc(this.db, "users", user.uid), {
           firstName: this.firstName,
           lastName: this.lastName,
@@ -529,7 +545,12 @@ export default {
           typeofvisit: this.typeofvisit,
           role: "user", // Default role
           emailVerified: false,
-          createdAt: new Date(),
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(), // initial login time treated same as registration
+          deviceType,
+          platform: navigator.platform || null,
+          screenResolution,
+          userAgent: navigator.userAgent,
         });
 
         this.showToast(
@@ -605,6 +626,39 @@ export default {
 
           // Reset failed attempts on successful login
           this.resetLoginAttempts();
+
+          // Update lastLoginAt + environment snapshot & sync emailVerified if needed
+          try {
+            const updates = {
+              lastLoginAt: serverTimestamp(),
+              deviceType: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+                ? "Mobile"
+                : /Tablet|iPad/i.test(navigator.userAgent)
+                ? "Tablet"
+                : "Desktop",
+              platform: navigator.platform || null,
+              screenResolution: `${window.screen.width}x${window.screen.height}`,
+              userAgent: navigator.userAgent,
+            };
+            if (
+              (user.emailVerified || userData.emailVerified) &&
+              !userData.emailVerified
+            ) {
+              updates.emailVerified = true;
+            }
+            await updateDoc(doc(this.db, "users", user.uid), updates);
+            // Record login history & generic event
+            try {
+              const { logLogin } = await import(
+                "@/services/AnalyticsService.js"
+              );
+              await logLogin();
+            } catch (e) {
+              console.warn("logLogin failed or service unavailable", e);
+            }
+          } catch (metaErr) {
+            console.warn("Failed to update login metadata:", metaErr);
+          }
 
           // Store user data in localStorage
           localStorage.setItem(

@@ -586,33 +586,49 @@
       </template>
     </div>
 
-    <!-- QR Modal -->
+    <!-- QR Modal (Simplified to match animal QR modal) -->
     <div v-if="showQRModal" class="modal-overlay" @click="closeQRModal">
-      <div class="modal-content qr-modal" @click.stop>
+      <div class="modal qr-modal" @click.stop>
         <div class="modal-header">
-          <h3><i class="bx bx-qr"></i> QR Code: {{ qrModalWaypoint?.name }}</h3>
-          <button class="btn-secondary btn-close" @click="closeQRModal">
+          <h3>QR Code for {{ qrModalWaypoint?.name }}</h3>
+          <button class="close-btn" @click="closeQRModal">
             <i class="bx bx-x"></i>
           </button>
         </div>
-        <div class="modal-body qr-modal-body" v-if="qrModalDataUrl">
-          <img :src="qrModalDataUrl" :alt="`QR for ${qrModalWaypoint?.name}`" />
-          <div class="qr-actions">
+        <div class="qr-content">
+          <div class="qr-info">
+            <p>
+              Scan this QR code to start AR navigation to
+              {{ qrModalWaypoint?.name }}
+            </p>
+            <div v-if="qrModalWaypoint?.type" class="waypoint-type-badge">
+              <strong>Type:</strong>
+              {{ formatCategoryName(qrModalWaypoint?.type) }}
+            </div>
+          </div>
+          <div class="qr-code-container">
+            <template v-if="qrModalDataUrl">
+              <img
+                :src="qrModalDataUrl"
+                :alt="`QR for ${qrModalWaypoint?.name}`"
+                class="qr-canvas" />
+            </template>
+            <div v-else class="qr-loading">
+              <i class="bx bx-loader-alt bx-spin"></i> Generating QR...
+            </div>
+          </div>
+          <div class="qr-actions" v-if="qrModalDataUrl">
             <button
-              class="btn-secondary btn-sm"
+              class="btn btn-primary"
               @click="downloadQR(qrModalDataUrl, qrModalWaypoint.name)">
-              <i class="bx bx-download"></i> Download
+              <i class="bx bx-download"></i> Download QR Code
             </button>
             <button
-              class="btn-secondary btn-sm"
+              class="btn btn-secondary"
               @click="printQR(qrModalDataUrl, qrModalWaypoint.name)">
-              <i class="bx bx-printer"></i> Print
+              <i class="bx bx-printer"></i> Print QR Code
             </button>
           </div>
-          <small>Scan to start AR navigation directly to this waypoint.</small>
-        </div>
-        <div class="modal-body" v-else>
-          <i class="bx bx-loader-alt bx-spin"></i> Generating QR...
         </div>
       </div>
     </div>
@@ -2217,6 +2233,58 @@ const printQR = (dataUrl, name = "waypoint") => {
   }
 }
 
+/* Simple QR modal styles (aligned with AdminAnimalManage) */
+.qr-modal {
+  width: 500px;
+}
+.qr-content {
+  padding: 20px;
+  text-align: center;
+}
+.qr-info {
+  margin-bottom: 20px;
+}
+.qr-info p {
+  margin: 0 0 12px 0;
+  color: #555;
+  font-size: 14px;
+}
+.waypoint-type-badge {
+  display: inline-block;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #444;
+}
+.qr-code-container {
+  margin: 20px 0;
+}
+.qr-canvas {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-width: 256px;
+  width: 100%;
+  height: auto;
+}
+.qr-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.qr-loading {
+  padding: 40px 0;
+  color: #666;
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .qr-modal {
+    width: 90vw;
+  }
+}
+
 /* QR Modal responsive */
 @media (max-width: 768px) {
   .qr-modal .modal-content {
@@ -2247,5 +2315,36 @@ const printQR = (dataUrl, name = "waypoint") => {
   .qr-modal .btn {
     width: 100%;
   }
+}
+
+/* QR simple modal close button alignment */
+.qr-modal .modal-header {
+  position: relative;
+}
+.qr-modal .close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.qr-modal .close-btn i {
+  font-size: 20px;
+  display: block;
+}
+.qr-modal .close-btn:hover {
+  background: #f0f0f0;
+  color: #222;
 }
 </style>

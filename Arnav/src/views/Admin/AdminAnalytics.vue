@@ -17,6 +17,18 @@
               <option value="all">All time</option>
             </select>
           </div>
+          <button
+            @click="manualRefresh"
+            class="refresh-btn"
+            :disabled="loading || refreshing"
+            title="Refresh data">
+            <i
+              :class="[
+                'bx',
+                refreshing ? 'bx-loader-alt bx-spin' : 'bx-refresh',
+              ]"
+              aria-hidden="true"></i>
+          </button>
           <button @click="showPreview" class="print-btn">
             <i class="bx bx-printer"></i>
             Print Report
@@ -85,6 +97,13 @@
             <div class="stat-content">
               <h3>Success Rate</h3>
               <p class="stat-number">{{ arrivalStats.successRate }}%</p>
+              <p
+                v-if="arrivalStats._attempts"
+                class="stat-text"
+                style="font-size: 12px; margin-top: 4px">
+                {{ arrivalStats._attempts }} attempts •
+                {{ arrivalStats._failures }} failed
+              </p>
             </div>
           </div>
         </div>
@@ -430,6 +449,7 @@ export default {
       loading: true,
       selectedPeriod: "30",
       showPreviewModal: false,
+      refreshing: false,
 
       // Stats
       totalUsers: 0,
@@ -498,6 +518,23 @@ export default {
         console.error("Error fetching analytics data:", error);
       } finally {
         this.loading = false;
+      }
+    },
+    async manualRefresh() {
+      // Manual refresh without full page reload
+      if (this.refreshing) return;
+      this.refreshing = true;
+      try {
+        await this.fetchAllData();
+        // Rebuild charts (destroy old instances first handled inside creators)
+        this.initializeCharts();
+      } catch (e) {
+        console.error("Manual refresh failed:", e);
+      } finally {
+        // Small delay for better UX feedback
+        setTimeout(() => {
+          this.refreshing = false;
+        }, 300);
       }
     },
 
@@ -847,32 +884,40 @@ export default {
           ...doc.data(),
         }));
 
-        // Calculate stats
-        this.arrivalStats.totalArrivals = arrivals.length;
-
-        if (arrivals.length > 0) {
-          // Calculate average duration
+        // Calculate stats (real values)
+        if (arrivals.length === 0) {
+          this.arrivalStats = {
+            totalArrivals: 0,
+            avgDuration: "0 min",
+            mostVisited: "N/A",
+            successRate: 0,
+          };
+        } else {
+          const successful = arrivals.filter(
+            (a) => a.successful !== false
+          ).length;
+          const failures = arrivals.length - successful;
           const avgDurationMs =
-            arrivals.reduce(
-              (sum, arrival) => sum + (arrival.navigationDuration || 0),
-              0
-            ) / arrivals.length;
-          this.arrivalStats.avgDuration = this.formatDuration(avgDurationMs);
-
-          // Find most visited destination
+            arrivals.reduce((sum, a) => sum + (a.navigationDuration || 0), 0) /
+            arrivals.length;
           const destinationCounts = {};
-          arrivals.forEach((arrival) => {
-            const dest = arrival.destinationName || "Unknown";
+          arrivals.forEach((a) => {
+            const dest = a.destinationName || "Unknown";
             destinationCounts[dest] = (destinationCounts[dest] || 0) + 1;
           });
-
           const mostVisited = Object.entries(destinationCounts).sort(
             ([, a], [, b]) => b - a
           )[0];
+          this.arrivalStats.totalArrivals = successful; // keep naming (successful arrivals)
+          // Provide extended stats for UI (non-breaking)
+          this.arrivalStats.avgDuration = this.formatDuration(avgDurationMs);
           this.arrivalStats.mostVisited = mostVisited ? mostVisited[0] : "N/A";
-
-          // Calculate success rate (assuming all logged arrivals are successful)
-          this.arrivalStats.successRate = 95; // High success rate for logged arrivals
+          this.arrivalStats.successRate =
+            successful === 0
+              ? 0
+              : Math.round((successful / arrivals.length) * 100);
+          this.arrivalStats._attempts = arrivals.length; // internal use
+          this.arrivalStats._failures = failures;
         }
 
         // Prepare chart data
@@ -2185,7 +2230,8 @@ export default {
 }
 
 .preview-btn,
-.print-btn {
+.print-btn,
+.refresh-btn {
   padding: 8px 14px;
   border: none;
   border-radius: 6px;
@@ -2216,6 +2262,21 @@ export default {
 .print-btn:hover {
   background: #16a34a;
   transform: translateY(-1px);
+}
+
+.refresh-btn {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Modal Styles */

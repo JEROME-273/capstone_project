@@ -29,8 +29,8 @@
       <!-- Navbar contents placed at the top -->
       <div class="hero-header">
         <div class="navbar-left">
-          <img src="@/assets/final_logo.png" alt="BARIS" class="farm-logo" />
-          BARIS
+          <img src="@/assets/final_logo.png" alt="iNavPark" class="farm-logo" />
+          iNavPark
         </div>
 
         <div class="navbar-actions">
@@ -1432,6 +1432,18 @@ function goToLocation(location) {
 
   console.log("Starting AR navigation to:", location.name);
 
+  // Log navigation start (funnel event)
+  (async () => {
+    try {
+      const { logNavigationStart } = await import(
+        "@/services/AnalyticsService.js"
+      );
+      await logNavigationStart(location);
+    } catch (e) {
+      console.warn("Navigation start logging failed", e);
+    }
+  })();
+
   // Track destination selection for analytics
   trackDestinationSelection(location);
 
@@ -1453,24 +1465,33 @@ function handleMaintenanceClick(location) {
 // Function to track destination selection for analytics
 async function trackDestinationSelection(location) {
   try {
-    const db = getFirestore();
-    const user = auth.currentUser;
-
-    if (user) {
-      await addDoc(collection(db, "recentDestinations"), {
-        userId: user.uid,
-        destination: location.name,
-        destinationId: location.id,
-        destinationType: location.type || location.category,
-        coordinates: location.coordinates,
-        timestamp: new Date(),
-        userEmail: user.email,
-      });
-
-      console.log("Destination selection tracked:", location.name);
-    }
+    const { logDestinationSelection } = await import(
+      "@/services/AnalyticsService.js"
+    );
+    await logDestinationSelection(location);
+    console.log(
+      "Destination selection tracked via AnalyticsService:",
+      location.name
+    );
   } catch (error) {
-    console.error("Error tracking destination selection:", error);
+    console.warn("AnalyticsService failed, using inline fallback:", error);
+    try {
+      const db = getFirestore();
+      const user = auth.currentUser;
+      if (user) {
+        await addDoc(collection(db, "recentDestinations"), {
+          userId: user.uid,
+          destination: location.name,
+          destinationId: location.id,
+          destinationType: location.type || location.category,
+          coordinates: location.coordinates,
+          timestamp: new Date(),
+          userEmail: user.email,
+        });
+      }
+    } catch (fallbackErr) {
+      console.error("Fallback destination logging also failed:", fallbackErr);
+    }
   }
 }
 

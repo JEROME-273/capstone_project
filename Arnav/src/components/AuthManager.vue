@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter, useRoute } from "vue-router";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, onMounted, computed } from "vue";
 
 // Create reactive state
@@ -22,8 +23,29 @@ const showLogoutButton = computed(() => {
 // Setup auth state listener
 onMounted(() => {
   const auth = getAuth();
-  onAuthStateChanged(auth, (user) => {
+  const db = getFirestore();
+  onAuthStateChanged(auth, async (user) => {
     isAuthenticated.value = !!user;
+
+    // Auto-sync emailVerified flag from Auth -> Firestore if missing
+    try {
+      if (user && user.emailVerified) {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          // If Firestore not yet updated, sync it
+          if (data.emailVerified !== true) {
+            await updateDoc(userRef, {
+              emailVerified: true,
+              verificationSyncedAt: new Date(),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Verification sync failed (non-blocking):", e);
+    }
   });
 });
 
@@ -54,24 +76,30 @@ const confirmLogout = async () => {
 
 <template>
   <div>
-    <button v-if="showLogoutButton" @click="showLogoutConfirmation" class="logout-button">
+    <button
+      v-if="showLogoutButton"
+      @click="showLogoutConfirmation"
+      class="logout-button">
       Logout
     </button>
 
     <!-- Logout Confirmation Modal -->
-    <div v-if="showLogoutConfirm" class="logout-modal-overlay" @click="cancelLogout">
+    <div
+      v-if="showLogoutConfirm"
+      class="logout-modal-overlay"
+      @click="cancelLogout">
       <div class="logout-modal" @click.stop>
         <div class="logout-modal-header">
           <h3>Confirm Logout</h3>
         </div>
         <div class="logout-modal-body">
           <p>Are you sure you want to logout?</p>
-          <p class="logout-warning">You will need to sign in again to access your account.</p>
+          <p class="logout-warning">
+            You will need to sign in again to access your account.
+          </p>
         </div>
         <div class="logout-modal-footer">
-          <button @click="cancelLogout" class="cancel-button">
-            Cancel
-          </button>
+          <button @click="cancelLogout" class="cancel-button">Cancel</button>
           <button @click="confirmLogout" class="confirm-logout-button">
             Yes, Logout
           </button>
@@ -220,11 +248,11 @@ const confirmLogout = async () => {
     margin: 20px;
     max-width: none;
   }
-  
+
   .logout-modal-footer {
     flex-direction: column;
   }
-  
+
   .cancel-button,
   .confirm-logout-button {
     flex: none;
