@@ -44,7 +44,7 @@
             </div>
             <div class="stat-content">
               <h3>
-                {{ waypoints.filter((w) => w.type === "facility").length }}
+                {{ waypoints.filter((w) => w.type === "facilities").length }}
               </h3>
               <p>Facilities</p>
             </div>
@@ -104,17 +104,12 @@
               <div class="form-group">
                 <label for="type">Type</label>
                 <select id="type" v-model="waypoint.type" required>
-                  <option value="entrance">Entrance</option>
-                  <option value="exit">Exit</option>
+                  <option value="facilities">Facilities</option>
                   <option value="landmark">Landmark</option>
-                  <option value="junction">Junction</option>
-                  <option value="facility">Facility</option>
+                  <option value="plants">Plants</option>
+                  <option value="animals">Animals</option>
+                  <option value="restroom">Restroom</option>
                   <option value="parking">Parking</option>
-                  <option value="office">Office</option>
-                  <option value="cr">CR</option>
-                  <option value="animal_enclosure">Animal Enclosure</option>
-                  <option value="food_production">Food Production</option>
-                  <option value="plant_areas">Plant Areas</option>
                 </select>
               </div>
             </div>
@@ -156,10 +151,10 @@
             <div class="form-grid">
               <div class="form-group">
                 <label for="latitude">
-                  Latitude (High Precision)
+                  Latitude (Ultra-High Precision) 🎯
                   <i
                     class="fas fa-info-circle coordinates-info"
-                    title="Ultra-precise coordinates (8 decimal places) required for exact AR Navigation positioning. Use GPS Capture for best accuracy.">
+                    title="Ultra-precise coordinates (10+ decimal places) for millimeter-level accuracy. Each decimal place = 10x better precision.">
                   </i>
                 </label>
                 <input
@@ -170,9 +165,13 @@
                   min="-90"
                   max="90"
                   required
-                  placeholder="0.00000000"
+                  placeholder=""
                   inputmode="decimal"
-                  @input="validateCoordinates" />
+                  @input="validateCoordinates"
+                  style="
+                    font-family: 'Courier New', monospace;
+                    letter-spacing: 0.5px;
+                  " />
                 <small
                   class="coordinate-precision"
                   v-if="waypoint.coordinates.x">
@@ -182,10 +181,10 @@
 
               <div class="form-group">
                 <label for="longitude">
-                  Longitude (High Precision)
+                  Longitude (Ultra-High Precision) 🎯
                   <i
                     class="fas fa-info-circle coordinates-info"
-                    title="Ultra-precise coordinates (8 decimal places) for exact location positioning.">
+                    title="Ultra-precise coordinates (10+ decimal places) for millimeter-level accuracy. Each decimal place = 10x better precision.">
                   </i>
                 </label>
                 <input
@@ -196,9 +195,13 @@
                   min="-180"
                   max="180"
                   required
-                  placeholder="0.00000000"
+                  placeholder=""
                   inputmode="decimal"
-                  @input="validateCoordinates" />
+                  @input="validateCoordinates"
+                  style="
+                    font-family: 'Courier New', monospace;
+                    letter-spacing: 0.5px;
+                  " />
                 <small
                   class="coordinate-precision"
                   v-if="waypoint.coordinates.y">
@@ -208,18 +211,22 @@
 
               <div class="form-group">
                 <label for="altitude">
-                  Altitude (m)
+                  Altitude (Ultra-Precise) 📐
                   <i
                     class="fas fa-info-circle coordinates-info"
-                    title="Altitude above sea level in meters. Helps with 3D positioning accuracy.">
+                    title="Ultra-precise altitude in meters above sea level. Critical for 3D AR Navigation accuracy and elevation-based calculations.">
                   </i>
                 </label>
                 <input
                   id="altitude"
                   v-model.number="waypoint.altitude"
                   type="number"
-                  step="0.01"
-                  placeholder="0.00" />
+                  step="any"
+                  placeholder=""
+                  style="
+                    font-family: 'Courier New', monospace;
+                    letter-spacing: 0.5px;
+                  " />
               </div>
 
               <!-- Enhanced location capture buttons -->
@@ -236,7 +243,11 @@
                     :class="
                       capturing ? 'bx-loader-alt bx-spin' : 'bx-target-lock'
                     "></i>
-                  {{ capturing ? "Capturing GPS..." : "Get Precise Location" }}
+                  {{
+                    capturing
+                      ? "🛰️ Capturing Ultra-Precise GPS..."
+                      : "🎯 Get Ultra-Precise Location"
+                  }}
                   <span
                     v-if="bestCaptureAccuracy && !capturing"
                     class="gps-accuracy-badge"
@@ -398,17 +409,12 @@
                 <i class="bx bx-filter"></i>
                 <select v-model="selectedCategory" @change="filterByCategory">
                   <option value="">All Categories</option>
-                  <option value="entrance">Entrance</option>
-                  <option value="exit">Exit</option>
+                  <option value="facilities">Facilities</option>
                   <option value="landmark">Landmark</option>
-                  <option value="junction">Junction</option>
-                  <option value="facility">Facility</option>
+                  <option value="plants">Plants</option>
+                  <option value="animals">Animals</option>
+                  <option value="restroom">Restroom</option>
                   <option value="parking">Parking</option>
-                  <option value="office">Office</option>
-                  <option value="cr">CR</option>
-                  <option value="animal_enclosure">Animal Enclosure</option>
-                  <option value="food_production">Food Production</option>
-                  <option value="plant_areas">Plant Areas</option>
                 </select>
               </div>
               <div class="maintenance-filter">
@@ -897,16 +903,23 @@ const handleSubmit = async () => {
       waypoint.value.coordinates.y.toString().split(".")[1] || ""
     ).length;
 
-    if (latPrecision < 6 || lngPrecision < 6) {
+    if (latPrecision < 8 || lngPrecision < 8) {
       const confirmed = confirm(
-        `Warning: Coordinates have low precision (${Math.min(
+        `⚠️ ACCURACY WARNING: Coordinates have lower precision (${Math.min(
           latPrecision,
           lngPrecision
         )} decimal places).\n\n` +
-          `For high accuracy AR navigation, we recommend at least 6-8 decimal places.\n\n` +
-          `Current accuracy: ~${
-            latPrecision < 4 ? "100m+" : latPrecision < 6 ? "10m+" : "1m+"
+          `🎯 For ULTRA-HIGH accuracy AR navigation, we recommend at least 8-10 decimal places.\n\n` +
+          `📏 Current accuracy: ~${
+            latPrecision < 4
+              ? "100m+ (Poor)"
+              : latPrecision < 6
+              ? "10m+ (Fair)"
+              : latPrecision < 8
+              ? "1m+ (Good)"
+              : "1cm+ (Excellent)"
           }\n\n` +
+          `🚀 Recommended: Use 'Get Precise Location' for best results.\n\n` +
           `Continue with current coordinates?`
       );
 
@@ -1251,42 +1264,65 @@ const getCoordinatePrecision = (coordinate) => {
   if (!coordinate) return "";
 
   const decimalPlaces = (coordinate.toString().split(".")[1] || "").length;
-  let accuracyMeters;
+  let accuracyMeters, qualityLevel;
 
-  // Approximate accuracy based on decimal places
+  // Ultra-precise accuracy assessment based on decimal places
   switch (decimalPlaces) {
     case 0:
       accuracyMeters = "~111 km";
+      qualityLevel = "❌ Unusable";
       break;
     case 1:
       accuracyMeters = "~11.1 km";
+      qualityLevel = "❌ Very Poor";
       break;
     case 2:
       accuracyMeters = "~1.1 km";
+      qualityLevel = "❌ Poor";
       break;
     case 3:
       accuracyMeters = "~110 m";
+      qualityLevel = "⚠️ Low";
       break;
     case 4:
       accuracyMeters = "~11 m";
+      qualityLevel = "⚠️ Fair";
       break;
     case 5:
       accuracyMeters = "~1.1 m";
+      qualityLevel = "✅ Good";
       break;
     case 6:
-      accuracyMeters = "~0.11 m";
+      accuracyMeters = "~11 cm";
+      qualityLevel = "✅ High";
       break;
     case 7:
       accuracyMeters = "~1.1 cm";
+      qualityLevel = "🎯 Very High";
       break;
     case 8:
       accuracyMeters = "~1.1 mm";
+      qualityLevel = "🎯 Ultra-High";
+      break;
+    case 9:
+      accuracyMeters = "~0.11 mm";
+      qualityLevel = "🚀 Extreme";
+      break;
+    case 10:
+      accuracyMeters = "~0.011 mm";
+      qualityLevel = "🚀 Survey-Grade";
       break;
     default:
-      accuracyMeters = decimalPlaces > 8 ? "Sub-millimeter" : "Low";
+      if (decimalPlaces > 10) {
+        accuracyMeters = "<0.01 mm";
+        qualityLevel = "🚀 Professional";
+      } else {
+        accuracyMeters = "Unknown";
+        qualityLevel = "❓ Unknown";
+      }
   }
 
-  return `${decimalPlaces} decimal places (${accuracyMeters})`;
+  return `${qualityLevel} • ${decimalPlaces} decimals (${accuracyMeters})`;
 };
 
 // Display location accuracy information for saved waypoints
@@ -1341,12 +1377,16 @@ const getOverallAccuracyText = () => {
     .length;
   const minPrec = Math.min(latPrec, lngPrec);
 
-  if (minPrec >= 8) {
-    return `🎯 Ultra-High Precision • Sub-millimeter accuracy • Perfect for AR Navigation`;
+  if (minPrec >= 10) {
+    return `🚀 Survey-Grade Precision • <0.01mm accuracy • Professional Mapping Quality`;
+  } else if (minPrec >= 8) {
+    return `🎯 Ultra-High Precision • ~1mm accuracy • Perfect for AR Navigation`;
   } else if (minPrec >= 6) {
-    return `✅ High Precision • ~10cm accuracy • Excellent for AR Navigation`;
+    return `✅ High Precision • ~1cm accuracy • Excellent for AR Navigation`;
+  } else if (minPrec >= 5) {
+    return `✅ Good Precision • ~1m accuracy • Good for AR Navigation`;
   } else if (minPrec >= 4) {
-    return `⚠️ Medium Precision • ~10 meter accuracy • May affect AR accuracy`;
+    return `⚠️ Fair Precision • ~10m accuracy • May affect AR accuracy`;
   } else {
     return `❌ Low Precision • 100+ meter accuracy • Not recommended for precise AR`;
   }
@@ -1405,17 +1445,17 @@ const getCurrentLocationPrecise = () => {
   locationReadings.value = [];
   bestCaptureAccuracy.value = null;
 
-  // High accuracy geolocation options for precise location
+  // Ultra-high accuracy geolocation options for maximum precision
   const options = {
-    enableHighAccuracy: true, // Use GPS for highest accuracy
-    timeout: 30000, // Wait up to 30 seconds
-    maximumAge: 0, // Don't use cached location, get fresh coordinates
+    enableHighAccuracy: true, // Force GPS usage (not network/WiFi)
+    timeout: 60000, // Wait up to 60 seconds for best possible accuracy
+    maximumAge: 0, // Always get fresh coordinates, never cached
   };
 
-  // Improved multi-reading capture
-  const maxReadings = 8; // attempt up to 8 readings
-  const MIN_GOOD_ACCURACY = 15; // meters – early finish if reached
-  const HARD_REQUIRED_ACCURACY = 35; // if no reading better than this, warn user
+  // Ultra-precise multi-reading capture for maximum accuracy
+  const maxReadings = 15; // attempt up to 15 readings for best accuracy
+  const MIN_GOOD_ACCURACY = 5; // meters – early finish if reached (stricter)
+  const HARD_REQUIRED_ACCURACY = 20; // if no reading better than this, warn user (stricter)
   let currentReading = 0;
   let bestAccuracy = Infinity;
 

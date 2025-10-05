@@ -1,8 +1,28 @@
 <template>
   <div class="loading-wrapper">
-    <div class="container">
-      <div class="pointer"></div>
-      <button v-if="showButton" id="continue-btn" @click="goToRegister">
+    <!-- Background -->
+    <div class="bg-overlay"></div>
+
+    <!-- Foreground Content -->
+    <div class="content">
+      <div class="logo" aria-label="iNavPark logo" role="img"></div>
+
+      <h2 class="welcome-title fade-in">Welcome to iNavPark!</h2>
+      <p class="welcome-text fade-in delay-1">
+        We’re excited to guide you through Calapan Recreational and Zoological
+        Park.<br />
+        With our interactive AR navigation, finding your way has never been
+        easier.<br />
+        Discover hidden gems, enjoy nature, and unlock fun facts along the
+        way.<br />
+        Your adventure starts here!
+      </p>
+
+      <button
+        v-if="showButton"
+        id="continue-btn"
+        class="fade-in delay-2"
+        @click="goToRegister">
         Continue
       </button>
     </div>
@@ -18,198 +38,159 @@ const showButton = ref(false);
 const router = useRouter();
 const auth = getAuth();
 
-const goToRegister = () => {
-  router.push("/register");
-};
+const goToRegister = () => router.push("/register");
 
 onMounted(() => {
-  // Prevent body scrolling
+  // Lock scroll
   document.body.style.overflow = "hidden";
-  document.body.style.height = "100vh";
-  document.body.style.position = "fixed";
-  document.body.style.width = "100%";
-  document.body.style.top = "0";
-  document.body.style.left = "0";
 
-  // Check if user is already authenticated
   const authListener = onAuthStateChanged(auth, (user) => {
     if (user && user.emailVerified) {
-      // User is authenticated, redirect them
       router.push("/homepage");
     } else {
-      // Show continue button after delay for unauthenticated users
-      setTimeout(() => {
-        showButton.value = true;
-      }, 3000);
+      setTimeout(() => (showButton.value = true), 2500);
     }
   });
 
-  // Cleanup listener on component unmount
-  return () => {
-    authListener();
-  };
+  return () => authListener();
 });
 
 onUnmounted(() => {
-  // Restore body scrolling when component is destroyed
   document.body.style.overflow = "";
-  document.body.style.height = "";
-  document.body.style.position = "";
-  document.body.style.width = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
 });
 </script>
 
 <style scoped>
 .loading-wrapper {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding-top: 1vh;
-  background: #fff;
-  z-index: 9999;
-}
-
-.container {
-  position: relative;
-  width: 220px;
-  height: 220px;
-  background: transparent;
-  display: flex;
-  justify-content: center;
   align-items: center;
-  border: none;
-  box-shadow: none;
+  z-index: 9999;
+  overflow: hidden;
+  text-align: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+  background: #000; /* fallback behind blurred bg */
+  font-family: "Open Sans", Arial, sans-serif;
 }
 
-.pointer {
+/* Background (use existing asset map2.png as placeholder for bulusanpark.jpg) */
+.bg-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: clamp(360px, 55vw, 520px); /* responsive base width */
-  height: clamp(120px, 18vw, 180px); /* maintain aspect */
-  background: url("@/assets/final_logo.png") no-repeat center;
+  inset: 0;
+  background: url("@/assets/bulusanpark.jpg") no-repeat center center / cover;
+  filter: blur(2px) brightness(0.9);
+  z-index: 1;
+}
+.bg-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 128, 0, 0.35);
+  z-index: 2;
+}
+
+.content {
+  position: relative;
+  z-index: 3;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.logo {
+  width: clamp(340px, 80%, 560px);
+  height: clamp(180px, 33vw, 320px);
+  background: url("@/assets/inavparklogo1.png") no-repeat center;
   background-size: contain;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  animation: moveUpDown 1.5s ease-in-out infinite;
-  image-rendering: -webkit-optimize-contrast;
+  margin-bottom: 20px;
+  animation: pulseScale 2.5s ease-in-out infinite;
+}
+
+.welcome-title {
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  font-weight: 800;
+  margin-top: 36px;
+  margin-bottom: 18px;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.7);
+  font-family: "Montserrat", sans-serif;
+}
+
+.welcome-text {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  line-height: 1.65;
+  max-width: 680px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  margin-bottom: 30px;
 }
 
 #continue-btn {
-  position: fixed;
-  left: 50%;
-  bottom: 30px;
-  transform: translateX(-50%);
-  padding: 12px 30px;
-  font-size: 1.1rem;
-  font-weight: 500;
+  margin-top: 10px;
+  padding: 16px 42px;
+  font-size: 1.25rem;
+  font-weight: 700;
   border: none;
-  border-radius: 8px;
-  background: #007bff;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
   color: #fff;
   cursor: pointer;
-  z-index: 20;
-  opacity: 0.95;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  transition: 0.3s ease;
+  box-shadow: 0 6px 18px rgba(46, 204, 113, 0.5);
+}
+#continue-btn:hover {
+  transform: scale(1.08);
+  background: linear-gradient(135deg, #27ae60, #219150);
 }
 
-@keyframes moveUpDown {
+@keyframes pulseScale {
   0% {
-    transform: translateX(-50%) translateY(0);
+    transform: scale(1);
   }
   50% {
-    transform: translateX(-50%) translateY(-20px);
+    transform: scale(1.1);
   }
   100% {
-    transform: translateX(-50%) translateY(0);
+    transform: scale(1);
   }
 }
 
-/* Mobile devices */
-@media only screen and (max-width: 600px) {
-  .loading-wrapper {
-    padding-top: 15vh;
-  }
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.9s ease forwards;
+}
+.fade-in.delay-1 {
+  animation-delay: 0.7s;
+}
+.fade-in.delay-2 {
+  animation-delay: 1.4s;
+}
 
-  .container {
-    width: 60vw;
-    height: 60vw;
-    max-width: 160px;
-    max-height: 160px;
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
 
-  .pointer {
-    width: 95vw; /* fuller */
-    height: 36vw; /* proportional height */
-    max-width: 300px; /* bigger cap */
-    max-height: 100px; /* bigger cap */
+/* Small screens tweak */
+@media (max-width: 600px) {
+  .welcome-text {
+    line-height: 1.55;
   }
-
   #continue-btn {
-    bottom: 90px;
-    padding: 14px 32px;
+    padding: 14px 34px;
     font-size: 1.1rem;
-    border-radius: 10px;
-  }
-}
-
-/* Medium tablets */
-@media only screen and (min-width: 768px) and (max-width: 992px) {
-  .container {
-    width: 50vw;
-    height: 50vw;
-    max-width: 300px;
-    max-height: 300px;
-  }
-
-  .pointer {
-    width: 100vw;
-    height: 42vw;
-    max-width: 780px;
-    max-height: 270px;
-  }
-}
-
-/* Desktop */
-@media only screen and (min-width: 992px) {
-  .container {
-    width: 300px;
-    height: 300px;
-  }
-
-  .pointer {
-    width: 900px;
-    height: 300px;
-  }
-}
-
-/* Mobile landscape */
-@media only screen and (max-width: 768px) and (orientation: landscape) {
-  .container {
-    width: 40vh;
-    height: 40vh;
-    max-width: 300px;
-    max-height: 300px;
-  }
-
-  .pointer {
-    width: 95vh;
-    height: 35vh;
-    max-width: 780px;
-    max-height: 270px;
-  }
-
-  #continue-btn {
-    bottom: 15px;
-    padding: 10px 24px;
-    font-size: 1rem;
   }
 }
 </style>
