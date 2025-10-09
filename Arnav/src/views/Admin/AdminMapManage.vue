@@ -104,11 +104,11 @@
               <div class="form-group">
                 <label for="type">Type</label>
                 <select id="type" v-model="waypoint.type" required>
-                  <option value="facilities">Facilities</option>
+                  <option value="facility">Facilities</option>
                   <option value="landmark">Landmark</option>
-                  <option value="plants">Plants</option>
-                  <option value="animals">Animals</option>
-                  <option value="restroom">Restroom</option>
+                  <option value="plant_areas">Plants</option>
+                  <option value="animal_enclosure">Animals</option>
+                  <option value="cr">Restroom</option>
                   <option value="parking">Parking</option>
                 </select>
               </div>

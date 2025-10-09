@@ -182,9 +182,10 @@
       </div>
 
       <!-- Loading Overlay -->
-      <div v-if="loading" class="loading-overlay">
+      <div v-if="loading || refreshing" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <p>Loading analytics data...</p>
+        <p v-if="loading">Loading analytics data...</p>
+        <p v-else-if="refreshing">Refreshing data...</p>
       </div>
 
       <!-- Preview Modal -->
@@ -488,7 +489,7 @@ export default {
 
   async mounted() {
     await this.fetchAllData();
-    this.initializeCharts();
+    // Charts are now initialized in fetchAllData()
   },
 
   beforeUnmount() {
@@ -502,18 +503,43 @@ export default {
     async fetchAllData() {
       this.loading = true;
       try {
-        await Promise.all([
-          this.fetchUserStats(),
-          this.fetchVisitTypesData(),
-          this.fetchVerificationData(),
-          this.fetchRegistrationTrend(),
-          this.fetchGenderData(),
-          this.fetchDestinationsData(),
-          this.fetchMonthlyActiveUsers(),
-          this.fetchRolesData(),
-          this.fetchDeviceData(),
-          this.fetchArrivalAnalytics(), // Add arrival analytics
+        // Fetch data once and share across methods
+        const db = getFirestore();
+        const [usersSnapshot, destinationsSnapshot] = await Promise.all([
+          getDocs(collection(db, "users")),
+          getDocs(collection(db, "recentDestinations")),
         ]);
+
+        // Convert to arrays once
+        const users = [];
+        const destinations = [];
+
+        usersSnapshot.forEach((doc) => {
+          users.push({ id: doc.id, ...doc.data() });
+        });
+
+        destinationsSnapshot.forEach((doc) => {
+          destinations.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Now process all analytics with cached data
+        await Promise.all([
+          this.processUserStats(users, destinations), // Pass destinations too
+          this.processVisitTypesData(users),
+          this.processVerificationData(users),
+          this.processRegistrationTrend(users),
+          this.processGenderData(users),
+          this.processDestinationsData(destinations),
+          this.processMonthlyActiveUsers(users),
+          this.processRolesData(users),
+          this.processDeviceData(users),
+          this.processArrivalAnalytics(), // This might need separate handling
+        ]);
+
+        // Destroy old charts and create new ones after data is ready
+        this.destroyAllCharts();
+        await this.$nextTick();
+        this.initializeCharts();
       } catch (error) {
         console.error("Error fetching analytics data:", error);
       } finally {
@@ -522,32 +548,42 @@ export default {
     },
     async manualRefresh() {
       // Manual refresh without full page reload
-      if (this.refreshing) return;
+      if (this.refreshing || this.loading) return;
+
       this.refreshing = true;
+      console.log("Manual refresh started");
+
       try {
         await this.fetchAllData();
-        // Rebuild charts (destroy old instances first handled inside creators)
-        this.initializeCharts();
+        console.log("Manual refresh completed successfully");
       } catch (e) {
         console.error("Manual refresh failed:", e);
+        // Don't clear data on error - keep existing data visible
       } finally {
         // Small delay for better UX feedback
         setTimeout(() => {
           this.refreshing = false;
+          console.log("Refresh state cleared");
         }, 300);
       }
     },
 
-    async fetchUserStats() {
-      const db = getFirestore();
+    destroyAllCharts() {
+      console.log("Destroying existing charts");
+      Object.values(this.charts).forEach((chart) => {
+        if (chart && typeof chart.destroy === "function") {
+          try {
+            chart.destroy();
+          } catch (error) {
+            console.warn("Error destroying chart:", error);
+          }
+        }
+      });
+      this.charts = {};
+    },
+
+    async processUserStats(users, destinations = []) {
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const users = [];
-
-        usersSnapshot.forEach((doc) => {
-          users.push({ id: doc.id, ...doc.data() });
-        });
-
         this.totalUsers = users.length;
         this.verifiedUsers = users.filter((user) => user.emailVerified).length;
 
@@ -566,58 +602,100 @@ export default {
           return user.emailVerified;
         }).length;
 
-        // Find most selected destination from user selections
-        try {
-          const destinationsCollection = collection(db, "recentDestinations");
-          const destinationsSnapshot = await getDocs(destinationsCollection);
-          const destinationCounts = {};
+        // Find most popular destination - try multiple approaches
+        let destinationCounts = {};
+        let usersWithDestinations = 0;
 
-          destinationsSnapshot.forEach((doc) => {
-            const data = doc.data();
-            const destination = data.destination || data.name;
-            if (destination) {
-              destinationCounts[destination] =
-                (destinationCounts[destination] || 0) + 1;
-            }
-          });
+        // Approach 1: From user data
+        users.forEach((user) => {
+          const userDest =
+            user.lastDestination || user.recentDestination || user.destination;
+          if (userDest) {
+            destinationCounts[userDest] =
+              (destinationCounts[userDest] || 0) + 1;
+            usersWithDestinations++;
+          }
+        });
 
-          const popularDest = Object.entries(destinationCounts).sort(
-            (a, b) => b[1] - a[1]
-          )[0];
-          this.popularDestination = popularDest ? popularDest[0] : "N/A";
-        } catch (error) {
-          console.error(
-            "Error fetching recent destinations for popular destination:",
-            error
+        // Approach 2: If no user destinations, use recentDestinations collection
+        if (usersWithDestinations === 0 && destinations.length > 0) {
+          console.log(
+            "No user destinations found, using recentDestinations collection"
           );
-          // Fallback to lastDestination from users if recentDestinations fails
-          const destinationCounts = {};
-          users.forEach((user) => {
-            if (user.lastDestination) {
-              destinationCounts[user.lastDestination] =
-                (destinationCounts[user.lastDestination] || 0) + 1;
+          destinations.forEach((dest) => {
+            const destName =
+              dest.destination ||
+              dest.name ||
+              dest.destinationName ||
+              dest.location;
+            if (destName) {
+              destinationCounts[destName] =
+                (destinationCounts[destName] || 0) + 1;
             }
           });
-
-          const popularDest = Object.entries(destinationCounts).sort(
-            (a, b) => b[1] - a[1]
-          )[0];
-          this.popularDestination = popularDest ? popularDest[0] : "N/A";
         }
+
+        console.log(`Destination analysis:`, {
+          totalUsers: users.length,
+          usersWithDestinations,
+          destinationCounts,
+          sampleUserDestinations: users.slice(0, 3).map((u) => ({
+            id: u.id,
+            lastDestination: u.lastDestination,
+            recentDestination: u.recentDestination,
+            destination: u.destination,
+          })),
+          recentDestinationsCount: destinations.length,
+        });
+
+        const popularDest = Object.entries(destinationCounts).sort(
+          (a, b) => b[1] - a[1]
+        )[0];
+        this.popularDestination = popularDest ? popularDest[0] : "N/A";
+
+        console.log(
+          `User stats: ${this.totalUsers} total, ${this.verifiedUsers} verified, ${this.activeSessions} active, popular destination: ${this.popularDestination}`
+        );
+      } catch (error) {
+        console.error("Error processing user stats:", error);
+      }
+    },
+
+    // Legacy method for backward compatibility - now just calls processUserStats
+    async fetchUserStats() {
+      console.warn(
+        "fetchUserStats called directly - this should use cached data"
+      );
+      const db = getFirestore();
+      try {
+        const [usersSnapshot, destinationsSnapshot] = await Promise.all([
+          getDocs(collection(db, "users")),
+          getDocs(collection(db, "recentDestinations")),
+        ]);
+
+        const users = [];
+        const destinations = [];
+
+        usersSnapshot.forEach((doc) => {
+          users.push({ id: doc.id, ...doc.data() });
+        });
+
+        destinationsSnapshot.forEach((doc) => {
+          destinations.push({ id: doc.id, ...doc.data() });
+        });
+
+        await this.processUserStats(users, destinations);
       } catch (error) {
         console.error("Error fetching user stats:", error);
       }
     },
 
-    async fetchVisitTypesData() {
-      const db = getFirestore();
+    async processVisitTypesData(users) {
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
         const visitCounts = {};
 
-        usersSnapshot.forEach((doc) => {
-          const userData = doc.data();
-          const visitType = userData.typeofvisit;
+        users.forEach((user) => {
+          const visitType = user.typeofvisit;
           if (visitType) {
             visitCounts[visitType] = (visitCounts[visitType] || 0) + 1;
           }
@@ -627,7 +705,178 @@ export default {
           .sort((a, b) => b[1] - a[1])
           .map(([type, count]) => ({ type, count }));
       } catch (error) {
+        console.error("Error processing visit types data:", error);
+      }
+    },
+
+    // Legacy method
+    async fetchVisitTypesData() {
+      console.warn(
+        "fetchVisitTypesData called directly - this should use cached data"
+      );
+      const db = getFirestore();
+      try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const users = [];
+        usersSnapshot.forEach((doc) => {
+          users.push({ id: doc.id, ...doc.data() });
+        });
+        await this.processVisitTypesData(users);
+      } catch (error) {
         console.error("Error fetching visit types data:", error);
+      }
+    },
+
+    async processVerificationData(users) {
+      try {
+        let verified = 0;
+        let unverified = 0;
+
+        users.forEach((user) => {
+          if (user.emailVerified) {
+            verified++;
+          } else {
+            unverified++;
+          }
+        });
+
+        this.verificationData = [
+          { status: "Verified", count: verified },
+          { status: "Unverified", count: unverified },
+        ];
+      } catch (error) {
+        console.error("Error processing verification data:", error);
+      }
+    },
+
+    async processGenderData(users) {
+      try {
+        const genderCounts = {};
+
+        users.forEach((user) => {
+          const gender = user.gender || "Not specified";
+          genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+        });
+
+        this.genderData = Object.entries(genderCounts).map(
+          ([gender, count]) => ({ gender, count })
+        );
+      } catch (error) {
+        console.error("Error processing gender data:", error);
+      }
+    },
+
+    async processDestinationsData(destinations) {
+      try {
+        console.log("Processing destinations data:", {
+          totalDestinations: destinations.length,
+          sampleDestinations: destinations.slice(0, 3).map((d) => ({
+            id: d.id,
+            destination: d.destination,
+            name: d.name,
+            destinationName: d.destinationName,
+            location: d.location,
+            allFields: Object.keys(d),
+          })),
+        });
+
+        const destinationCounts = {};
+
+        destinations.forEach((dest) => {
+          // Try multiple possible field names for destination
+          const destination =
+            dest.destination ||
+            dest.name ||
+            dest.destinationName ||
+            dest.location;
+          if (destination) {
+            destinationCounts[destination] =
+              (destinationCounts[destination] || 0) + 1;
+          }
+        });
+
+        console.log("Destination counts:", destinationCounts);
+
+        this.destinationsData = Object.entries(destinationCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10) // Top 10 destinations
+          .map(([destination, count]) => ({ destination, count }));
+
+        console.log("Final destinations data:", this.destinationsData);
+      } catch (error) {
+        console.error("Error processing destinations data:", error);
+      }
+    },
+
+    async processMonthlyActiveUsers(users) {
+      try {
+        const monthlyData = {};
+        const currentDate = new Date();
+
+        // Get last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i,
+            1
+          );
+          const monthKey = date.toISOString().substring(0, 7); // YYYY-MM format
+          monthlyData[monthKey] = 0;
+        }
+
+        users.forEach((user) => {
+          if (user.createdAt) {
+            const userDate = user.createdAt.toDate();
+            const monthKey = userDate.toISOString().substring(0, 7);
+            if (monthlyData.hasOwnProperty(monthKey)) {
+              monthlyData[monthKey]++;
+            }
+          }
+        });
+
+        this.monthlyActiveUsersData = Object.entries(monthlyData).map(
+          ([month, count]) => ({ month, count })
+        );
+      } catch (error) {
+        console.error("Error processing monthly active users:", error);
+      }
+    },
+
+    async processRolesData(users) {
+      try {
+        const roleCounts = {};
+
+        users.forEach((user) => {
+          const role = user.role || "User";
+          roleCounts[role] = (roleCounts[role] || 0) + 1;
+        });
+
+        this.rolesData = Object.entries(roleCounts).map(([role, count]) => ({
+          role,
+          count,
+        }));
+      } catch (error) {
+        console.error("Error processing roles data:", error);
+      }
+    },
+
+    async processDeviceData(users) {
+      try {
+        const deviceCounts = {};
+
+        users.forEach((user) => {
+          const device = user.deviceType || "Unknown";
+          deviceCounts[device] = (deviceCounts[device] || 0) + 1;
+        });
+
+        this.deviceData = Object.entries(deviceCounts).map(
+          ([device, count]) => ({
+            device,
+            count,
+          })
+        );
+      } catch (error) {
+        console.error("Error processing device data:", error);
       }
     },
 
@@ -656,16 +905,13 @@ export default {
       }
     },
 
-    async fetchRegistrationTrend() {
-      const db = getFirestore();
+    async processRegistrationTrend(users) {
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
         const registrationsByDate = {};
 
-        usersSnapshot.forEach((doc) => {
-          const userData = doc.data();
-          if (userData.createdAt) {
-            const date = userData.createdAt.toDate();
+        users.forEach((user) => {
+          if (user.createdAt) {
+            const date = user.createdAt.toDate();
             const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD format
             registrationsByDate[dateKey] =
               (registrationsByDate[dateKey] || 0) + 1;
@@ -685,6 +931,23 @@ export default {
         }
 
         this.registrationTrendData = last30Days;
+      } catch (error) {
+        console.error("Error processing registration trend:", error);
+      }
+    },
+
+    async fetchRegistrationTrend() {
+      console.warn(
+        "fetchRegistrationTrend called directly - this should use cached data"
+      );
+      const db = getFirestore();
+      try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const users = [];
+        usersSnapshot.forEach((doc) => {
+          users.push({ id: doc.id, ...doc.data() });
+        });
+        await this.processRegistrationTrend(users);
       } catch (error) {
         console.error("Error fetching registration trend:", error);
       }
@@ -861,6 +1124,16 @@ export default {
       }
     },
 
+    // Process arrival analytics - calls the existing fetch method since it uses separate collection
+    async processArrivalAnalytics() {
+      try {
+        // Arrival analytics uses separate collection, so we call the existing fetch method
+        await this.fetchArrivalAnalytics();
+      } catch (error) {
+        console.error("Error processing arrival analytics:", error);
+      }
+    },
+
     // New Arrival Analytics Methods
     async fetchArrivalAnalytics() {
       try {
@@ -869,13 +1142,18 @@ export default {
 
         // Get date filter
         const dateFilter = this.getDateFilter();
-        let arrivalQuery = arrivalCollection;
+        let arrivalQuery;
 
         if (dateFilter) {
+          console.log("Applying date filter:", dateFilter.toISOString());
           arrivalQuery = query(
             arrivalCollection,
-            where("timestamp", ">=", dateFilter)
+            where("timestamp", ">=", dateFilter),
+            orderBy("timestamp", "desc")
           );
+        } else {
+          console.log("No date filter - fetching all records");
+          arrivalQuery = query(arrivalCollection, orderBy("timestamp", "desc"));
         }
 
         const arrivalSnapshot = await getDocs(arrivalQuery);
@@ -883,6 +1161,24 @@ export default {
           id: doc.id,
           ...doc.data(),
         }));
+
+        console.log(
+          `Found ${arrivals.length} arrival records after date filtering`
+        );
+        if (arrivals.length > 0) {
+          console.log("Sample arrival data:", arrivals[0]);
+          arrivals.forEach((arrival, index) => {
+            console.log(`Arrival ${index + 1}:`, {
+              destinationName: arrival.destinationName,
+              timestamp: arrival.timestamp?.toDate?.()?.toISOString(),
+              successful: arrival.successful,
+              navigationDuration: arrival.navigationDuration,
+              navigationDurationMinutes: arrival.navigationDuration
+                ? Math.floor(arrival.navigationDuration / (1000 * 60))
+                : "N/A",
+            });
+          });
+        }
 
         // Calculate stats (real values)
         if (arrivals.length === 0) {
@@ -897,9 +1193,27 @@ export default {
             (a) => a.successful !== false
           ).length;
           const failures = arrivals.length - successful;
-          const avgDurationMs =
-            arrivals.reduce((sum, a) => sum + (a.navigationDuration || 0), 0) /
-            arrivals.length;
+          // Calculate average duration only from records that have valid duration
+          const arrivalsWithDuration = arrivals.filter(
+            (a) => a.navigationDuration && a.navigationDuration > 0
+          );
+          console.log(
+            `Found ${arrivalsWithDuration.length} arrivals with valid navigation duration out of ${arrivals.length} total`
+          );
+
+          let avgDurationMs = 0;
+          if (arrivalsWithDuration.length > 0) {
+            avgDurationMs =
+              arrivalsWithDuration.reduce(
+                (sum, a) => sum + a.navigationDuration,
+                0
+              ) / arrivalsWithDuration.length;
+            console.log(
+              `Average duration calculation: ${avgDurationMs}ms from ${arrivalsWithDuration.length} records`
+            );
+          } else {
+            console.log("No arrivals with valid navigation duration found");
+          }
           const destinationCounts = {};
           arrivals.forEach((a) => {
             const dest = a.destinationName || "Unknown";
@@ -922,6 +1236,7 @@ export default {
 
         // Prepare chart data
         this.prepareArrivalChartData(arrivals);
+        console.log("Arrival analytics processing completed");
       } catch (error) {
         console.error("Error fetching arrival analytics:", error);
         // Set default values on error
@@ -931,26 +1246,56 @@ export default {
           mostVisited: "N/A",
           successRate: 0,
         };
+        // Set empty chart data
+        this.dailyArrivalsData = [];
+        this.arrivalDestinationsData = [];
+        this.durationData = [];
+        this.hourlyArrivalsData = [];
       }
     },
 
     getDateFilter() {
       const now = new Date();
-      if (this.selectedPeriod === "all") return null;
+      console.log("Current date:", now.toISOString());
+      console.log("Selected period:", this.selectedPeriod);
+
+      if (this.selectedPeriod === "all") {
+        console.log("Date filter: ALL TIME - no filter applied");
+        return null;
+      }
 
       const days = parseInt(this.selectedPeriod);
       const filterDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      console.log(
+        `Date filter: Last ${days} days - filtering from ${filterDate.toISOString()}`
+      );
       return filterDate;
     },
 
     formatDuration(milliseconds) {
-      const minutes = Math.floor(milliseconds / (1000 * 60));
+      console.log(`Formatting duration: ${milliseconds}ms`);
+
+      if (!milliseconds || milliseconds <= 0) {
+        return "0 min";
+      }
+
+      const totalSeconds = Math.floor(milliseconds / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
       const hours = Math.floor(minutes / 60);
+
+      console.log(
+        `Converted to: ${totalSeconds} seconds = ${hours}h ${
+          minutes % 60
+        }m ${seconds}s`
+      );
 
       if (hours > 0) {
         return `${hours}h ${minutes % 60}m`;
-      } else {
+      } else if (minutes > 0) {
         return `${minutes} min`;
+      } else {
+        return `${seconds} sec`;
       }
     },
 
@@ -995,15 +1340,24 @@ export default {
 
     groupArrivalsByDestination(arrivals) {
       const destinationCounts = {};
+      console.log(
+        `Processing ${arrivals.length} arrivals for destination chart`
+      );
+
       arrivals.forEach((arrival) => {
         const dest = arrival.destinationName || "Unknown";
         destinationCounts[dest] = (destinationCounts[dest] || 0) + 1;
       });
 
-      return Object.entries(destinationCounts)
+      console.log("Destination counts:", destinationCounts);
+
+      const result = Object.entries(destinationCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10); // Top 10 destinations
+
+      console.log("Final destination chart data:", result);
+      return result;
     },
 
     analyzeDurations(arrivals) {
@@ -1440,10 +1794,24 @@ export default {
 
     createArrivalDestinationsChart() {
       const ctx = this.$refs.arrivalDestinationsChart?.getContext("2d");
-      if (!ctx || !this.arrivalDestinationsData?.length) return;
+      console.log(
+        "Creating arrival destinations chart with data:",
+        this.arrivalDestinationsData
+      );
 
-      if (this.charts.arrivalDestinations)
+      if (!ctx) {
+        console.log("Canvas context not found for arrival destinations chart");
+        return;
+      }
+
+      if (!this.arrivalDestinationsData?.length) {
+        console.log("No destination data available for chart");
+        return;
+      }
+
+      if (this.charts.arrivalDestinations) {
         this.charts.arrivalDestinations.destroy();
+      }
 
       this.charts.arrivalDestinations = new Chart(ctx, {
         type: "bar",
