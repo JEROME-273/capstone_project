@@ -13,7 +13,7 @@ export const sampleLearningContent = [
     tags: ["ar", "navigation", "beginner", "mobile"],
     isActive: true,
     isFeatured: true,
-    showOnFirstVisit: true,
+    showOnFirstVisit: false,
   },
   {
     title: "Voice Commands During Navigation",
@@ -43,7 +43,7 @@ export const sampleLearningContent = [
     tags: ["safety", "awareness", "campus", "walking"],
     isActive: true,
     isFeatured: false,
-    showOnFirstVisit: true,
+    showOnFirstVisit: false,
   },
   {
     title: "Understanding GPS Accuracy",

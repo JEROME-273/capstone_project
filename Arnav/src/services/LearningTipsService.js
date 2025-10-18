@@ -120,8 +120,10 @@ export async function getNewTipsForUser(userId, maxItems = 3) {
 
     const tips = [];
     snap.forEach((d) => {
-      if (!seenTipIds.has(d.id)) {
-        tips.push({ id: d.id, ...d.data() });
+      const tipData = d.data();
+      // Only include tips that are marked to show on first visit
+      if (!seenTipIds.has(d.id) && tipData.showOnFirstVisit === true) {
+        tips.push({ id: d.id, ...tipData });
       }
     });
 

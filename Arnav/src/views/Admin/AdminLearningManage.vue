@@ -114,10 +114,10 @@
                   <option value="">Select category</option>
                   <option value="navigation">Navigation Tips</option>
                   <option value="ar">AR Technology</option>
-                  <option value="campus">Campus Information</option>
                   <option value="safety">Safety Guidelines</option>
                   <option value="accessibility">Accessibility</option>
-                  <option value="general">General Tips</option>
+                  <option value="nature">Nature Facts</option>
+                  <option value="animal">Animal Facts</option>
                 </select>
               </div>
 
@@ -257,10 +257,10 @@
                 <option value="">All Categories</option>
                 <option value="navigation">Navigation Tips</option>
                 <option value="ar">AR Technology</option>
-                <option value="campus">Campus Information</option>
                 <option value="safety">Safety Guidelines</option>
                 <option value="accessibility">Accessibility</option>
-                <option value="general">General Tips</option>
+                <option value="nature">Nature Facts</option>
+                <option value="animal">Animal Facts</option>
               </select>
             </div>
           </div>
@@ -943,6 +943,7 @@ async function createSampleLearningContent() {
       tags: ["ar", "navigation", "camera"],
       isActive: true,
       isFeatured: true,
+      showOnFirstVisit: false,
     },
     {
       title: "Finding the Shortest Route",
@@ -957,6 +958,7 @@ async function createSampleLearningContent() {
       tags: ["routing", "efficiency", "paths"],
       isActive: true,
       isFeatured: false,
+      showOnFirstVisit: false,
     },
     {
       title: "Campus Safety Guidelines",
@@ -971,6 +973,7 @@ async function createSampleLearningContent() {
       tags: ["safety", "emergency", "weather"],
       isActive: true,
       isFeatured: false,
+      showOnFirstVisit: false,
     },
     {
       title: "Accessibility Features Overview",
@@ -985,6 +988,7 @@ async function createSampleLearningContent() {
       tags: ["accessibility", "voice", "wheelchair"],
       isActive: true,
       isFeatured: true,
+      showOnFirstVisit: false,
     },
     {
       title: "Understanding Campus Zones",
@@ -992,13 +996,29 @@ async function createSampleLearningContent() {
         "Get familiar with different areas of the campus and their unique features.",
       detailedContent:
         "The campus is divided into academic zones, residential areas, recreational facilities, and administrative buildings. Each zone has specific navigation considerations and available services.",
-      category: "campus",
+      category: "nature",
       difficulty: "intermediate",
       priority: "low",
       estimatedReadTime: 6,
-      tags: ["campus", "zones", "facilities"],
+      tags: ["nature", "zones", "facilities"],
       isActive: true,
       isFeatured: false,
+      showOnFirstVisit: false,
+    },
+    {
+      title: "Wildlife Safety on Campus",
+      content:
+        "Learn about the local wildlife you might encounter and how to safely observe them.",
+      detailedContent:
+        "Our campus is home to various wildlife species. Maintain a safe distance from all animals, never feed wildlife, and report any aggressive animal behavior to campus security immediately.",
+      category: "animal",
+      difficulty: "beginner",
+      priority: "medium",
+      estimatedReadTime: 4,
+      tags: ["wildlife", "animals", "safety"],
+      isActive: true,
+      isFeatured: false,
+      showOnFirstVisit: false,
     },
   ];
 
@@ -1407,10 +1427,6 @@ async function initializeLearningSystem() {
   background: #fef5e7;
   color: #744210;
 }
-.category-campus {
-  background: #e0e7ff;
-  color: #3730a3;
-}
 .category-safety {
   background: #fecaca;
   color: #7f1d1d;
@@ -1419,9 +1435,13 @@ async function initializeLearningSystem() {
   background: #d1fae5;
   color: #14532d;
 }
-.category-general {
-  background: #f3e8ff;
-  color: #581c87;
+.category-nature {
+  background: #dcfce7;
+  color: #15803d;
+}
+.category-animal {
+  background: #fef3c7;
+  color: #a16207;
 }
 
 .difficulty-beginner {

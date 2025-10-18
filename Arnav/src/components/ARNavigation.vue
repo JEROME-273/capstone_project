@@ -1068,7 +1068,7 @@ function calculateNavigationData() {
   update3DElements();
 
   // Check for arrival - improved logic
-  if (distanceToDestination.value < 3 && !hasLoggedArrival.value) {
+  if (distanceToDestination.value < 5 && !hasLoggedArrival.value) {
     // Require sufficient accuracy before confirming arrival
     if (
       (latestAccuracy.value || 999) <= ACC_ARRIVAL_REQUIRED &&
@@ -1089,7 +1089,7 @@ function updateARInstructions() {
   const distance = distanceToDestination.value;
   const destination = destinationLocation.value;
 
-  if (distance < 3) {
+  if (distance < 5) {
     if (
       (latestAccuracy.value || 999) <= ACC_ARRIVAL_REQUIRED &&
       isAccuracyReady.value

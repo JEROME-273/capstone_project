@@ -500,6 +500,54 @@ export default {
   },
 
   methods: {
+    // ===================
+    // LOGGING UTILITIES
+    // ===================
+    // Controlled logging system para makakuha ng essential errors
+    // without cluttering the console with debug messages
+
+    logError(method, error, context = {}) {
+      console.error(`[AdminAnalytics.${method}]`, error);
+      if (Object.keys(context).length > 0) {
+        console.log("Context:", context);
+      }
+    },
+
+    logWarning(method, message, data = null) {
+      console.warn(`[AdminAnalytics.${method}] ${message}`);
+      if (data) {
+        console.log("Data:", data);
+      }
+    },
+
+    logInfo(method, message, data = null) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[AdminAnalytics.${method}] ${message}`);
+        if (data) {
+          console.log("Data:", data);
+        }
+      }
+    },
+
+    // Validate and log data issues
+    validateAndLogData(method, data, expectedType = "array") {
+      if (
+        expectedType === "array" &&
+        (!Array.isArray(data) || data.length === 0)
+      ) {
+        this.logWarning(
+          method,
+          `No data available - expected ${expectedType}`,
+          {
+            received: typeof data,
+            length: data?.length,
+          }
+        );
+        return false;
+      }
+      return true;
+    },
+
     async fetchAllData() {
       this.loading = true;
       try {
@@ -541,7 +589,10 @@ export default {
         await this.$nextTick();
         this.initializeCharts();
       } catch (error) {
-        console.error("Error fetching analytics data:", error);
+        this.logError("fetchAllData", error, {
+          selectedPeriod: this.selectedPeriod,
+          timestamp: new Date().toISOString(),
+        });
       } finally {
         this.loading = false;
       }
@@ -551,31 +602,31 @@ export default {
       if (this.refreshing || this.loading) return;
 
       this.refreshing = true;
-      console.log("Manual refresh started");
+      // Manual refresh started
 
       try {
         await this.fetchAllData();
-        console.log("Manual refresh completed successfully");
+        // Manual refresh completed successfully
       } catch (e) {
-        console.error("Manual refresh failed:", e);
+        this.logError("manualRefresh", e);
         // Don't clear data on error - keep existing data visible
       } finally {
         // Small delay for better UX feedback
         setTimeout(() => {
           this.refreshing = false;
-          console.log("Refresh state cleared");
+          // Refresh state cleared
         }, 300);
       }
     },
 
     destroyAllCharts() {
-      console.log("Destroying existing charts");
+      // Destroying existing charts
       Object.values(this.charts).forEach((chart) => {
         if (chart && typeof chart.destroy === "function") {
           try {
             chart.destroy();
           } catch (error) {
-            console.warn("Error destroying chart:", error);
+            // Error destroying chart - handled silently
           }
         }
       });
@@ -619,9 +670,7 @@ export default {
 
         // Approach 2: If no user destinations, use recentDestinations collection
         if (usersWithDestinations === 0 && destinations.length > 0) {
-          console.log(
-            "No user destinations found, using recentDestinations collection"
-          );
+          // No user destinations found, using recentDestinations collection
           destinations.forEach((dest) => {
             const destName =
               dest.destination ||
@@ -635,37 +684,25 @@ export default {
           });
         }
 
-        console.log(`Destination analysis:`, {
-          totalUsers: users.length,
-          usersWithDestinations,
-          destinationCounts,
-          sampleUserDestinations: users.slice(0, 3).map((u) => ({
-            id: u.id,
-            lastDestination: u.lastDestination,
-            recentDestination: u.recentDestination,
-            destination: u.destination,
-          })),
-          recentDestinationsCount: destinations.length,
-        });
+        // Destination analysis completed
 
         const popularDest = Object.entries(destinationCounts).sort(
           (a, b) => b[1] - a[1]
         )[0];
         this.popularDestination = popularDest ? popularDest[0] : "N/A";
 
-        console.log(
-          `User stats: ${this.totalUsers} total, ${this.verifiedUsers} verified, ${this.activeSessions} active, popular destination: ${this.popularDestination}`
-        );
+        // User stats processing completed
       } catch (error) {
-        console.error("Error processing user stats:", error);
+        this.logError("processUserStats", error, {
+          usersCount: users?.length || 0,
+          destinationsCount: destinations?.length || 0,
+        });
       }
     },
 
     // Legacy method for backward compatibility - now just calls processUserStats
     async fetchUserStats() {
-      console.warn(
-        "fetchUserStats called directly - this should use cached data"
-      );
+      // fetchUserStats called directly - this should use cached data
       const db = getFirestore();
       try {
         const [usersSnapshot, destinationsSnapshot] = await Promise.all([
@@ -686,7 +723,7 @@ export default {
 
         await this.processUserStats(users, destinations);
       } catch (error) {
-        console.error("Error fetching user stats:", error);
+        // Error fetching user stats - handled silently
       }
     },
 
@@ -705,15 +742,13 @@ export default {
           .sort((a, b) => b[1] - a[1])
           .map(([type, count]) => ({ type, count }));
       } catch (error) {
-        console.error("Error processing visit types data:", error);
+        // Error processing visit types data - handled silently
       }
     },
 
     // Legacy method
     async fetchVisitTypesData() {
-      console.warn(
-        "fetchVisitTypesData called directly - this should use cached data"
-      );
+      // fetchVisitTypesData called directly - this should use cached data
       const db = getFirestore();
       try {
         const usersSnapshot = await getDocs(collection(db, "users"));
@@ -723,7 +758,7 @@ export default {
         });
         await this.processVisitTypesData(users);
       } catch (error) {
-        console.error("Error fetching visit types data:", error);
+        // Error fetching visit types data - handled silently
       }
     },
 
@@ -745,7 +780,7 @@ export default {
           { status: "Unverified", count: unverified },
         ];
       } catch (error) {
-        console.error("Error processing verification data:", error);
+        // Error processing verification data - handled silently
       }
     },
 
@@ -762,23 +797,13 @@ export default {
           ([gender, count]) => ({ gender, count })
         );
       } catch (error) {
-        console.error("Error processing gender data:", error);
+        // Error processing gender data - handled silently
       }
     },
 
     async processDestinationsData(destinations) {
       try {
-        console.log("Processing destinations data:", {
-          totalDestinations: destinations.length,
-          sampleDestinations: destinations.slice(0, 3).map((d) => ({
-            id: d.id,
-            destination: d.destination,
-            name: d.name,
-            destinationName: d.destinationName,
-            location: d.location,
-            allFields: Object.keys(d),
-          })),
-        });
+        // Processing destinations data
 
         const destinationCounts = {};
 
@@ -795,21 +820,23 @@ export default {
           }
         });
 
-        console.log("Destination counts:", destinationCounts);
+        // Destination counts processed
 
         this.destinationsData = Object.entries(destinationCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 10) // Top 10 destinations
           .map(([destination, count]) => ({ destination, count }));
 
-        console.log("Final destinations data:", this.destinationsData);
+        // Final destinations data processed
       } catch (error) {
-        console.error("Error processing destinations data:", error);
+        // Error processing destinations data - handled silently
       }
     },
 
     async processMonthlyActiveUsers(users) {
       try {
+        // Processing users for monthly active chart
+
         const monthlyData = {};
         const currentDate = new Date();
 
@@ -822,23 +849,48 @@ export default {
           );
           const monthKey = date.toISOString().substring(0, 7); // YYYY-MM format
           monthlyData[monthKey] = 0;
+          // Month initialized to 0
         }
 
+        let usersWithData = 0;
         users.forEach((user) => {
-          if (user.createdAt) {
-            const userDate = user.createdAt.toDate();
+          // Check both createdAt and lastLoginAt for more comprehensive data
+          let userDate = null;
+
+          if (user.lastLoginAt) {
+            userDate = user.lastLoginAt.toDate();
+            // Using lastLoginAt for user
+          } else if (user.createdAt) {
+            userDate = user.createdAt.toDate();
+            // Using createdAt for user
+          }
+
+          if (userDate) {
+            usersWithData++;
             const monthKey = userDate.toISOString().substring(0, 7);
             if (monthlyData.hasOwnProperty(monthKey)) {
               monthlyData[monthKey]++;
+              // Added user to month count
+            } else {
+              // User date is outside 12-month range
             }
+          } else {
+            // User has no createdAt or lastLoginAt timestamp
           }
         });
 
-        this.monthlyActiveUsersData = Object.entries(monthlyData).map(
+        // Found users with valid timestamps
+
+        // FIX: Use monthlyActiveData instead of monthlyActiveUsersData
+        this.monthlyActiveData = Object.entries(monthlyData).map(
           ([month, count]) => ({ month, count })
         );
+
+        // Monthly active data processing completed
       } catch (error) {
-        console.error("Error processing monthly active users:", error);
+        this.logError("processMonthlyActiveUsers", error, {
+          usersCount: users?.length || 0,
+        });
       }
     },
 
@@ -856,7 +908,7 @@ export default {
           count,
         }));
       } catch (error) {
-        console.error("Error processing roles data:", error);
+        // Error processing roles data - handled silently
       }
     },
 
@@ -876,7 +928,7 @@ export default {
           })
         );
       } catch (error) {
-        console.error("Error processing device data:", error);
+        // Error processing device data - handled silently
       }
     },
 
@@ -901,7 +953,7 @@ export default {
           { status: "Unverified", count: unverified },
         ];
       } catch (error) {
-        console.error("Error fetching verification data:", error);
+        // Error fetching verification data - handled silently
       }
     },
 
@@ -932,14 +984,12 @@ export default {
 
         this.registrationTrendData = last30Days;
       } catch (error) {
-        console.error("Error processing registration trend:", error);
+        // Error processing registration trend - handled silently
       }
     },
 
     async fetchRegistrationTrend() {
-      console.warn(
-        "fetchRegistrationTrend called directly - this should use cached data"
-      );
+      // fetchRegistrationTrend called directly - this should use cached data
       const db = getFirestore();
       try {
         const usersSnapshot = await getDocs(collection(db, "users"));
@@ -949,7 +999,7 @@ export default {
         });
         await this.processRegistrationTrend(users);
       } catch (error) {
-        console.error("Error fetching registration trend:", error);
+        // Error fetching registration trend - handled silently
       }
     },
 
@@ -969,7 +1019,7 @@ export default {
           ([gender, count]) => ({ gender, count })
         );
       } catch (error) {
-        console.error("Error fetching gender data:", error);
+        // Error fetching gender data - handled silently
       }
     },
 
@@ -996,7 +1046,7 @@ export default {
           .slice(0, 10) // Top 10 destinations
           .map(([destination, count]) => ({ destination, count }));
       } catch (error) {
-        console.error("Error fetching destinations data:", error);
+        // Error fetching destinations data - handled silently
       }
     },
 
@@ -1033,7 +1083,7 @@ export default {
           ([month, count]) => ({ month, count })
         );
       } catch (error) {
-        console.error("Error fetching monthly active users:", error);
+        // Error fetching monthly active users - handled silently
       }
     },
 
@@ -1054,7 +1104,7 @@ export default {
           count,
         }));
       } catch (error) {
-        console.error("Error fetching roles data:", error);
+        // Error fetching roles data - handled silently
       }
     },
 
@@ -1113,7 +1163,7 @@ export default {
           })
         );
       } catch (error) {
-        console.error("Error fetching device data:", error);
+        // Error fetching device data - handled silently
         // Fallback to basic data if there's an error
         this.deviceData = [
           { device: "Mobile", count: this.totalUsers || 0 },
@@ -1130,7 +1180,7 @@ export default {
         // Arrival analytics uses separate collection, so we call the existing fetch method
         await this.fetchArrivalAnalytics();
       } catch (error) {
-        console.error("Error processing arrival analytics:", error);
+        // Error processing arrival analytics - handled silently
       }
     },
 
@@ -1145,14 +1195,14 @@ export default {
         let arrivalQuery;
 
         if (dateFilter) {
-          console.log("Applying date filter:", dateFilter.toISOString());
+          // Applying date filter
           arrivalQuery = query(
             arrivalCollection,
             where("timestamp", ">=", dateFilter),
             orderBy("timestamp", "desc")
           );
         } else {
-          console.log("No date filter - fetching all records");
+          // No date filter - fetching all records
           arrivalQuery = query(arrivalCollection, orderBy("timestamp", "desc"));
         }
 
@@ -1162,23 +1212,7 @@ export default {
           ...doc.data(),
         }));
 
-        console.log(
-          `Found ${arrivals.length} arrival records after date filtering`
-        );
-        if (arrivals.length > 0) {
-          console.log("Sample arrival data:", arrivals[0]);
-          arrivals.forEach((arrival, index) => {
-            console.log(`Arrival ${index + 1}:`, {
-              destinationName: arrival.destinationName,
-              timestamp: arrival.timestamp?.toDate?.()?.toISOString(),
-              successful: arrival.successful,
-              navigationDuration: arrival.navigationDuration,
-              navigationDurationMinutes: arrival.navigationDuration
-                ? Math.floor(arrival.navigationDuration / (1000 * 60))
-                : "N/A",
-            });
-          });
-        }
+        // Found arrival records after date filtering
 
         // Calculate stats (real values)
         if (arrivals.length === 0) {
@@ -1197,9 +1231,7 @@ export default {
           const arrivalsWithDuration = arrivals.filter(
             (a) => a.navigationDuration && a.navigationDuration > 0
           );
-          console.log(
-            `Found ${arrivalsWithDuration.length} arrivals with valid navigation duration out of ${arrivals.length} total`
-          );
+          // Found arrivals with valid navigation duration
 
           let avgDurationMs = 0;
           if (arrivalsWithDuration.length > 0) {
@@ -1208,11 +1240,9 @@ export default {
                 (sum, a) => sum + a.navigationDuration,
                 0
               ) / arrivalsWithDuration.length;
-            console.log(
-              `Average duration calculation: ${avgDurationMs}ms from ${arrivalsWithDuration.length} records`
-            );
+            // Average duration calculated
           } else {
-            console.log("No arrivals with valid navigation duration found");
+            // No arrivals with valid navigation duration found
           }
           const destinationCounts = {};
           arrivals.forEach((a) => {
@@ -1236,9 +1266,11 @@ export default {
 
         // Prepare chart data
         this.prepareArrivalChartData(arrivals);
-        console.log("Arrival analytics processing completed");
+        // Arrival analytics processing completed
       } catch (error) {
-        console.error("Error fetching arrival analytics:", error);
+        this.logError("fetchArrivalAnalytics", error, {
+          selectedPeriod: this.selectedPeriod,
+        });
         // Set default values on error
         this.arrivalStats = {
           totalArrivals: 0,
@@ -1256,24 +1288,21 @@ export default {
 
     getDateFilter() {
       const now = new Date();
-      console.log("Current date:", now.toISOString());
-      console.log("Selected period:", this.selectedPeriod);
+      // Current date and selected period processed
 
       if (this.selectedPeriod === "all") {
-        console.log("Date filter: ALL TIME - no filter applied");
+        // Date filter: ALL TIME - no filter applied
         return null;
       }
 
       const days = parseInt(this.selectedPeriod);
       const filterDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-      console.log(
-        `Date filter: Last ${days} days - filtering from ${filterDate.toISOString()}`
-      );
+      // Date filter applied
       return filterDate;
     },
 
     formatDuration(milliseconds) {
-      console.log(`Formatting duration: ${milliseconds}ms`);
+      // Formatting duration
 
       if (!milliseconds || milliseconds <= 0) {
         return "0 min";
@@ -1284,11 +1313,7 @@ export default {
       const seconds = totalSeconds % 60;
       const hours = Math.floor(minutes / 60);
 
-      console.log(
-        `Converted to: ${totalSeconds} seconds = ${hours}h ${
-          minutes % 60
-        }m ${seconds}s`
-      );
+      // Duration converted
 
       if (hours > 0) {
         return `${hours}h ${minutes % 60}m`;
@@ -1300,8 +1325,19 @@ export default {
     },
 
     prepareArrivalChartData(arrivals) {
+      // Preparing chart data for arrivals
+
       // Prepare data for daily arrivals chart
       this.dailyArrivalsData = this.groupArrivalsByDay(arrivals);
+
+      // If no data in last 7 days but we have arrivals, show actual dates
+      const hasRecentData = this.dailyArrivalsData.some(
+        (item) => item.count > 0
+      );
+      if (!hasRecentData && arrivals.length > 0) {
+        // No recent data found, creating chart from actual arrival dates
+        this.dailyArrivalsData = this.groupArrivalsByActualDates(arrivals);
+      }
 
       // Prepare data for destinations chart
       this.arrivalDestinationsData = this.groupArrivalsByDestination(arrivals);
@@ -1314,20 +1350,44 @@ export default {
     },
 
     groupArrivalsByDay(arrivals) {
+      // Group arrivals by day
+
       const last7Days = [];
       const today = new Date();
+      // Today's date processed
+
+      // Process arrival dates
+      arrivals.forEach((arrival, index) => {
+        if (arrival.timestamp?.toDate) {
+          const arrivalDate = new Date(arrival.timestamp.toDate());
+          // Arrival date processed
+        } else {
+          // Arrival has invalid timestamp
+        }
+      });
 
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
+        // Processing day
 
         const count = arrivals.filter((arrival) => {
+          if (!arrival.timestamp?.toDate) {
+            // Skipping arrival with invalid timestamp
+            return false;
+          }
           const arrivalDate = new Date(arrival.timestamp.toDate())
             .toISOString()
             .split("T")[0];
-          return arrivalDate === dateStr;
+          const match = arrivalDate === dateStr;
+          if (match) {
+            // Found match for date
+          }
+          return match;
         }).length;
+
+        // Day arrivals counted
 
         last7Days.push({
           date: date.toLocaleDateString("en-US", { weekday: "short" }),
@@ -1335,28 +1395,61 @@ export default {
         });
       }
 
+      // Final daily arrivals data processed
       return last7Days;
+    },
+
+    groupArrivalsByActualDates(arrivals) {
+      // Group arrivals by actual dates
+      const dateGroups = {};
+
+      arrivals.forEach((arrival) => {
+        if (arrival.timestamp?.toDate) {
+          const arrivalDate = new Date(arrival.timestamp.toDate());
+          const dateStr = arrivalDate.toISOString().split("T")[0];
+          const displayDate = arrivalDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+
+          if (!dateGroups[dateStr]) {
+            dateGroups[dateStr] = {
+              date: displayDate,
+              count: 0,
+              fullDate: arrivalDate,
+            };
+          }
+          dateGroups[dateStr].count++;
+        }
+      });
+
+      // Sort by date and take last 7 days of actual data
+      const sortedData = Object.values(dateGroups)
+        .sort((a, b) => a.fullDate - b.fullDate)
+        .slice(-7)
+        .map(({ date, count }) => ({ date, count }));
+
+      // Actual dates data processed
+      return sortedData;
     },
 
     groupArrivalsByDestination(arrivals) {
       const destinationCounts = {};
-      console.log(
-        `Processing ${arrivals.length} arrivals for destination chart`
-      );
+      // Processing arrivals for destination chart
 
       arrivals.forEach((arrival) => {
         const dest = arrival.destinationName || "Unknown";
         destinationCounts[dest] = (destinationCounts[dest] || 0) + 1;
       });
 
-      console.log("Destination counts:", destinationCounts);
+      // Destination counts processed
 
       const result = Object.entries(destinationCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10); // Top 10 destinations
 
-      console.log("Final destination chart data:", result);
+      // Final destination chart data processed
       return result;
     },
 
@@ -1630,7 +1723,20 @@ export default {
 
     createMonthlyActiveChart() {
       const ctx = this.$refs.monthlyActiveChart?.getContext("2d");
-      if (!ctx || !this.monthlyActiveData.length) return;
+
+      if (!ctx) {
+        this.logWarning("createMonthlyActiveChart", "Canvas context not found");
+        return;
+      }
+
+      if (
+        !this.validateAndLogData(
+          "createMonthlyActiveChart",
+          this.monthlyActiveData
+        )
+      ) {
+        return;
+      }
 
       if (this.charts.monthlyActive) this.charts.monthlyActive.destroy();
 
@@ -1752,18 +1858,33 @@ export default {
     // New Arrival Analytics Chart Methods
     createArrivalsChart() {
       const ctx = this.$refs.arrivalsChart?.getContext("2d");
-      if (!ctx || !this.dailyArrivalsData?.length) return;
+
+      if (!ctx) {
+        this.logWarning("createArrivalsChart", "Canvas context not found");
+        return;
+      }
+
+      if (
+        !this.validateAndLogData("createArrivalsChart", this.dailyArrivalsData)
+      ) {
+        return;
+      }
 
       if (this.charts.arrivals) this.charts.arrivals.destroy();
+
+      const labels = this.dailyArrivalsData.map((item) => item.date);
+      const data = this.dailyArrivalsData.map((item) => item.count);
+
+      // Chart labels and data prepared
 
       this.charts.arrivals = new Chart(ctx, {
         type: "line",
         data: {
-          labels: this.dailyArrivalsData.map((item) => item.date),
+          labels: labels,
           datasets: [
             {
               label: "Daily Arrivals",
-              data: this.dailyArrivalsData.map((item) => item.count),
+              data: data,
               backgroundColor: "rgba(34, 197, 94, 0.2)",
               borderColor: "rgba(34, 197, 94, 1)",
               borderWidth: 3,
@@ -1794,18 +1915,15 @@ export default {
 
     createArrivalDestinationsChart() {
       const ctx = this.$refs.arrivalDestinationsChart?.getContext("2d");
-      console.log(
-        "Creating arrival destinations chart with data:",
-        this.arrivalDestinationsData
-      );
+      // Creating arrival destinations chart
 
       if (!ctx) {
-        console.log("Canvas context not found for arrival destinations chart");
+        // Canvas context not found for arrival destinations chart
         return;
       }
 
       if (!this.arrivalDestinationsData?.length) {
-        console.log("No destination data available for chart");
+        // No destination data available for chart
         return;
       }
 
@@ -2326,7 +2444,7 @@ export default {
       try {
         await html2pdf().set(options).from(reportContent).save();
       } catch (error) {
-        console.error("Error generating PDF:", error);
+        this.logError("generatePDF", error);
         alert("Error generating PDF. Please try again.");
       }
     },
