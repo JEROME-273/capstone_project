@@ -120,21 +120,21 @@ export async function logArrivalFailure(data) {
   });
 }
 
-// Login tracking (history)
+// Login tracking (simplified - uses generic logEvent)
 export async function logLogin(extra = {}) {
   try {
     const auth = getAuth();
     const user = auth.currentUser;
-    if (!user) return;
-    const db = getFirestore();
-    // Add to generic events
+    if (!user) {
+      console.warn("AnalyticsService logLogin: No authenticated user");
+      return;
+    }
+
+    // Wait a bit for Firebase auth to fully propagate
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Use the generic logEvent function - simpler and more consistent
     await logEvent("login", extra);
-    // Add to per-user logins subcollection
-    await addDoc(collection(db, "users", user.uid, "logins"), {
-      timestamp: serverTimestamp(),
-      ...getDeviceSnapshot(),
-      ...extra,
-    });
   } catch (err) {
     console.warn("AnalyticsService logLogin failed:", err);
   }

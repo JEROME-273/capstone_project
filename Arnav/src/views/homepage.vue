@@ -333,64 +333,6 @@
         </div>
       </div>
       <br />
-
-      <!-- Saved Places -->
-      <section class="locapp-section">
-        <header class="locapp-section-header">
-          <h2 class="saveplace">SAVED PLACES</h2>
-        </header>
-
-        <!-- Show only top 3 places -->
-        <div
-          class="locapp-place"
-          v-for="place in savedPlaces.slice(0, 3)"
-          :key="place.id"
-          @click="goToPlace(place)">
-          <i class="fas fa-bookmark locapp-icon"></i>
-          <div class="locapp-place-text">
-            <div class="locapp-place-name">{{ place.name }}</div>
-            <div class="locapp-place-address">
-              Lat: {{ place.latitude }}, Lng: {{ place.longitude }}
-            </div>
-            <div class="locapp-place-timestamp">
-              {{ formatDate(place.timestamp) }}
-            </div>
-          </div>
-        </div>
-
-        <!-- View All button (if more than 3 saved places) -->
-        <button
-          v-if="savedPlaces.length > 3"
-          class="locapp-view-all-btn"
-          @click="showAllPlaces = true">
-          View All
-        </button>
-
-        <!-- Add New Place button -->
-        <div class="locapp-add-btn-container">
-          <button class="locapp-add-btn">
-            <i class="fas fa-plus"></i> Add New Place
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <!-- Add New Place Modal -->
-    <div v-if="showAddPlaceModal" class="add-place-modal">
-      <div class="add-place-content">
-        <h3>Add New Place</h3>
-        <input
-          v-model="newPlaceName"
-          type="text"
-          placeholder="Enter place name"
-          class="add-place-input" />
-        <div class="add-place-buttons">
-          <button @click="saveNewPlace" class="save-place-btn">Save</button>
-          <button @click="closeAddPlaceModal" class="cancel-place-btn">
-            Cancel
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Location Details Modal -->
@@ -585,11 +527,8 @@ import VoiceService from "@/services/VoiceService";
 const searchQuery = ref("");
 const selectedCategory = ref(null);
 const showAllCategories = ref(false);
-const savedPlaces = ref([]);
 const adminLocations = ref([]);
 const isLoading = ref(true);
-const showAddPlaceModal = ref(false);
-const newPlaceName = ref("");
 
 // Weather state
 const weather = ref({
@@ -959,36 +898,11 @@ async function onTipsSeen(ids) {
 async function loadData() {
   isLoading.value = true;
   try {
-    await Promise.all([loadUserSavedPlaces(), loadAdminLocations()]);
+    await loadAdminLocations();
   } catch (error) {
     console.error("Error loading data:", error);
   } finally {
     isLoading.value = false;
-  }
-}
-
-async function loadUserSavedPlaces() {
-  const user = auth.currentUser;
-  if (user) {
-    const db = getFirestore();
-    const userAreasRef = collection(db, "userAreas");
-    const q = query(
-      userAreasRef,
-      where("userId", "==", user.uid),
-      orderBy("timestamp", "desc")
-    );
-    const querySnapshot = await getDocs(q);
-    savedPlaces.value = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      savedPlaces.value.push({
-        id: doc.id,
-        name: data.name,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timestamp: data.timestamp?.toDate() || new Date(),
-      });
-    });
   }
 }
 
@@ -1076,68 +990,6 @@ function selectCategory(category) {
 
 function clearSearch() {
   searchQuery.value = "";
-}
-
-function goToPlace(place) {
-  console.log("Going to saved place:", place.name);
-  // Implement navigation to user saved place
-}
-
-function formatDate(date) {
-  if (!date) return "";
-  const d = new Date(date);
-  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-}
-
-function closeAddPlaceModal() {
-  showAddPlaceModal.value = false;
-  newPlaceName.value = "";
-}
-
-async function saveNewPlace() {
-  if (!newPlaceName.value.trim()) {
-    alert("Please enter a name for this place.");
-    return;
-  }
-
-  const user = auth.currentUser;
-  if (!user) {
-    alert("You must be logged in to save a place.");
-    return;
-  }
-
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-
-      try {
-        const db = getFirestore();
-        const areaData = {
-          userId: user.uid,
-          userName: user.email || "User",
-          name: newPlaceName.value,
-          latitude,
-          longitude,
-          timestamp: new Date(),
-        };
-        await addDoc(collection(db, "userAreas"), areaData);
-        alert("Place saved successfully!");
-        closeAddPlaceModal();
-        await loadUserSavedPlaces();
-      } catch (error) {
-        alert("Error saving place: " + error.message);
-      }
-    },
-    (error) => {
-      alert("Error getting location: " + error.message);
-    }
-  );
 }
 
 function showLocationDetails(location) {

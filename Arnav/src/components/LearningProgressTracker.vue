@@ -124,7 +124,22 @@
           <!-- Expanded Content -->
           <div v-if="expandedTip === tip.id" class="tip-expanded-content">
             <div v-if="tip.detailedContent" class="detailed-content">
-              <h5>Detailed Information:</h5>
+              <div class="detailed-content-header">
+                <h5>Detailed Information:</h5>
+                <!-- Voice Reading Controls - only for detailed content -->
+                <div class="voice-controls">
+                  <button
+                    @click="toggleVoiceReading(tip)"
+                    :class="['voice-btn', { active: isReading && currentReadingTip?.id === tip.id }]"
+                    :disabled="!speechSupported">
+                    <i :class="isReading && currentReadingTip?.id === tip.id ? 'bx bx-stop' : 'bx bx-volume-full'"></i>
+                    {{ isReading && currentReadingTip?.id === tip.id ? 'Stop Reading' : 'Read Details' }}
+                  </button>
+                  <span v-if="!speechSupported" class="voice-unsupported">
+                    Voice reading not supported in this browser
+                  </span>
+                </div>
+              </div>
               <p>{{ tip.detailedContent }}</p>
             </div>
 
@@ -335,6 +350,11 @@ const isDailyChallengeCompleted = ref(false);
 // Achievement tracking
 const recentAchievements = ref([]);
 
+// Voice reading state
+const isReading = ref(false);
+const currentReadingTip = ref(null);
+const speechSupported = ref(typeof window !== 'undefined' && 'speechSynthesis' in window);
+
 // Real-time listeners storage
 const unsubscribeFunctions = ref([]);
 
@@ -437,7 +457,74 @@ onUnmounted(() => {
     }
   });
   unsubscribeFunctions.value = [];
+  
+  // Stop any ongoing speech synthesis
+  stopVoiceReading();
 });
+
+// Voice Reading Methods
+function toggleVoiceReading(tip) {
+  if (!speechSupported.value) {
+    console.warn('Speech synthesis not supported in this browser');
+    return;
+  }
+
+  if (isReading.value && currentReadingTip.value?.id === tip.id) {
+    stopVoiceReading();
+  } else {
+    startVoiceReading(tip);
+  }
+}
+
+function startVoiceReading(tip) {
+  // Stop any current reading
+  stopVoiceReading();
+  
+  // Only read the detailed content if it exists
+  if (!tip.detailedContent) {
+    console.warn('No detailed content available to read');
+    return;
+  }
+  
+  // Prepare only the detailed information to read
+  let textToRead = tip.detailedContent;
+
+  // Create and configure speech utterance
+  const utterance = new SpeechSynthesisUtterance(textToRead);
+  utterance.rate = 0.9; // Slightly slower for better comprehension
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  
+  // Set up event listeners
+  utterance.onstart = () => {
+    isReading.value = true;
+    currentReadingTip.value = tip;
+    console.log('Voice reading started for:', tip.title);
+  };
+  
+  utterance.onend = () => {
+    isReading.value = false;
+    currentReadingTip.value = null;
+    console.log('Voice reading completed');
+  };
+  
+  utterance.onerror = (event) => {
+    console.error('Speech synthesis error:', event.error);
+    isReading.value = false;
+    currentReadingTip.value = null;
+  };
+
+  // Start speaking
+  window.speechSynthesis.speak(utterance);
+}
+
+function stopVoiceReading() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  isReading.value = false;
+  currentReadingTip.value = null;
+}
 
 async function setupRealtimeListeners() {
   console.log("Setting up real-time listeners for learning content...");
@@ -1544,8 +1631,17 @@ watch(
   margin-bottom: 15px;
 }
 
+.detailed-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .detailed-content h5 {
-  margin: 0 0 8px 0;
+  margin: 0;
   color: #4a5568;
   font-size: 14px;
   font-weight: 600;
@@ -1556,6 +1652,66 @@ watch(
   color: #718096;
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* Voice Controls */
+.voice-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.voice-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.voice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.voice-btn.active {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  animation: pulse 2s infinite;
+}
+
+.voice-btn.active:hover {
+  box-shadow: 0 4px 15px rgba(229, 62, 62, 0.4);
+}
+
+.voice-unsupported {
+  font-size: 12px;
+  color: #a0aec0;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translateY(-2px) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.05);
+  }
 }
 
 .tip-metadata {

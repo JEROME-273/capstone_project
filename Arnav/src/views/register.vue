@@ -655,15 +655,18 @@ export default {
               updates.emailVerified = true;
             }
             await updateDoc(doc(this.db, "users", user.uid), updates);
-            // Record login history & generic event
-            try {
-              const { logLogin } = await import(
-                "@/services/AnalyticsService.js"
-              );
-              await logLogin();
-            } catch (e) {
-              console.warn("logLogin failed or service unavailable", e);
-            }
+
+            // Record login history & generic event with delay
+            setTimeout(async () => {
+              try {
+                const { logLogin } = await import(
+                  "@/services/AnalyticsService.js"
+                );
+                await logLogin();
+              } catch (e) {
+                console.warn("logLogin failed or service unavailable", e);
+              }
+            }, 500); // Give Firebase auth context time to properly propagate
           } catch (metaErr) {
             console.warn("Failed to update login metadata:", metaErr);
           }

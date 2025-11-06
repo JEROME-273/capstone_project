@@ -21,6 +21,19 @@
             <summary>Read more</summary>
             <p>{{ current.detailedContent }}</p>
           </details>
+          
+          <!-- Voice Read Button -->
+          <div class="ltips-voice-controls">
+            <button 
+              class="ltips-voice-btn" 
+              @click="toggleVoiceReading"
+              :class="{ 'reading': isReading, 'disabled': !voiceSupported }"
+              :disabled="!voiceSupported"
+              :title="voiceSupported ? (isReading ? 'Stop reading' : 'Read aloud') : 'Voice not supported'">
+              <i class="fas" :class="isReading ? 'fa-stop' : 'fa-volume-up'"></i>
+              {{ isReading ? 'Stop' : 'Read' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -50,7 +63,114 @@ const index = ref(0);
 
 const current = computed(() => props.tips?.[index.value] || {});
 
+// Voice functionality
+const isReading = ref(false);
+const voiceSupported = ref(false);
+let speechSynthesis = null;
+let currentUtterance = null;
+
+// Check for voice support on component mount
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  speechSynthesis = window.speechSynthesis;
+  voiceSupported.value = true;
+}
+
+function toggleVoiceReading() {
+  if (!voiceSupported.value) return;
+  
+  if (isReading.value) {
+    stopVoiceReading();
+  } else {
+    startVoiceReading();
+  }
+}
+
+function startVoiceReading() {
+  if (!voiceSupported.value || !speechSynthesis) return;
+  
+  // Stop any current reading
+  stopVoiceReading();
+  
+  // Create text to read
+  const textToRead = createReadingText();
+  
+  if (!textToRead.trim()) return;
+  
+  currentUtterance = new SpeechSynthesisUtterance(textToRead);
+  
+  // Configure speech settings
+  currentUtterance.rate = 0.8; // Slightly slower for better comprehension
+  currentUtterance.pitch = 1;
+  currentUtterance.volume = 0.8;
+  
+  // Set language (you can modify this)
+  currentUtterance.lang = 'en-US';
+  
+  // Event listeners
+  currentUtterance.onstart = () => {
+    isReading.value = true;
+  };
+  
+  currentUtterance.onend = () => {
+    isReading.value = false;
+    currentUtterance = null;
+  };
+  
+  currentUtterance.onerror = () => {
+    isReading.value = false;
+    currentUtterance = null;
+    console.warn('Speech synthesis error');
+  };
+  
+  // Start speaking
+  speechSynthesis.speak(currentUtterance);
+}
+
+function stopVoiceReading() {
+  if (speechSynthesis && isReading.value) {
+    speechSynthesis.cancel();
+    isReading.value = false;
+    currentUtterance = null;
+  }
+}
+
+function createReadingText() {
+  const tip = current.value;
+  if (!tip) return '';
+  
+  let text = '';
+  
+  // Add title
+  if (tip.title) {
+    text += `${tip.title}. `;
+  }
+  
+  // Add main content
+  if (tip.content) {
+    text += `${tip.content} `;
+  }
+  
+  // Add detailed content if available
+  if (tip.detailedContent) {
+    text += `Additional details: ${tip.detailedContent}`;
+  }
+  
+  return text;
+}
+
+// Stop reading when component unmounts or tip changes
+import { watch, onUnmounted } from 'vue';
+
+watch(() => current.value, () => {
+  stopVoiceReading();
+});
+
+onUnmounted(() => {
+  stopVoiceReading();
+});
+
 function close() {
+  stopVoiceReading(); // Stop reading when modal closes
   emit(
     "seen",
     props.tips.map((t) => t.id)
@@ -60,6 +180,7 @@ function close() {
 }
 
 function next() {
+  stopVoiceReading(); // Stop reading when moving to next tip
   if (index.value < props.tips.length - 1) {
     index.value++;
   } else {
@@ -162,5 +283,64 @@ function next() {
 }
 :global(body.dark-mode) .ltips-footer {
   border-color: #3b3f47;
+}
+
+/* Voice Controls Styles */
+.ltips-voice-controls {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.ltips-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.ltips-voice-btn:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.ltips-voice-btn:active:not(.disabled) {
+  transform: translateY(0);
+}
+
+.ltips-voice-btn.reading {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+}
+
+.ltips-voice-btn.reading:hover {
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  box-shadow: 0 4px 16px rgba(245, 101, 101, 0.4);
+}
+
+.ltips-voice-btn.disabled {
+  background: #cbd5e0;
+  color: #718096;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ltips-voice-btn i {
+  font-size: 1rem;
+}
+
+/* Dark mode support for voice button */
+:global(body.dark-mode) .ltips-voice-btn.disabled {
+  background: #4a5568;
+  color: #a0aec0;
 }
 </style>
