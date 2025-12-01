@@ -1,6 +1,21 @@
 <template>
   <div class="locapp-container">
-    <!-- Learning Tips Modal (teleported to body so it’s outside any other modals) -->
+    <!-- Tama Modal (teleported to body) -->
+    <teleport to="body">
+      <div v-if="showTama" class="tama-overlay" @click="showTama = false">
+        <div class="tama-container" @click.stop>
+          <div class="speech-bubble">
+            iNavPark is an innovative system that blends nature and technology
+            by providing smart navigation, QR-based animal information, and
+            interactive learning experiences inside the park.
+            <div class="speech-arrow"></div>
+          </div>
+          <img src="@/assets/tama.png" alt="Tama" class="tama-character" />
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Learning Tips Modal (teleported to body so it's outside any other modals) -->
     <teleport to="body">
       <LearningTipsModal
         :tips="newTips"
@@ -29,43 +44,89 @@
       <!-- Navbar contents placed at the top -->
       <div class="hero-header">
         <div class="navbar-left">
-          <img src="@/assets/final_logo.png" alt="iNavPark" class="farm-logo" />
-          iNavPark
+          <!-- Logo as button that shows Tama -->
+          <button
+            class="logo-btn"
+            @click="showTama = true"
+            aria-label="Show Tama welcome">
+            <img
+              src="@/assets/inavparklogo1.png"
+              alt="iNavPark"
+              class="farm-logo" />
+          </button>
         </div>
 
         <div class="navbar-actions">
-          <!-- Learning Progress Button -->
-          <button
-            class="learning-progress-btn"
-            @click="toggleLearningProgress"
-            :class="{ active: showLearningProgress }"
-            aria-label="Learning Progress">
-            <div class="learning-icon">
-              <i class="bx bx-brain"></i>
-              <div v-if="userLearningStreak > 0" class="streak-badge">
-                {{ userLearningStreak }}
-              </div>
-            </div>
-          </button>
-
-          <!-- QR Code Scanner Button -->
-          <router-link
-            to="/qr-scan-aw"
-            class="qr-scan-btn"
-            aria-label="Scan QR Code">
-            <i class="fas fa-qrcode"></i>
-          </router-link>
-
-          <!-- Notification Bell -->
-          <NotificationBell
-            class="notification-bell"
-            @startNavigation="handleNotificationNavigation" />
-
-          <!-- User Profile -->
-          <router-link to="/userinfo" class="user-profile-btn">
-            <i class="fas fa-user-circle user-icon"></i>
-          </router-link>
+          <!-- Top header actions moved to bottom nav for mobile-style layout -->
         </div>
+      </div>
+
+      <!-- Animated Weather Effects -->
+      <div class="weather-animation">
+        <!-- ☁️ Clouds -->
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-1"></div>
+
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-2"></div>
+
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-3"></div>
+
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-4"></div>
+
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-5"></div>
+
+        <div
+          v-if="
+            ['cloudy-weather', 'rainy-weather', 'windy-weather'].includes(
+              weatherClass
+            )
+          "
+          class="cloud cloud-6"></div>
+
+        <!-- 🌧️ Rain -->
+        <div v-if="weatherClass === 'rainy-weather'" class="rain">
+          <span v-for="n in 40" :key="n" class="raindrop"></span>
+        </div>
+
+        <!-- 💨 Wind -->
+        <div
+          v-if="weatherClass === 'windy-weather'"
+          class="wind-lines"
+          :style="{ '--windspeed': weather.wind || 10 }">
+          <span v-for="n in 10" :key="n"></span>
+        </div>
+
+        <!-- ☀️ Sun -->
+        <div v-if="weatherClass === 'sunny-weather'" class="sun"></div>
       </div>
 
       <!-- Weather Content -->
@@ -76,6 +137,7 @@
             <span class="temp">{{
               weather.temp !== null ? weather.temp + "°" : "--"
             }}</span>
+            <!-- BACK TO NORMAL WEATHER ICON -->
             <span class="condition-icon">
               {{
                 weather.condition.toLowerCase().includes("rain")
@@ -90,18 +152,10 @@
             </span>
           </div>
           <div class="condition">{{ weather.condition || "--" }}</div>
-          <div class="feels-like">
-            Feels like
-            {{ weather.feelsLike !== null ? weather.feelsLike + "°" : "--" }}
-          </div>
         </div>
 
         <!-- Right Section -->
         <div class="weather-right">
-          <div class="detail">
-            Precip:
-            {{ weather.precip !== null ? weather.precip + " mm" : "--" }}
-          </div>
           <div class="detail">
             Humidity:
             {{ weather.humidity !== null ? weather.humidity + "%" : "--" }}
@@ -109,6 +163,21 @@
           <div class="detail">
             Wind: {{ weather.wind !== null ? weather.wind + " km/h" : "--" }}
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Local Tip Section (short tips based on weather / outdoors) -->
+    <section class="local-tip" aria-label="Local tip" v-if="currentLocalTip">
+      <div
+        class="local-tip-card"
+        @click="refreshLocalTip"
+        role="button"
+        tabindex="0">
+        <div class="tip-icon">{{ getTipIcon() }}</div>
+        <div class="tip-body">
+          <div class="tip-title">Local Tip</div>
+          <div class="tip-text">{{ currentLocalTip }}</div>
         </div>
       </div>
     </section>
@@ -123,6 +192,28 @@
 
     <br />
     <div class="locapp-content" @click.stop>
+      <!-- Greeting card: shows personalized greeting based on time and weather -->
+      <div
+        class="greeting-card simple"
+        v-if="
+          greetingText &&
+          showGreeting &&
+          auth.currentUser &&
+          !auth.currentUser.isAnonymous
+        "
+        @click="hideGreeting">
+        <div class="greeting-backdrop"></div>
+        <div class="greeting-content">
+          <div class="greeting-bubble">
+            <div class="greeting-main">{{ greetingText }}</div>
+          </div>
+          <img
+            src="@/assets/tamawelcome.png"
+            alt="Welcome character"
+            class="greeting-character" />
+        </div>
+      </div>
+
       <!-- Search Container -->
       <div class="search-wrapper">
         <div class="locapp-search">
@@ -241,6 +332,51 @@
         </div>
       </div>
 
+      <!-- Featured Spots Carousel (top 3 most visited) -->
+      <section
+        class="featured-spots"
+        v-if="featuredSpots.length && !searchQuery">
+        <div class="featured-header">
+          <h3>LOCAL FAVORITE</h3>
+        </div>
+
+        <div class="featured-carousel">
+          <div class="featured-track" ref="featuredTrack">
+            <div
+              class="featured-slide"
+              v-for="(item, idx) in featuredSpots"
+              :key="item.location.id"
+              :class="{ active: idx === currentFeaturedIndex }">
+              <div
+                class="locapp-location-card"
+                @click="goToLocation(item.location)">
+                <div class="location-image">
+                  <img
+                    :src="
+                      item.location.imageUrl ||
+                      '/placeholder.svg?height=160&width=240'
+                    "
+                    :alt="item.location.name"
+                    class="location-img" />
+                  <button
+                    @click.stop="showLocationDetails(item.location)"
+                    class="location-info-btn-image"
+                    aria-label="View location details">
+                    <i class="fas fa-info-circle"></i>
+                  </button>
+                </div>
+                <div class="location-info">
+                  <h3 class="location-name">{{ item.location.name }}</h3>
+                  <p class="location-description">
+                    {{ item.location.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <br />
 
       <!-- Categories -->
@@ -333,6 +469,8 @@
         </div>
       </div>
       <br />
+
+      <!-- Contact / Reservation Section removed — now available via Contact modal -->
     </div>
 
     <!-- Location Details Modal -->
@@ -415,6 +553,54 @@
       @stop-navigation="handleStopNavigation"
       @start-new-navigation="handleStartNewNavigation" />
 
+    <!-- Bottom navigation (device-style) -->
+    <nav
+      v-if="!isARActive"
+      class="bottom-nav"
+      role="navigation"
+      aria-label="Bottom navigation">
+      <button
+        class="nav-item learning-btn"
+        @click="toggleLearningProgress"
+        title="Learning"
+        aria-label="Open learning progress">
+        <div class="learning-icon">
+          <i class="bx bx-brain"></i>
+          <div v-if="userLearningStreak > 0" class="streak-badge">
+            {{ userLearningStreak }}
+          </div>
+        </div>
+      </button>
+
+      <router-link to="/qr-scan-aw" class="nav-item scan-btn" aria-label="Scan">
+        <i class="fas fa-qrcode"></i>
+      </router-link>
+
+      <router-link
+        to="/userinfo"
+        class="nav-item profile-btn"
+        aria-label="Profile">
+        <i class="fas fa-user-circle"></i>
+      </router-link>
+
+      <!-- Notifications modal trigger icon -->
+      <button
+        class="nav-item notifications-modal-btn"
+        @click="openNotificationsModal"
+        aria-label="Notifications Modal"
+        title="Notifications">
+        <i class="fas fa-bell"></i>
+      </button>
+
+      <button
+        class="nav-item contact-btn"
+        @click="openContactModal"
+        aria-label="Contact"
+        title="Contact">
+        <i class="fas fa-phone"></i>
+      </button>
+    </nav>
+
     <!-- Learning Progress Modal -->
     <div
       v-if="showLearningProgress"
@@ -433,6 +619,80 @@
           </div>
           <div class="learning-modal-body">
             <LearningProgressTracker :visible="showLearningProgress" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Fullscreen Modal -->
+    <NotificationModal
+      :visible="showNotificationModal"
+      @close="closeNotificationsModal"
+      @startNavigation="handleNotificationNavigation" />
+
+    <!-- Contact Modal -->
+    <div
+      v-if="showContactModal"
+      class="contact-modal-overlay"
+      @click="closeContactModal">
+      <div class="contact-modal" @click.stop>
+        <div class="contact-modal-header">
+          <h3>Contact & Reservations</h3>
+          <button
+            class="close-modal-btn"
+            @click="closeContactModal"
+            aria-label="Close contact modal">
+            ×
+          </button>
+        </div>
+
+        <div class="contact-modal-body">
+          <p class="section-subtitle">
+            Reserve the venue for your event — reach us by phone, Facebook, or
+            email. We'll get back to you quickly.
+          </p>
+
+          <div class="contact-cards modal-cards">
+            <a
+              class="contact-card phone"
+              href="tel:+639123456789"
+              aria-label="Call or WhatsApp">
+              <div class="info">
+                <div class="icon-text">
+                  <i class="fas fa-phone"></i>
+                  <div class="label">Call / WhatsApp</div>
+                </div>
+                <div class="value">+63 912 345 6789</div>
+              </div>
+            </a>
+
+            <a
+              class="contact-card fb"
+              href="https://facebook.com/YourPage"
+              target="_blank"
+              rel="noopener"
+              aria-label="Facebook page">
+              <div class="info">
+                <div class="icon-text">
+                  <i class="fab fa-facebook-f"></i>
+                  <div class="label">Facebook</div>
+                </div>
+                <div class="value">@InavParkOfficial</div>
+              </div>
+            </a>
+
+            <a
+              class="contact-card email"
+              href="mailto:reservations@inavpark.ph"
+              aria-label="Send email">
+              <div class="info">
+                <div class="icon-text">
+                  <i class="fas fa-envelope"></i>
+                  <div class="label">Email</div>
+                </div>
+                <div class="value">reservations@inavpark.ph</div>
+              </div>
+            </a>
           </div>
         </div>
       </div>
@@ -497,6 +757,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { fetchRemoteTips } from "@/services/LocalTipsService";
 import {
   getFirestore,
   collection,
@@ -506,6 +767,8 @@ import {
   getDocs,
   addDoc,
   limit,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { auth } from "@/firebase/config";
 import { signInAnonymously } from "firebase/auth";
@@ -519,6 +782,7 @@ import LearningProgressTracker from "@/components/LearningProgressTracker.vue";
 import LearningTipsModal from "@/components/LearningTipsModal.vue";
 import AnimalInfoModal from "@/components/AnimalInfoModal.vue";
 import FeedbackModal from "@/components/FeedbackModal.vue";
+import NotificationModal from "@/components/NotificationModal.vue";
 import { checkRainSoon } from "@/services/WeatherService";
 import NotificationService from "@/services/NotificationService";
 import VoiceService from "@/services/VoiceService";
@@ -533,9 +797,7 @@ const isLoading = ref(true);
 // Weather state
 const weather = ref({
   temp: null,
-  feelsLike: null,
   condition: "",
-  precip: null,
   humidity: null,
   wind: null,
   date: new Date().toLocaleDateString("en-US", {
@@ -544,6 +806,316 @@ const weather = ref({
     year: "numeric",
   }),
 });
+
+// Local tips (short actionable tips with support for pin/dismiss and remote fetch)
+const tipPool = ref([
+  {
+    text: "Stay hydrated! Bring water bottles, especially on warm days.",
+    tags: ["default", "health"],
+  },
+  {
+    text: "Wear comfortable walking shoes - you'll be exploring trails.",
+    tags: ["default"],
+  },
+  {
+    text: "Apply sunscreen before your visit to protect from UV rays.",
+    tags: ["sunny", "health"],
+  },
+  {
+    text: "Check weather conditions and dress in layers for comfort.",
+    tags: ["default", "weather"],
+  },
+  {
+    text: "Keep a safe distance from animals - observe, don't disturb.",
+    tags: ["wildlife", "safety"],
+  },
+  {
+    text: "Follow marked trails to protect natural habitats.",
+    tags: ["conservation", "safety"],
+  },
+  {
+    text: "Bring reusable bags for trash - help keep the park clean.",
+    tags: ["conservation"],
+  },
+  {
+    text: "Plan your visit during early morning for the best experience.",
+    tags: ["default", "planning"],
+  },
+  {
+    text: "Supervise children near water features and animal areas.",
+    tags: ["family", "safety"],
+  },
+  {
+    text: "Take only photos, leave only footprints - preserve nature.",
+    tags: ["conservation"],
+  },
+]);
+
+const currentLocalTip = ref("");
+const pinnedTip = ref(null); // persisted in localStorage if user pins a tip
+const dismissedTips = ref([]); // session dismissed tips (texts)
+
+// Rotation state: keep a short history to avoid repeating similar tips
+const recentTipsShown = ref([]);
+const tipRotateIntervalId = ref(null);
+const tipCountdownIntervalId = ref(null);
+const TIP_ROTATION_MS = 20000; // 20 seconds
+const tipCountdown = ref(Math.floor(TIP_ROTATION_MS / 1000));
+
+function loadTipPreferences() {
+  try {
+    const p = localStorage.getItem("inav_local_tip_pinned");
+    if (p) pinnedTip.value = JSON.parse(p);
+  } catch (e) {
+    pinnedTip.value = null;
+  }
+}
+
+function savePinnedTip() {
+  try {
+    if (pinnedTip.value)
+      localStorage.setItem(
+        "inav_local_tip_pinned",
+        JSON.stringify(pinnedTip.value)
+      );
+    else localStorage.removeItem("inav_local_tip_pinned");
+  } catch (e) {}
+}
+
+function pickLocalTip() {
+  try {
+    // If user pinned a tip, show it
+    if (
+      pinnedTip.value &&
+      pinnedTip.value.text &&
+      !dismissedTips.value.includes(pinnedTip.value.text)
+    ) {
+      currentLocalTip.value = pinnedTip.value.text;
+      return;
+    }
+
+    const cond = (weather.value.condition || "").toLowerCase();
+    // prefer tips matching weather tag; keep defaults too
+    const matching = tipPool.value.filter(
+      (t) =>
+        !dismissedTips.value.includes(t.text) &&
+        t.tags.some((tag) => tag === "default" || cond.includes(tag))
+    );
+    const pool = matching.length
+      ? matching
+      : tipPool.value.filter((t) => !dismissedTips.value.includes(t.text));
+    if (!pool || pool.length === 0) {
+      currentLocalTip.value = "";
+      return;
+    }
+    const idx = Math.floor(Math.random() * pool.length);
+    currentLocalTip.value = pool[idx].text;
+  } catch (e) {
+    currentLocalTip.value = tipPool.value[0]?.text || "";
+  }
+}
+
+function refreshLocalTip() {
+  pickDistinctTip();
+  // reset countdown when user manually refreshes
+  try {
+    tipCountdown.value = Math.floor(TIP_ROTATION_MS / 1000);
+  } catch (e) {}
+}
+
+// Pick a tip that is meaningfully different from recently shown ones
+function pickDistinctTip() {
+  try {
+    // Respect pinned tip (show pinned tip continuously)
+    if (
+      pinnedTip.value &&
+      pinnedTip.value.text &&
+      !dismissedTips.value.includes(pinnedTip.value.text)
+    ) {
+      currentLocalTip.value = pinnedTip.value.text;
+      return;
+    }
+
+    const pool = tipPool.value.filter(
+      (t) => !dismissedTips.value.includes(t.text)
+    );
+    if (!pool || pool.length === 0) {
+      currentLocalTip.value = "";
+      return;
+    }
+
+    const lastText = currentLocalTip.value || null;
+    const lastTip = tipPool.value.find((t) => t.text === lastText) || null;
+    const lastTag = lastTip?.tags?.[0] || null;
+
+    const recentSet = new Set(recentTipsShown.value);
+
+    // Exclude exact recent texts and the current text first
+    let candidates = pool.filter(
+      (t) => t.text !== lastText && !recentSet.has(t.text)
+    );
+    if (candidates.length === 0) {
+      // fallback: allow candidates that are not the immediate last
+      candidates = pool.filter((t) => t.text !== lastText);
+    }
+
+    // Prefer candidates with a different primary tag for variety
+    let diffTagCandidates = candidates.filter((t) => {
+      const tag = t.tags?.[0] || "";
+      return lastTag ? tag !== lastTag : true;
+    });
+
+    const finalPool = diffTagCandidates.length ? diffTagCandidates : candidates;
+    const idx = Math.floor(Math.random() * finalPool.length);
+    const choice = finalPool[idx];
+
+    currentLocalTip.value = choice.text;
+
+    // reset countdown whenever we pick a new tip
+    try {
+      tipCountdown.value = Math.floor(TIP_ROTATION_MS / 1000);
+    } catch (e) {}
+
+    // push to recent history (keep only last 8 shown)
+    recentTipsShown.value.push(choice.text);
+    if (recentTipsShown.value.length > 8) recentTipsShown.value.shift();
+  } catch (e) {
+    // fallback to original picker on error
+    pickLocalTip();
+  }
+}
+
+function dismissCurrentTip() {
+  if (!currentLocalTip.value) return;
+  dismissedTips.value.push(currentLocalTip.value);
+  currentLocalTip.value = "";
+}
+
+function togglePinTip() {
+  if (!currentLocalTip.value) return;
+  if (pinnedTip.value && pinnedTip.value.text === currentLocalTip.value) {
+    pinnedTip.value = null;
+  } else {
+    pinnedTip.value = { text: currentLocalTip.value };
+  }
+  savePinnedTip();
+}
+
+// Remote tips: try to fetch from configured endpoint and merge
+async function tryLoadRemoteTips() {
+  const endpoint = import.meta.env.VITE_TIPS_ENDPOINT || "";
+
+  // Try custom endpoint first
+  if (endpoint) {
+    try {
+      const remote = await fetchRemoteTips(endpoint);
+      if (Array.isArray(remote) && remote.length) {
+        const existing = new Set(tipPool.value.map((t) => t.text));
+        remote.forEach((t) => {
+          if (!existing.has(t.text)) tipPool.value.push(t);
+        });
+      }
+    } catch (e) {
+      console.warn("Custom tips endpoint failed:", e.message || e);
+    }
+  }
+
+  // Fetch additional tips from online API as fallback/supplement
+  try {
+    const response = await fetch("https://api.adviceslip.com/advice");
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.slip?.advice) {
+        const existing = new Set(tipPool.value.map((t) => t.text));
+        const newTip = {
+          text: data.slip.advice,
+          tags: ["default", "general"],
+        };
+        if (!existing.has(newTip.text)) {
+          tipPool.value.push(newTip);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Online tips API failed:", e.message || e);
+  }
+
+  // Fetch a few more tips
+  try {
+    const parkTips = [
+      "Stay on marked paths to protect wildlife habitats.",
+      "Bring reusable water bottles to reduce plastic waste.",
+      "Check weather conditions before your visit.",
+      "Take only photos, leave only footprints.",
+      "Report any wildlife emergencies to park staff immediately.",
+    ];
+    const existing = new Set(tipPool.value.map((t) => t.text));
+    parkTips.forEach((text) => {
+      if (!existing.has(text)) {
+        tipPool.value.push({ text, tags: ["default", "conservation"] });
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Initialize tip and refresh when weather updates
+onMounted(async () => {
+  loadTipPreferences();
+  await tryLoadRemoteTips();
+  // pick an initial distinct tip
+  pickDistinctTip();
+
+  // Start automatic rotation every TIP_ROTATION_MS
+  try {
+    if (tipRotateIntervalId.value) clearInterval(tipRotateIntervalId.value);
+    tipRotateIntervalId.value = setInterval(() => {
+      pickDistinctTip();
+    }, TIP_ROTATION_MS);
+
+    // start per-second countdown so users see time left
+    if (tipCountdownIntervalId.value)
+      clearInterval(tipCountdownIntervalId.value);
+    tipCountdown.value = Math.floor(TIP_ROTATION_MS / 1000);
+    tipCountdownIntervalId.value = setInterval(() => {
+      try {
+        tipCountdown.value = Math.max(0, tipCountdown.value - 1);
+        if (tipCountdown.value === 0) {
+          // reset display seconds (the rotation will run on its own schedule)
+          tipCountdown.value = Math.floor(TIP_ROTATION_MS / 1000);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 1000);
+  } catch (e) {
+    console.warn("Tip rotation setup failed", e);
+  }
+});
+watch(
+  () => weather.value.condition,
+  () => {
+    // When weather changes, pick a tip that matches the new context but stays distinct
+    pickDistinctTip();
+  }
+);
+
+function getTipIcon() {
+  try {
+    const txt = currentLocalTip.value || "";
+    const found =
+      tipPool.value.find((t) => t.text === txt) ||
+      tipPool.value.find((t) => t.tags && t.tags.includes("default"));
+    const tag = found?.tags?.[0] || "default";
+    if (tag.includes("rain")) return "🌧️";
+    if (tag.includes("sun")) return "☀️";
+    if (tag.includes("wind")) return "💨";
+    return "💡";
+  } catch (e) {
+    return "💡";
+  }
+}
 
 const showLocationModal = ref(false);
 const selectedLocationDetails = ref(null);
@@ -558,6 +1130,11 @@ const selectedAnimal = ref(null);
 
 // Feedback modal state
 const showFeedbackModal = ref(false);
+// Notifications fullscreen modal state
+const showNotificationModal = ref(false);
+
+// Contact modal state
+const showContactModal = ref(false);
 
 // Voice Search state
 const voiceSearchRecognition = ref(null);
@@ -574,6 +1151,141 @@ const router = useRouter();
 const showLearningProgress = ref(false);
 const userLearningStreak = ref(0);
 
+// Featured spots (top 3 most visited)
+const featuredSpots = ref([]); // array of { location, count }
+const currentFeaturedIndex = ref(0);
+const featuredTrack = ref(null);
+
+// Auto-advance featured carousel (no visible controls)
+const FEATURED_ROTATE_MS = 10000; // rotate every 10s
+const featuredRotateIntervalId = ref(null);
+
+function startFeaturedAutoRotate() {
+  try {
+    stopFeaturedAutoRotate();
+    if (!featuredSpots.value || featuredSpots.value.length <= 1) return;
+    featuredRotateIntervalId.value = setInterval(() => {
+      if (!featuredSpots.value || featuredSpots.value.length <= 1) return;
+      currentFeaturedIndex.value =
+        (currentFeaturedIndex.value + 1) % featuredSpots.value.length;
+    }, FEATURED_ROTATE_MS);
+  } catch (e) {
+    console.warn("startFeaturedAutoRotate failed", e);
+  }
+}
+
+function stopFeaturedAutoRotate() {
+  try {
+    if (featuredRotateIntervalId.value) {
+      clearInterval(featuredRotateIntervalId.value);
+      featuredRotateIntervalId.value = null;
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// When the featured index changes, bring the slide into view
+watch(currentFeaturedIndex, (idx) => {
+  nextTick(() => scrollToFeatured(idx));
+});
+
+// Start/stop auto-rotation when the list changes
+watch(
+  () => featuredSpots.value && featuredSpots.value.length,
+  (len) => {
+    if (len && len > 1) startFeaturedAutoRotate();
+    else stopFeaturedAutoRotate();
+  },
+  { immediate: true }
+);
+
+async function computeFeaturedSpots() {
+  try {
+    const db = getFirestore();
+    // Fetch recentDestinations entries to compute popularity
+    const recentRef = collection(db, "recentDestinations");
+    const recentSnap = await getDocs(recentRef);
+    const counts = new Map();
+    recentSnap.forEach((doc) => {
+      const d = doc.data();
+      const id = d.destinationId || d.destination || d.destinationId;
+      if (!id) return;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    });
+
+    // Map adminLocations to include counts
+    const mapped = adminLocations.value.map((loc) => {
+      const id = loc.id;
+      return {
+        location: loc,
+        count: counts.get(id) || loc.visitors || loc.visitCount || 0,
+      };
+    });
+
+    // If recentDestinations is empty (counts.size === 0), fall back to visitors field or createdAt recency
+    if (counts.size === 0) {
+      // sort by visitors/visitCount if present, otherwise by createdAt
+      mapped.sort((a, b) => {
+        const av = a.location.visitors || a.location.visitCount || 0;
+        const bv = b.location.visitors || b.location.visitCount || 0;
+        if (av !== bv) return bv - av;
+        const ad = a.location.createdAt
+          ? new Date(a.location.createdAt).getTime()
+          : 0;
+        const bd = b.location.createdAt
+          ? new Date(b.location.createdAt).getTime()
+          : 0;
+        return bd - ad;
+      });
+    } else {
+      // sort by aggregated counts
+      mapped.sort((a, b) => (b.count || 0) - (a.count || 0));
+    }
+
+    featuredSpots.value = mapped.slice(0, 3);
+    currentFeaturedIndex.value = 0;
+  } catch (e) {
+    console.warn("computeFeaturedSpots failed", e);
+    // fallback: pick first 3 locations
+    featuredSpots.value = adminLocations.value
+      .slice(0, 3)
+      .map((l) => ({ location: l, count: 0 }));
+  }
+}
+
+function prevFeatured() {
+  if (!featuredSpots.value.length) return;
+  currentFeaturedIndex.value =
+    (currentFeaturedIndex.value - 1 + featuredSpots.value.length) %
+    featuredSpots.value.length;
+}
+
+function nextFeatured() {
+  if (!featuredSpots.value.length) return;
+  currentFeaturedIndex.value =
+    (currentFeaturedIndex.value + 1) % featuredSpots.value.length;
+}
+
+function scrollToFeatured(index) {
+  try {
+    const track = featuredTrack.value;
+    if (!track) return;
+    const child = track.children[index];
+    if (!child) return;
+    // Smooth scroll the container so the selected card is visible
+    const container = track.parentElement; // .featured-carousel
+    const left = child.offsetLeft - 12; // small padding
+    container.scrollTo({ left, behavior: "smooth" });
+  } catch (e) {
+    // ignore
+  }
+}
+
+function goToSlide(index) {
+  currentFeaturedIndex.value = index;
+}
+
 // Learning Tips modal state
 const showTipsModal = ref(false);
 const newTips = ref([]);
@@ -587,14 +1299,110 @@ const DEFAULT_LON = Number(import.meta.env.VITE_DEFAULT_LON) || 121.1235;
 // Voice readiness for weather announcements
 const voiceReady = ref(false);
 
+// User greeting state
+const firstName = ref("Guest");
+
+// Cloud animation speed
+const cloudSpeed = ref(25); // Default cloud animation speed
+
+// Tama character state
+const showTama = ref(false);
+
+// Greeting visibility state (auto-hide)
+const showGreeting = ref(true);
+let greetingTimeout = null;
+
+async function loadUserFirstName() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Prefer displayName if available
+    if (user.displayName) {
+      firstName.value = user.displayName.split(" ")[0];
+      return;
+    }
+
+    // Fallback to email local-part
+    if (user.email) {
+      firstName.value = user.email.split("@")[0];
+      return;
+    }
+
+    // As a last resort, try reading a users collection document
+    try {
+      const db = getFirestore();
+      const udoc = await getDoc(doc(db, "users", user.uid));
+      if (udoc.exists()) {
+        const data = udoc.data();
+        if (data.firstName) firstName.value = data.firstName;
+        else if (data.name) firstName.value = data.name.split(" ")[0];
+      }
+    } catch (e) {
+      // ignore
+    }
+  } catch (e) {
+    console.warn("loadUserFirstName failed", e);
+  }
+}
+
+const timeOfDay = computed(() => {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+});
+
+const weatherPhrase = computed(() => {
+  const cond = (weather.value.condition || "").toLowerCase();
+  if (
+    cond.includes("rain") ||
+    cond.includes("drizzle") ||
+    cond.includes("shower")
+  )
+    return "cozy and rainy";
+  if (cond.includes("sun") || cond.includes("clear")) return "bright and sunny";
+  if (cond.includes("cloud") || cond.includes("overcast"))
+    return "calm and cloudy";
+  if (cond.includes("wind")) return "windy and fresh";
+  return "pleasant";
+});
+
+const weatherIcon = computed(() => {
+  const cond = (weather.value.condition || "").toLowerCase();
+  if (
+    cond.includes("rain") ||
+    cond.includes("drizzle") ||
+    cond.includes("shower")
+  )
+    return "🌧️";
+  if (cond.includes("sun") || cond.includes("clear")) return "☀️";
+  if (cond.includes("cloud") || cond.includes("overcast")) return "☁️";
+  if (cond.includes("wind")) return "💨";
+  return "🌡️";
+});
+
+const greetingText = computed(() => {
+  // Build a short, vibe-forward greeting using time and weather
+  const time = timeOfDay.value;
+  const vibe = weatherPhrase.value;
+  // Examples: "Good morning Gelo — the park feels bright and sunny. Perfect for a stroll."
+  if (time === "morning")
+    return `Good morning ${firstName.value} — it's ${vibe} this morning. Perfect for a stroll.`;
+  if (time === "afternoon")
+    return `Good afternoon ${firstName.value} — the day feels ${vibe}. A nice time to explore.`;
+  if (time === "evening")
+    return `Good evening ${firstName.value} — it's ${vibe} this evening. Enjoy the calm.`;
+  return `Hello ${firstName.value} — hope you're having a ${vibe} time.`;
+});
+
 // Categories with enhanced mapping
 const categories = ref([
-  { key: "facility", name: "Facilities", icon: "map-marker-alt" },
   { key: "landmark", name: "Landmarks", icon: "monument" },
   { key: "plant_areas", name: "Plants", icon: "leaf" },
   { key: "animal_enclosure", name: "Animals", icon: "paw" },
   { key: "cr", name: "Restroom", icon: "restroom" },
-  { key: "parking", name: "Parking", icon: "parking" },
 ]);
 
 // Computed properties
@@ -643,26 +1451,96 @@ const searchResults = computed(() => {
 
 // Weather class computed property
 const weatherClass = computed(() => {
-  if (!weather.value.condition) return "cloudy-weather"; // changed default to cloudy for testing
+  if (!weather.value.condition) return "cloudy-weather";
 
   const condition = weather.value.condition.toLowerCase();
-  console.log("Current weather condition:", condition); // debug log
+  console.log("Current weather condition:", condition);
 
   if (
     condition.includes("rain") ||
     condition.includes("drizzle") ||
-    condition.includes("shower")
+    condition.includes("shower") ||
+    condition.includes("thunderstorm")
   ) {
     return "rainy-weather";
   } else if (condition.includes("sun") || condition.includes("clear")) {
     return "sunny-weather";
-  } else if (condition.includes("cloud") || condition.includes("overcast")) {
+  } else if (
+    condition.includes("cloud") ||
+    condition.includes("overcast") ||
+    condition.includes("broken") ||
+    condition.includes("scattered")
+  ) {
     return "cloudy-weather";
-  } else if (condition.includes("wind")) {
+  } else if (condition.includes("wind") || condition.includes("breeze")) {
     return "windy-weather";
   } else {
-    return "cloudy-weather"; // changed default to cloudy for better visibility
+    return "cloudy-weather";
   }
+});
+
+// Weather animation SVG computed property (keeping for potential future use)
+const weatherSVG = computed(() => {
+  const w = weatherClass.value;
+
+  // ☀️ Sunny
+  if (w === "sunny-weather") {
+    return `
+      <svg width="70" height="70" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="22" fill="#FFD93D">
+          <animate attributeName="r" values="20;22;20" dur="3s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    `;
+  }
+
+  // 🌧️ Rainy
+  if (w === "rainy-weather") {
+    return `
+      <svg width="70" height="70" viewBox="0 0 100 100">
+        <ellipse cx="50" cy="40" rx="25" ry="18" fill="#A0AFC4"/>
+        <line x1="40" y1="60" x2="40" y2="80" stroke="#4DA3FF" stroke-width="4">
+          <animate attributeName="y2" values="80;90;80" dur="0.7s" repeatCount="indefinite"/>
+        </line>
+        <line x1="60" y1="60" x2="60" y2="80" stroke="#4DA3FF" stroke-width="4">
+          <animate attributeName="y2" values="80;90;80" dur="0.6s" repeatCount="indefinite"/>
+        </line>
+      </svg>
+    `;
+  }
+
+  // ☁️ Cloudy
+  if (w === "cloudy-weather") {
+    return `
+      <svg width="70" height="70" viewBox="0 0 100 100">
+        <ellipse cx="50" cy="50" rx="30" ry="20" fill="#BFC9D9">
+          <animate attributeName="cx" values="48;52;48" dur="4s" repeatCount="indefinite"/>
+        </ellipse>
+      </svg>
+    `;
+  }
+
+  // 💨 Windy
+  if (w === "windy-weather") {
+    return `
+      <svg width="70" height="70" viewBox="0 0 100 100">
+        <path d="M20 50 Q40 40 60 50 T90 50"
+              stroke="#A3C1D9"
+              stroke-width="6"
+              fill="none">
+          <animate attributeName="d"
+                   values="
+                     M20 50 Q40 40 60 50 T90 50;
+                     M20 50 Q40 60 60 50 T90 50;
+                     M20 50 Q40 40 60 50 T90 50"
+                   dur="2s"
+                   repeatCount="indefinite"/>
+        </path>
+      </svg>
+    `;
+  }
+
+  return "";
 });
 
 // Lifecycle hooks
@@ -679,6 +1557,8 @@ onMounted(async () => {
 
   // Ensure we have a user (anonymous is fine) so Firestore reads are allowed
   await ensureAuth();
+  // Load the user's first name for the greeting
+  await loadUserFirstName();
 
   // Check ASAP so the modal can appear on the base page
   await checkNewLearningTips();
@@ -703,22 +1583,112 @@ onMounted(async () => {
   // Load weather data
   getWeather();
 
+  // Auto-hide greeting after 10 seconds
+  greetingTimeout = setTimeout(() => {
+    hideGreeting();
+  }, 10000);
+
   // Add resize handler for 360 viewer
   window.addEventListener("resize", handle360Resize);
+
+  // Add keyboard event listener for global shortcuts
+  document.addEventListener("keydown", handleGlobalKeydown);
 });
 
 onUnmounted(() => {
   cleanupVoiceSearch();
   // Clean up modal event listeners and body scroll
   document.removeEventListener("keydown", handleModalKeydown);
+  document.removeEventListener("keydown", handleGlobalKeydown);
   document.body.classList.remove("modal-open");
   // Remove resize handler
   window.removeEventListener("resize", handle360Resize);
+  // Clear greeting timeout if still active
+  if (greetingTimeout) {
+    clearTimeout(greetingTimeout);
+    greetingTimeout = null;
+  }
   // Clean up 360 viewer
   if (animationId) {
     cancelAnimationFrame(animationId);
   }
+  // Clear tip rotation interval if set
+  try {
+    if (tipRotateIntervalId.value) {
+      clearInterval(tipRotateIntervalId.value);
+      tipRotateIntervalId.value = null;
+    }
+  } catch (e) {
+    // ignore
+  }
+  // Clear countdown interval
+  try {
+    if (tipCountdownIntervalId.value) {
+      clearInterval(tipCountdownIntervalId.value);
+      tipCountdownIntervalId.value = null;
+    }
+  } catch (e) {
+    // ignore
+  }
+  // Clear featured rotation interval
+  try {
+    if (featuredRotateIntervalId.value) {
+      clearInterval(featuredRotateIntervalId.value);
+      featuredRotateIntervalId.value = null;
+    }
+  } catch (e) {
+    // ignore
+  }
 });
+
+// Watch for Tama state changes to auto-hide after 5 seconds
+watch(showTama, (newVal) => {
+  if (newVal) {
+    setTimeout(() => {
+      showTama.value = false;
+    }, 5000);
+  }
+});
+
+// Global keyboard shortcuts
+function handleGlobalKeydown(event) {
+  // Escape key to close modals
+  if (event.key === "Escape") {
+    if (showLearningProgress.value) {
+      closeLearningProgress();
+    }
+    if (showLocationModal.value) {
+      closeLocationModal();
+    }
+    if (show360Viewer.value) {
+      close360Viewer();
+    }
+    if (showTipsModal.value) {
+      showTipsModal.value = false;
+    }
+    if (showTama.value) {
+      showTama.value = false;
+    }
+  }
+
+  // Ctrl+K or Cmd+K for search focus (common shortcut)
+  if ((event.ctrlKey || event.metaKey) && event.key === "k") {
+    event.preventDefault();
+    const searchInput = document.querySelector(".locapp-search-input");
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }
+}
+
+// Hide the greeting and clear the auto-hide timeout
+function hideGreeting() {
+  showGreeting.value = false;
+  if (greetingTimeout) {
+    clearTimeout(greetingTimeout);
+    greetingTimeout = null;
+  }
+}
 
 // Voice Search methods
 function initializeVoiceSearch() {
@@ -758,6 +1728,13 @@ function setupVoiceSearchRecognition() {
   voiceSearchRecognition.value.onerror = (event) => {
     console.error("Voice search error:", event.error);
     stopVoiceSearch();
+
+    // Show user-friendly error message
+    if (event.error === "not-allowed") {
+      alert(
+        "Microphone access denied. Please allow microphone access to use voice search."
+      );
+    }
   };
 
   voiceSearchRecognition.value.onend = () => {
@@ -845,6 +1822,7 @@ function checkWeatherReminder() {
     console.warn("Weather reminder error", e);
   }
 }
+
 function dismissRainReminder() {
   rainReminder.value.show = false;
 }
@@ -926,14 +1904,21 @@ async function loadAdminLocations() {
         imageUrl: data.imageUrl,
         status: data.status || "active", // Add status field with default 'active'
         isUnderMaintenance: data.isUnderMaintenance || false, // Add maintenance field
+        visitors: data.visitors || data.visitCount || 0,
         createdAt: data.createdAt?.toDate() || new Date(),
       });
     });
 
     console.log(`Loaded ${adminLocations.value.length} admin locations`);
     attemptAutoStartFromQR();
+    // compute featured spots after locations loaded
+    computeFeaturedSpots();
   } catch (error) {
     console.error("Error loading admin locations:", error);
+    // Show user-friendly error message
+    alert(
+      "Failed to load locations. Please check your internet connection and try again."
+    );
   }
 }
 
@@ -1006,6 +1991,16 @@ function openFeedbackModal() {
   showFeedbackModal.value = true;
 }
 
+function openNotificationsModal() {
+  showNotificationModal.value = true;
+  document.body.classList.add("modal-open");
+}
+
+function closeNotificationsModal() {
+  showNotificationModal.value = false;
+  document.body.classList.remove("modal-open");
+}
+
 // 360 Image Viewer methods
 const canvas360 = ref(null);
 const viewer360 = ref(null);
@@ -1059,9 +2054,13 @@ function init360Viewer() {
   img360.onload = () => {
     draw360Image();
   };
+  img360.onerror = () => {
+    console.error("Failed to load 360 image");
+    // Fallback to placeholder
+    img360.src = "/placeholder.svg?height=400&width=800";
+  };
 
   // Use the location's imageUrl or a default 360 image
-  // For demo purposes, we'll simulate a 360 effect with the regular image
   img360.src =
     current360Image.value?.imageUrl || "/placeholder.svg?height=400&width=800";
 }
@@ -1416,7 +2415,8 @@ function handleStartNewNavigation() {
   arDestination.value = null;
 
   // Show location selection by expanding the bottom sheet
-  isExpanded.value = true;
+  // Note: isExpanded is not defined in this component, might need to be added
+  // isExpanded.value = true;
 
   // Optionally scroll to top of locations
   if (selectedCategory.value !== null) {
@@ -1530,291 +2530,47 @@ async function getWeather() {
 
     if (data && data.main) {
       weather.value.temp = Math.round(data.main.temp);
-      weather.value.feelsLike = Math.round(data.main.feels_like);
       weather.value.condition = data.weather[0].description;
       weather.value.humidity = data.main.humidity;
       weather.value.wind = data.wind.speed;
-      weather.value.precip = data.rain ? data.rain["1h"] || 0 : 0; // rainfall in mm
     }
   } catch (error) {
     console.error("Error fetching weather:", error);
+    // Set default values if API fails
+    weather.value.temp = 25;
+    weather.value.condition = "Partly cloudy";
+    weather.value.humidity = 65;
+    weather.value.wind = 5;
   }
+}
+
+// Scroll to contact/reservation section on page
+function scrollToContact() {
+  try {
+    const el = document.querySelector(".contact-reserve-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    // fallback: try to navigate to /userinfo or top if element not found
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  } catch (e) {
+    console.warn("scrollToContact failed", e);
+  }
+}
+
+function openContactModal() {
+  showContactModal.value = true;
+  // prevent background scroll
+  document.body.classList.add("modal-open");
+}
+
+function closeContactModal() {
+  showContactModal.value = false;
+  document.body.classList.remove("modal-open");
 }
 </script>
 
 <style scoped>
 @import "@/assets/allstyle.css";
-@import "@/assets/responsive_final.css";
-
-/* Image Clickable Hint */
-.location-modal-image {
-  position: relative;
-}
-
-.clickable-image {
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
-}
-
-.clickable-image:hover {
-  transform: scale(1.02);
-  filter: brightness(1.1);
-}
-
-.image-overlay-hint {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.location-modal-image:hover .image-overlay-hint {
-  opacity: 1;
-}
-
-/* 360 Image Viewer Modal */
-.image-360-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.95);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(5px);
-}
-
-.image-360-container {
-  width: 95%;
-  height: 95%;
-  max-width: 1200px;
-  max-height: 800px;
-  background: #1a1a1a;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.image-360-header {
-  background: linear-gradient(135deg, #2c3e50, #3498db);
-  color: white;
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.image-360-header h3 {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-
-.close-360-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 18px;
-}
-
-.close-360-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
-}
-
-.image-360-viewer {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-canvas {
-  flex: 1;
-  cursor: grab;
-  user-select: none;
-  width: 100%;
-  height: 100%;
-  touch-action: none; /* Prevent default touch behaviors */
-}
-
-canvas:active {
-  cursor: grabbing;
-}
-
-.viewer-controls {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.zoom-controls {
-  display: flex;
-  gap: 5px;
-}
-
-.control-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  backdrop-filter: blur(10px);
-}
-
-.control-btn:hover {
-  background: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.viewer-instructions {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.viewer-instructions p {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.viewer-instructions i {
-  color: #3498db;
-}
-
-/* Clickable image styling */
-.modal-img {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.modal-img:hover {
-  transform: scale(1.02);
-  filter: brightness(1.1);
-}
-
-.location-modal-image {
-  position: relative;
-}
-
-.location-modal-image::after {
-  content: "🔄 Click for 360° View";
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.location-modal-image:hover::after {
-  opacity: 1;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .image-360-container {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-  }
-
-  .image-360-header {
-    padding: 15px;
-  }
-
-  .image-360-header h3 {
-    font-size: 1.2rem;
-  }
-
-  .viewer-controls {
-    bottom: 15px;
-    left: 15px;
-    flex-wrap: wrap;
-  }
-
-  .control-btn {
-    padding: 8px;
-    font-size: 12px;
-  }
-
-  .viewer-instructions {
-    bottom: 15px;
-    right: 15px;
-    padding: 8px 12px;
-    font-size: 11px;
-  }
-
-  .image-overlay-hint {
-    font-size: 10px;
-    padding: 6px 8px;
-    bottom: 5px;
-    right: 5px;
-  }
-}
-
-@media (max-width: 480px) {
-  .viewer-controls {
-    position: static;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    justify-content: center;
-  }
-
-  .viewer-instructions {
-    position: static;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 8px;
-    text-align: center;
-    border-radius: 0;
-  }
-}
 </style>

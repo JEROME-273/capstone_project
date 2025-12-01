@@ -11,8 +11,8 @@
       </span>
     </button>
 
-    <!-- Notification Dropdown -->
-    <div v-if="showNotifications" class="notification-dropdown">
+    <!-- Notification Dropdown (non-modal) -->
+    <div v-if="showNotifications && !asModal" class="notification-dropdown">
       <div class="notification-header">
         <h3>Notifications</h3>
         <div class="header-actions">
@@ -27,22 +27,16 @@
           </button>
         </div>
       </div>
-
       <div class="notification-content">
-        <!-- Loading State -->
         <div v-if="loading" class="notification-loading">
           <i class="bx bx-loader-alt bx-spin"></i>
           <span>Loading notifications...</span>
         </div>
-
-        <!-- Empty State -->
         <div v-else-if="notifications.length === 0" class="notification-empty">
           <i class="bx bx-bell-off"></i>
           <h4>No notifications</h4>
           <p>You're all caught up!</p>
         </div>
-
-        <!-- Notifications List -->
         <div v-else class="notification-list">
           <div
             v-for="notification in notifications"
@@ -56,7 +50,6 @@
             <div class="notification-icon">
               <i class="bx" :class="getNotificationIcon(notification.type)"></i>
             </div>
-
             <div class="notification-details">
               <div class="notification-header">
                 <h4 class="notification-title">{{ notification.title }}</h4>
@@ -67,23 +60,18 @@
                   <i class="bx bx-x"></i>
                 </button>
               </div>
-
               <p class="notification-message">{{ notification.message }}</p>
-
-              <!-- Priority and time row -->
               <div class="notification-meta">
                 <span
                   v-if="notification.priority"
                   class="priority-tag"
-                  :class="notification.priority">
-                  {{ notification.priority }}
-                </span>
-                <span class="notification-time">
-                  {{ formatTime(notification.createdAt) }}
-                </span>
+                  :class="notification.priority"
+                  >{{ notification.priority }}</span
+                >
+                <span class="notification-time">{{
+                  formatTime(notification.createdAt)
+                }}</span>
               </div>
-
-              <!-- View Location button for waypoint notifications -->
               <div
                 v-if="notification.type === 'new_waypoint'"
                 class="notification-actions">
@@ -100,18 +88,120 @@
                 </div>
               </div>
             </div>
-
             <div v-if="!notification.isRead" class="unread-indicator"></div>
           </div>
         </div>
-
-        <!-- Load More Button -->
         <div
           v-if="notifications.length > 0 && hasMore"
           class="load-more-container">
           <button @click="loadMoreNotifications" class="load-more-btn">
             Load more notifications
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Modal EXACT same structure as learning-progress modal -->
+    <div
+      v-if="showNotifications && asModal"
+      class="learning-progress-modal-overlay"
+      @click="closeNotifications">
+      <div class="learning-progress-modal" @click.stop>
+        <div class="learning-progress-modal-content">
+          <div class="learning-modal-header">
+            <h2>
+              <i class="bx bx-bell"></i>
+              Notifications
+            </h2>
+            <button @click="closeNotifications" class="close-modal-btn">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="learning-modal-body">
+            <div class="notification-content">
+              <div v-if="loading" class="notification-loading">
+                <i class="bx bx-loader-alt bx-spin"></i>
+                <span>Loading notifications...</span>
+              </div>
+              <div
+                v-else-if="notifications.length === 0"
+                class="notification-empty">
+                <i class="bx bx-bell-off"></i>
+                <h4>No notifications</h4>
+                <p>You're all caught up!</p>
+              </div>
+              <div v-else class="notification-list">
+                <div
+                  v-for="notification in notifications"
+                  :key="notification.id"
+                  @click="handleNotificationClick(notification)"
+                  class="notification-item"
+                  :class="{
+                    unread: !notification.isRead,
+                    'waypoint-notification':
+                      notification.type === 'new_waypoint',
+                  }">
+                  <div class="notification-icon">
+                    <i
+                      class="bx"
+                      :class="getNotificationIcon(notification.type)"></i>
+                  </div>
+                  <div class="notification-details">
+                    <div class="notification-header">
+                      <h4 class="notification-title">
+                        {{ notification.title }}
+                      </h4>
+                      <button
+                        v-if="!notification.isRead"
+                        @click.stop="markAsRead(notification.id)"
+                        class="close-notification-btn">
+                        <i class="bx bx-x"></i>
+                      </button>
+                    </div>
+                    <p class="notification-message">
+                      {{ notification.message }}
+                    </p>
+                    <div class="notification-meta">
+                      <span
+                        v-if="notification.priority"
+                        class="priority-tag"
+                        :class="notification.priority"
+                        >{{ notification.priority }}</span
+                      >
+                      <span class="notification-time">{{
+                        formatTime(notification.createdAt)
+                      }}</span>
+                    </div>
+                    <div
+                      v-if="notification.type === 'new_waypoint'"
+                      class="notification-actions">
+                      <button
+                        v-if="hasValidCoordinates(notification)"
+                        @click.stop="viewLocation(notification)"
+                        class="view-location-btn">
+                        <i class="bx bx-map-pin"></i>
+                        View Location
+                      </button>
+                      <div v-else class="no-coordinates-message">
+                        <i class="bx bx-info-circle"></i>
+                        Location coordinates not available
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="!notification.isRead"
+                    class="unread-indicator"></div>
+                </div>
+              </div>
+              <div
+                v-if="notifications.length > 0 && hasMore"
+                class="load-more-container">
+                <button @click="loadMoreNotifications" class="load-more-btn">
+                  Load more notifications
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -147,6 +237,12 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useToast } from "vue-toastification";
 import NotificationService from "@/services/NotificationService";
+
+// Props
+const props = defineProps({
+  asModal: { type: Boolean, default: false },
+});
+const asModal = props.asModal;
 
 // Define emits
 const emit = defineEmits(["startNavigation"]);
@@ -508,6 +604,17 @@ const formatTime = (timestamp) => {
   overflow: hidden;
 }
 
+/* Centered modal variant for dropdown */
+.notification-dropdown.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 420px);
+  max-height: min(70vh, 540px);
+  z-index: 10001;
+}
+
 .notification-header {
   padding: 16px 20px;
   border-bottom: 1px solid #e0e0e0;
@@ -799,6 +906,9 @@ const formatTime = (timestamp) => {
   .notification-dropdown {
     width: 320px;
     right: -50px;
+  }
+  .notification-dropdown.modal {
+    width: 92vw;
   }
 }
 

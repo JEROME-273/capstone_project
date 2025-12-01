@@ -1,6 +1,32 @@
 <template>
+  <!-- Logo and Welcome Text Section (Visible on both Sign In and Sign Up) -->
+  <div class="signin-header">
+    <img
+      src="../assets/inavparklogo1.png"
+      alt="InavPark Logo"
+      class="signin-logo" />
+    <div class="signin-welcome-text">
+      <p v-if="!isSignUpActive">
+        Welcome back! Please sign in to your account.
+      </p>
+      <p v-else>Join us today! Create your account below.</p>
+    </div>
+  </div>
+
   <div class="auth-container">
-    <!-- Main Container -->
+    <!-- Toast Component -->
+    <div
+      class="toast"
+      :class="{
+        'toast-visible': isToastVisible,
+        'toast-success': toastType === 'success',
+        'toast-error': toastType === 'error',
+      }">
+      <div class="toast-content">
+        <span class="toast-message">{{ toastMessage }}</span>
+      </div>
+    </div>
+
     <div class="container" :class="{ active: isSignUpActive }">
       <!-- Sign Up Form -->
       <div class="form-container sign-up">
@@ -88,6 +114,7 @@
             </div>
           </div>
 
+          <!-- ✅ Fixed Password -->
           <div class="form-group">
             <label for="password">Password</label>
             <div class="password-container">
@@ -100,14 +127,13 @@
                 minlength="6"
                 required />
               <i
-                @click="togglePassword"
-                :class="[
-                  'visibility-icon',
-                  showPassword ? 'eye-off-icon' : 'eye-icon',
-                ]"></i>
+                class="visibility-icon"
+                :class="showPassword ? 'eye-off-icon' : 'eye-icon'"
+                @click="togglePassword"></i>
             </div>
           </div>
 
+          <!-- ✅ Fixed Confirm Password -->
           <div class="form-group">
             <label for="confirmpassword">Confirm Password</label>
             <div class="password-container">
@@ -119,11 +145,9 @@
                 placeholder="Confirm Password"
                 required />
               <i
-                @click="toggleConfirmPassword"
-                :class="[
-                  'visibility-icon',
-                  showConfirmPassword ? 'eye-off-icon' : 'eye-icon',
-                ]"></i>
+                class="visibility-icon"
+                :class="showConfirmPassword ? 'eye-off-icon' : 'eye-icon'"
+                @click="toggleConfirmPassword"></i>
             </div>
           </div>
 
@@ -146,7 +170,7 @@
         <form @submit.prevent="login" class="form-content">
           <h1 class="form-title">Sign In</h1>
 
-          <!-- Login Lockout Warning -->
+          <!-- Lockout Warning -->
           <div v-if="isLockedOut" class="lockout-warning">
             <div class="lockout-icon">🔒</div>
             <p><strong>Account Temporarily Locked</strong></p>
@@ -170,6 +194,7 @@
             </div>
           </div>
 
+          <!-- ✅ Fixed Sign In Password -->
           <div class="form-group">
             <label for="loginPassword">Password</label>
             <div class="password-container">
@@ -182,12 +207,10 @@
                 :disabled="isLockedOut"
                 required />
               <i
-                @click="togglePassword"
-                :class="[
-                  'visibility-icon',
-                  showPassword ? 'eye-off-icon' : 'eye-icon',
-                ]"
-                :style="{ pointerEvents: isLockedOut ? 'none' : 'auto' }"></i>
+                class="visibility-icon"
+                :class="showPassword ? 'eye-off-icon' : 'eye-icon'"
+                :style="{ pointerEvents: isLockedOut ? 'none' : 'auto' }"
+                @click="togglePassword"></i>
             </div>
           </div>
 
@@ -200,7 +223,6 @@
             </a>
           </div>
 
-          <!-- Failed Attempts Warning -->
           <div
             v-if="failedAttempts > 0 && !isLockedOut"
             class="attempts-warning">
@@ -224,7 +246,6 @@
             <span v-else>Sign In</span>
           </button>
 
-          <!-- Mobile Toggle Link -->
           <div class="mobile-toggle">
             <p>
               Don't have an account?
@@ -252,30 +273,6 @@
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Logo and Welcome Text Section (Outside container) -->
-    <div class="signin-header" v-show="!isSignUpActive">
-      <img
-        src="../assets/inavparklogo.png"
-        alt="InavPark Logo"
-        class="signin-logo" />
-      <div class="signin-welcome-text">
-        <p>Welcome back! Please sign in to your account.</p>
-      </div>
-    </div>
-
-    <!-- Toast Component -->
-    <div
-      class="toast"
-      :class="{
-        'toast-visible': isToastVisible,
-        'toast-success': toastType === 'success',
-        'toast-error': toastType === 'error',
-      }">
-      <div class="toast-content">
-        <span class="toast-message">{{ toastMessage }}</span>
       </div>
     </div>
   </div>
@@ -655,18 +652,15 @@ export default {
               updates.emailVerified = true;
             }
             await updateDoc(doc(this.db, "users", user.uid), updates);
-
-            // Record login history & generic event with delay
-            setTimeout(async () => {
-              try {
-                const { logLogin } = await import(
-                  "@/services/AnalyticsService.js"
-                );
-                await logLogin();
-              } catch (e) {
-                console.warn("logLogin failed or service unavailable", e);
-              }
-            }, 500); // Give Firebase auth context time to properly propagate
+            // Record login history & generic event
+            try {
+              const { logLogin } = await import(
+                "@/services/AnalyticsService.js"
+              );
+              await logLogin();
+            } catch (e) {
+              console.warn("logLogin failed or service unavailable", e);
+            }
           } catch (metaErr) {
             console.warn("Failed to update login metadata:", metaErr);
           }

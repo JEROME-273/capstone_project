@@ -7,25 +7,27 @@
   font-family: "Montserrat", sans-serif;
 }
 
+/* Main Container */
 .auth-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 320px 20px 20px 20px; /* Increased top padding to move container further downward */
+  min-height: 80vh;
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  padding: 120px 20px 40px 20px; /* Reduced top padding to fix the large gap */
 }
 
 .container {
-  background-color: #fff;
-  border-radius: 20px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  background-color: #f0eeec;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow: hidden;
-  width: 900px;
-  max-width: 100%;
-  min-height: 600px;
+  width: 700px; /* reduced from 900px */
+  max-width: 95%;
+  min-height: 490px; /* reduced from 600px */
   display: flex;
+  transition: all 0.4s ease;
 }
 
 .form-container {
@@ -37,11 +39,10 @@
   align-items: center;
 }
 
-.sign-in {
-  left: 0;
-  width: 50%;
-  z-index: 2;
-  transform: translateX(0);
+/* Adjust spacing for sign-in form */
+.sign-in .form-content {
+  margin-top: 15px;
+  padding: 20px;
 }
 
 .container.active .sign-in {
@@ -193,20 +194,6 @@ select:focus {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E");
 }
 
-.visibility-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.3s;
-}
-
 .visibility-icon:hover {
   opacity: 1;
 }
@@ -235,7 +222,25 @@ select:focus {
 
 select {
   appearance: none;
-  padding-right: 30px;
+  padding: 8px 28px 8px 10px; /* adjust spacing */
+  font-size: 14px; /* adjust font size */
+  line-height: 1.4;
+}
+
+/* Gender dropdown options */
+#gender option {
+  font-size: 12px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+/* Type of Visit dropdown options */
+#typeofvisit option {
+  font-size: 12px; /* slightly smaller font */
+  padding: 6px 8px;
+  white-space: nowrap;
+  max-width: 50%;
+  text-overflow: ellipsis;
 }
 
 .forgot-password {
@@ -574,14 +579,14 @@ select {
 
 /* Sign In Header with Logo */
 .signin-header {
-  position: absolute;
-  top: 100px;
+  position: relative;
+  top: 50px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   z-index: 10;
   opacity: 1;
   transition: opacity 0.6s ease-in-out;
@@ -594,8 +599,8 @@ select {
 }
 
 .signin-logo {
-  width: 100px;
-  height: 100px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   /* Removed border-radius and box-shadow to completely remove border */
 }
@@ -606,7 +611,7 @@ select {
 }
 
 .signin-welcome-text p {
-  font-size: 14px;
+  font-size: 12px;
   color: #333;
   line-height: 1.5;
   font-weight: 500;
@@ -719,11 +724,6 @@ select {
 /* Enhanced input styling for locked state */
 input:disabled {
   background-color: #f8f9fa;
-  color: #6c757d;
-  cursor: not-allowed;
-}
-
-.password-container input:disabled + .visibility-icon {
   color: #6c757d;
   cursor: not-allowed;
 }
