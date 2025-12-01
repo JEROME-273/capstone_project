@@ -10,6 +10,16 @@
         <div class="header-actions"></div>
       </div>
 
+      <!-- Hidden audio element for background music -->
+      <audio
+        ref="backgroundMusic"
+        loop
+        preload="auto"
+        id="globalBackgroundMusic">
+        <source src="@/assets/Bluewave_Achievement.mp3" type="audio/mpeg" />
+        Your browser does not support the audio element.
+      </audio>
+
       <!-- Profile Info -->
       <div class="profile-info">
         <div class="relative">
@@ -59,7 +69,9 @@
 
         <!-- History -->
         <div class="section-block history-section">
-          <div class="profile-link dropdown-header" @click="toggleDropdown('history')">
+          <div
+            class="profile-link dropdown-header"
+            @click="toggleDropdown('history')">
             <div class="flex items-center">
               <i class="fas fa-history icon-section"></i>
               <span class="ml-4 text-lg">History of Visit</span>
@@ -68,10 +80,10 @@
               class="fas fa-chevron-down icon-chevron dropdown-arrow"
               :class="{ 'rotate-180': openDropdown === 'history' }"></i>
           </div>
-          
+
           <!-- Dropdown content appears below -->
-          <div 
-            v-if="openDropdown === 'history'" 
+          <div
+            v-if="openDropdown === 'history'"
             class="dropdown-content history-dropdown">
             <div v-if="recentDestinations.length">
               <div
@@ -101,6 +113,35 @@
               <i class="fas fa-map-marker-alt"></i>
               <p>No successful arrivals yet.</p>
               <p>Start navigating to see your visit history!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Background Music Control -->
+        <div class="section-block">
+          <div class="profile-link music-control">
+            <div class="flex items-center">
+              <i class="fas fa-music icon-section"></i>
+              <span class="ml-4 text-lg">Background Music</span>
+            </div>
+            <div class="music-controls-group">
+              <button
+                @click="toggleMusic"
+                class="music-toggle-btn"
+                :class="{ playing: isMusicPlaying }">
+                <i :class="isMusicPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+              </button>
+              <div class="volume-inline">
+                <i class="fas fa-volume-down"></i>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  v-model="musicVolume"
+                  @input="updateVolume"
+                  class="volume-slider-inline" />
+                <i class="fas fa-volume-up"></i>
+              </div>
             </div>
           </div>
         </div>
@@ -818,6 +859,11 @@ export default {
       showPasswordModal: false,
       showHelpCenterModal: false,
 
+      // === Background Music ===
+      isMusicPlaying: false,
+      musicVolume: 50,
+      backgroundAudio: null,
+
       // === HelpCenter Support ===
       supportForm: { email: "", message: "" },
       supportSuccess: false,
@@ -931,6 +977,10 @@ export default {
         this.arrivalHistory = [];
       }
     }
+    // Initialize and sync background music
+    this.$nextTick(() => {
+      this.syncBackgroundMusic();
+    });
   },
   beforeUnmount() {
     // Remove keyboard event listener
@@ -939,6 +989,87 @@ export default {
     document.body.classList.remove("modal-open");
   },
   methods: {
+    // === Background Music Methods ===
+    syncBackgroundMusic() {
+      // Get the local audio element
+      this.backgroundAudio = this.$refs.backgroundMusic;
+
+      if (this.backgroundAudio) {
+        // Check if music should be playing from localStorage
+        const musicState = localStorage.getItem("backgroundMusicPlaying");
+        const musicVolume = localStorage.getItem("backgroundMusicVolume");
+        const musicTime = localStorage.getItem("backgroundMusicTime");
+
+        if (musicVolume) {
+          this.musicVolume = parseInt(musicVolume);
+          this.backgroundAudio.volume = this.musicVolume / 100;
+        }
+
+        if (musicTime) {
+          this.backgroundAudio.currentTime = parseFloat(musicTime);
+        }
+
+        // Auto-play if it was playing before
+        if (musicState === "true") {
+          this.backgroundAudio
+            .play()
+            .then(() => {
+              this.isMusicPlaying = true;
+            })
+            .catch((err) => {
+              console.log("Auto-play prevented:", err);
+            });
+        }
+
+        // Save state periodically
+        setInterval(() => {
+          if (this.backgroundAudio) {
+            localStorage.setItem("backgroundMusicPlaying", this.isMusicPlaying);
+            localStorage.setItem("backgroundMusicVolume", this.musicVolume);
+            localStorage.setItem(
+              "backgroundMusicTime",
+              this.backgroundAudio.currentTime
+            );
+          }
+        }, 1000);
+      }
+    },
+    initBackgroundMusic() {
+      this.backgroundAudio = this.$refs.backgroundMusic;
+      if (this.backgroundAudio) {
+        this.isMusicPlaying = !this.backgroundAudio.paused;
+        this.musicVolume = Math.round(this.backgroundAudio.volume * 100);
+      }
+    },
+    toggleMusic() {
+      if (!this.backgroundAudio) {
+        this.initBackgroundMusic();
+      }
+
+      if (!this.backgroundAudio) return;
+
+      if (this.isMusicPlaying) {
+        this.backgroundAudio.pause();
+        this.isMusicPlaying = false;
+        localStorage.setItem("backgroundMusicPlaying", "false");
+      } else {
+        this.backgroundAudio.play().catch((err) => {
+          console.warn("Music playback failed:", err);
+        });
+        this.isMusicPlaying = true;
+        localStorage.setItem("backgroundMusicPlaying", "true");
+      }
+    },
+    updateVolume() {
+      if (!this.backgroundAudio) {
+        this.initBackgroundMusic();
+      }
+
+      if (this.backgroundAudio) {
+        this.backgroundAudio.volume = this.musicVolume / 100;
+        localStorage.setItem("backgroundMusicVolume", this.musicVolume);
+      }
+    },
     // === Keyboard Handler ===
     handleKeydown(event) {
       if (event.key === "Escape") {
@@ -1178,6 +1309,126 @@ export default {
 @import "@/assets/allstyle.css";
 @import "@/assets/responsive.css";
 
+/* Background Music Control Styles */
+.music-control {
+  padding: 15px 20px !important;
+}
+
+.music-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.music-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+}
+
+.music-toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.music-toggle-btn.playing {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  animation: pulse-music 2s ease-in-out infinite;
+}
+
+@keyframes pulse-music {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.volume-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 20px;
+  min-width: 150px;
+}
+
+.volume-inline i {
+  color: #3b82f6;
+  font-size: 14px;
+}
+
+.volume-slider-inline {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #bfdbfe, #3b82f6);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.volume-slider-inline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.volume-slider-inline::-webkit-slider-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.volume-slider-inline::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.volume-slider-inline::-moz-range-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .music-controls-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .volume-inline {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
 /* Dropdown specific styles */
 .history-section {
   width: 100%;
@@ -1256,7 +1507,7 @@ export default {
 }
 
 .visit-status {
-  background: #4CAF50;
+  background: #4caf50;
   color: white;
   padding: 4px 8px;
   border-radius: 12px;

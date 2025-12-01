@@ -190,6 +190,12 @@
       <i class="fas fa-comment-alt"></i>
     </button>
 
+    <!-- Hidden audio element for background music -->
+    <audio ref="backgroundMusic" loop preload="auto" autoplay>
+      <source src="@/assets/Bluewave_Achievement.mp3" type="audio/mpeg" />
+      Your browser does not support the audio element.
+    </audio>
+
     <br />
     <div class="locapp-content" @click.stop>
       <!-- Greeting card: shows personalized greeting based on time and weather -->
@@ -1136,6 +1142,12 @@ const showNotificationModal = ref(false);
 // Contact modal state
 const showContactModal = ref(false);
 
+// Background Music state
+const backgroundMusic = ref(null);
+const isMusicPlaying = ref(false);
+const musicVolume = ref(50);
+const showVolumeControl = ref(false);
+
 // Voice Search state
 const voiceSearchRecognition = ref(null);
 const isVoiceSearchListening = ref(false);
@@ -1308,41 +1320,102 @@ const cloudSpeed = ref(25); // Default cloud animation speed
 // Tama character state
 const showTama = ref(false);
 
-// Greeting visibility state (auto-hide)
-const showGreeting = ref(true);
+// Greeting visibility state (auto-hide with 6-hour timer)
+const showGreeting = ref(false);
 let greetingTimeout = null;
+const GREETING_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
 
 async function loadUserFirstName() {
   try {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Prefer displayName if available
-    if (user.displayName) {
-      firstName.value = user.displayName.split(" ")[0];
-      return;
-    }
-
-    // Fallback to email local-part
-    if (user.email) {
-      firstName.value = user.email.split("@")[0];
-      return;
-    }
-
-    // As a last resort, try reading a users collection document
+    // First, try to get firstName from Firestore users collection
     try {
       const db = getFirestore();
       const udoc = await getDoc(doc(db, "users", user.uid));
       if (udoc.exists()) {
         const data = udoc.data();
-        if (data.firstName) firstName.value = data.firstName;
-        else if (data.name) firstName.value = data.name.split(" ")[0];
+        if (data.firstName) {
+          firstName.value = data.firstName;
+          return;
+        }
+        if (data.name) {
+          firstName.value = data.name.split(" ")[0];
+          return;
+        }
       }
     } catch (e) {
-      // ignore
+      // ignore and continue to fallbacks
+    }
+
+    // Fallback to displayName if available
+    if (user.displayName) {
+      firstName.value = user.displayName.split(" ")[0];
+      return;
+    }
+
+    // Last resort: use email local-part
+    if (user.email) {
+      firstName.value = user.email.split("@")[0];
+      return;
     }
   } catch (e) {
     console.warn("loadUserFirstName failed", e);
+  }
+}
+
+// Check if greeting should be shown based on 6-hour cooldown
+function shouldShowGreeting() {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) return false;
+
+    const storageKey = `greeting_last_shown_${user.uid}`;
+    const lastShown = localStorage.getItem(storageKey);
+
+    if (!lastShown) {
+      // First time or no record - show greeting
+      return true;
+    }
+
+    const lastShownTime = parseInt(lastShown, 10);
+    const now = Date.now();
+    const timeSinceLastShown = now - lastShownTime;
+
+    // Show greeting if more than 6 hours have passed
+    return timeSinceLastShown >= GREETING_COOLDOWN_MS;
+  } catch (e) {
+    console.warn("shouldShowGreeting check failed", e);
+    return false;
+  }
+}
+
+// Save the timestamp when greeting is shown
+function saveGreetingTimestamp() {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) return;
+
+    const storageKey = `greeting_last_shown_${user.uid}`;
+    localStorage.setItem(storageKey, Date.now().toString());
+  } catch (e) {
+    console.warn("saveGreetingTimestamp failed", e);
+  }
+}
+
+// Initialize greeting visibility on mount
+function initializeGreeting() {
+  if (shouldShowGreeting()) {
+    showGreeting.value = true;
+    saveGreetingTimestamp();
+
+    // Auto-hide greeting after 10 seconds
+    greetingTimeout = setTimeout(() => {
+      hideGreeting();
+    }, 10000);
+  } else {
+    showGreeting.value = false;
   }
 }
 
@@ -1560,6 +1633,9 @@ onMounted(async () => {
   // Load the user's first name for the greeting
   await loadUserFirstName();
 
+  // Initialize greeting based on 6-hour cooldown
+  initializeGreeting();
+
   // Check ASAP so the modal can appear on the base page
   await checkNewLearningTips();
 
@@ -1583,10 +1659,62 @@ onMounted(async () => {
   // Load weather data
   getWeather();
 
-  // Auto-hide greeting after 10 seconds
-  greetingTimeout = setTimeout(() => {
-    hideGreeting();
-  }, 10000);
+  // Auto-play background music with user interaction fallback
+  if (backgroundMusic.value) {
+    // Check if there's saved music state
+    const savedVolume = localStorage.getItem("backgroundMusicVolume");
+    const savedTime = localStorage.getItem("backgroundMusicTime");
+
+    if (savedVolume) {
+      musicVolume.value = parseInt(savedVolume);
+    }
+
+    backgroundMusic.value.volume = musicVolume.value / 100;
+
+    if (savedTime) {
+      backgroundMusic.value.currentTime = parseFloat(savedTime);
+    }
+
+    backgroundMusic.value
+      .play()
+      .then(() => {
+        isMusicPlaying.value = true;
+        localStorage.setItem("backgroundMusicPlaying", "true");
+      })
+      .catch((err) => {
+        console.log("Auto-play prevented, waiting for user interaction:", err);
+        // Try playing on first user interaction
+        const playOnInteraction = () => {
+          if (backgroundMusic.value) {
+            backgroundMusic.value
+              .play()
+              .then(() => {
+                isMusicPlaying.value = true;
+                localStorage.setItem("backgroundMusicPlaying", "true");
+              })
+              .catch(() => {});
+          }
+          document.removeEventListener("click", playOnInteraction);
+          document.removeEventListener("touchstart", playOnInteraction);
+        };
+        document.addEventListener("click", playOnInteraction, { once: true });
+        document.addEventListener("touchstart", playOnInteraction, {
+          once: true,
+        });
+      });
+
+    // Save state periodically
+    setInterval(() => {
+      if (backgroundMusic.value) {
+        localStorage.setItem("backgroundMusicPlaying", isMusicPlaying.value);
+        localStorage.setItem("backgroundMusicVolume", musicVolume.value);
+        localStorage.setItem(
+          "backgroundMusicTime",
+          backgroundMusic.value.currentTime
+        );
+      }
+    }, 1000);
+  }
 
   // Add resize handler for 360 viewer
   window.addEventListener("resize", handle360Resize);
@@ -1639,7 +1767,11 @@ onUnmounted(() => {
   } catch (e) {
     // ignore
   }
+  // Don't stop background music - let it continue playing across pages
 });
+
+// Background music is managed globally through localStorage
+// Music state persists across page navigation
 
 // Watch for Tama state changes to auto-hide after 5 seconds
 watch(showTama, (newVal) => {
@@ -2044,9 +2176,11 @@ function init360Viewer() {
   const canvas = canvas360.value;
   const ctx = canvas.getContext("2d");
 
-  // Set canvas size
-  canvas.width = viewer360.value.clientWidth;
-  canvas.height = viewer360.value.clientHeight;
+  // Set canvas size to full viewport dimensions at normal pixels
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
 
   // Load the image
   img360 = new Image();
@@ -2264,9 +2398,14 @@ function resetView() {
 }
 
 function handle360Resize() {
-  if (show360Viewer.value && canvas360.value && viewer360.value) {
-    canvas360.value.width = viewer360.value.clientWidth;
-    canvas360.value.height = viewer360.value.clientHeight;
+  if (show360Viewer.value && canvas360.value) {
+    const canvas = canvas360.value;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+
     draw360Image();
   }
 }
@@ -2297,6 +2436,13 @@ function goToLocation(location) {
 
   // Track destination selection for analytics
   trackDestinationSelection(location);
+
+  // Stop background music when AR navigation starts
+  if (backgroundMusic.value && !backgroundMusic.value.paused) {
+    backgroundMusic.value.pause();
+    isMusicPlaying.value = false;
+    localStorage.setItem("backgroundMusicPlaying", "false");
+  }
 
   arDestination.value = location;
   isARActive.value = true;
@@ -2407,12 +2553,38 @@ function handleNotificationNavigation(waypointData) {
 function handleStopNavigation() {
   isARActive.value = false;
   arDestination.value = null;
+
+  // Resume background music when navigation stops
+  if (backgroundMusic.value && backgroundMusic.value.paused) {
+    backgroundMusic.value
+      .play()
+      .then(() => {
+        isMusicPlaying.value = true;
+        localStorage.setItem("backgroundMusicPlaying", "true");
+      })
+      .catch((err) => {
+        console.warn("Failed to resume music:", err);
+      });
+  }
 }
 
 function handleStartNewNavigation() {
   // Stop current navigation
   isARActive.value = false;
   arDestination.value = null;
+
+  // Resume background music when stopping to start new navigation
+  if (backgroundMusic.value && backgroundMusic.value.paused) {
+    backgroundMusic.value
+      .play()
+      .then(() => {
+        isMusicPlaying.value = true;
+        localStorage.setItem("backgroundMusicPlaying", "true");
+      })
+      .catch((err) => {
+        console.warn("Failed to resume music:", err);
+      });
+  }
 
   // Show location selection by expanding the bottom sheet
   // Note: isExpanded is not defined in this component, might need to be added
