@@ -241,11 +241,12 @@ body.notifications-open .weather-content {
 
 /* Feels like */
 .feels-like {
-  font-size: clamp(16px, 3vw, 20px); /* make it larger */
+  font-size: clamp(13px, 2.5vw, 16px);
   font-weight: 400;
-  opacity: 0.9;
-  margin-top: 8px;
+  opacity: 0.85;
+  margin-top: 6px;
   margin-left: 10px;
+  font-style: italic;
 }
 
 /* Right side condition + details */
@@ -261,6 +262,31 @@ body.notifications-open .weather-content {
   opacity: 0.9;
   margin: 8px 0;
   line-height: 1.6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail i {
+  font-size: 14px;
+  opacity: 0.8;
+  width: 16px;
+}
+
+/* Weather timestamp */
+.weather-timestamp {
+  text-align: center;
+  font-size: clamp(11px, 2vw, 13px);
+  opacity: 0.7;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.weather-timestamp i {
+  font-size: 11px;
 }
 
 /* Weather hero spacing */

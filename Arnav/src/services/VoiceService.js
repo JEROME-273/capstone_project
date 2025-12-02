@@ -67,6 +67,15 @@ function speak(text, options = {}) {
       return;
     }
 
+    // Pause background music when voice reading starts
+    const backgroundAudio = document.querySelector("audio");
+    let wasMusicPlaying = false;
+    if (backgroundAudio && !backgroundAudio.paused) {
+      wasMusicPlaying = true;
+      backgroundAudio.pause();
+      localStorage.setItem("backgroundMusicPausedForVoice", "true");
+    }
+
     // Cancel any ongoing speech
     speechSynthesis.cancel();
 
@@ -89,9 +98,33 @@ function speak(text, options = {}) {
     }
 
     // Handle events
-    utterance.onend = () => resolve();
-    utterance.onerror = (event) =>
+    utterance.onend = () => {
+      // Resume background music after voice reading completes
+      if (wasMusicPlaying && backgroundAudio) {
+        backgroundAudio
+          .play()
+          .then(() => {
+            localStorage.setItem("backgroundMusicPlaying", "true");
+            localStorage.removeItem("backgroundMusicPausedForVoice");
+          })
+          .catch(() => {});
+      }
+      resolve();
+    };
+
+    utterance.onerror = (event) => {
+      // Resume background music even if there's an error
+      if (wasMusicPlaying && backgroundAudio) {
+        backgroundAudio
+          .play()
+          .then(() => {
+            localStorage.setItem("backgroundMusicPlaying", "true");
+            localStorage.removeItem("backgroundMusicPausedForVoice");
+          })
+          .catch(() => {});
+      }
       reject(new Error(`Speech synthesis error: ${event.error}`));
+    };
 
     // Speak the text
     speechSynthesis.speak(utterance);
@@ -104,6 +137,23 @@ function speak(text, options = {}) {
 function stop() {
   if (speechSynthesis) {
     speechSynthesis.cancel();
+
+    // Resume background music if it was paused for voice reading
+    const wasPausedForVoice = localStorage.getItem(
+      "backgroundMusicPausedForVoice"
+    );
+    if (wasPausedForVoice === "true") {
+      const backgroundAudio = document.querySelector("audio");
+      if (backgroundAudio) {
+        backgroundAudio
+          .play()
+          .then(() => {
+            localStorage.setItem("backgroundMusicPlaying", "true");
+            localStorage.removeItem("backgroundMusicPausedForVoice");
+          })
+          .catch(() => {});
+      }
+    }
   }
 }
 

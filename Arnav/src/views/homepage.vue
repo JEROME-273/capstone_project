@@ -135,35 +135,64 @@
         <div class="weather-left">
           <div class="temp-icon">
             <span class="temp">{{
-              weather.temp !== null ? weather.temp + "°" : "--"
+              weather.temp !== null ? weather.temp + "°C" : "--"
             }}</span>
             <!-- BACK TO NORMAL WEATHER ICON -->
             <span class="condition-icon">
               {{
-                weather.condition.toLowerCase().includes("rain")
+                weather.condition.toLowerCase().includes("rain") ||
+                weather.condition.toLowerCase().includes("shower") ||
+                weather.condition.toLowerCase().includes("drizzle")
                   ? "🌧️"
+                  : weather.condition.toLowerCase().includes("thunder") ||
+                    weather.condition.toLowerCase().includes("storm")
+                  ? "⛈️"
                   : weather.condition.toLowerCase().includes("sun") ||
                     weather.condition.toLowerCase().includes("clear")
-                  ? "☀️"
-                  : weather.condition.toLowerCase().includes("cloud")
+                  ? weather.isDay
+                    ? "☀️"
+                    : "🌙"
+                  : weather.condition.toLowerCase().includes("cloud") ||
+                    weather.condition.toLowerCase().includes("overcast")
                   ? "☁️"
+                  : weather.condition.toLowerCase().includes("fog")
+                  ? "🌫️"
                   : "🌡️"
               }}
             </span>
           </div>
           <div class="condition">{{ weather.condition || "--" }}</div>
+          <div class="feels-like" v-if="weather.feelsLike !== null">
+            Feels like {{ weather.feelsLike }}°C
+          </div>
         </div>
 
         <!-- Right Section -->
         <div class="weather-right">
           <div class="detail">
-            Humidity:
+            <i class="fas fa-tint"></i>
             {{ weather.humidity !== null ? weather.humidity + "%" : "--" }}
           </div>
           <div class="detail">
-            Wind: {{ weather.wind !== null ? weather.wind + " km/h" : "--" }}
+            <i class="fas fa-wind"></i>
+            {{ weather.wind !== null ? weather.wind + " km/h" : "--" }}
+            {{ weather.windDirection ? weather.windDirection : "" }}
+          </div>
+          <div class="detail" v-if="weather.uvIndex !== null">
+            <i class="fas fa-sun"></i>
+            UV {{ weather.uvIndex }}
+          </div>
+          <div class="detail" v-if="weather.visibility !== null">
+            <i class="fas fa-eye"></i>
+            {{ weather.visibility }} km
           </div>
         </div>
+      </div>
+
+      <!-- Weather update timestamp -->
+      <div class="weather-timestamp" v-if="weather.lastUpdated">
+        <i class="fas fa-clock"></i>
+        Updated at {{ weather.lastUpdated }}
       </div>
     </section>
 
@@ -783,7 +812,7 @@ import {
   markTipsAsSeen,
 } from "@/services/LearningTipsService";
 import ARNavigation from "@/components/ARNavigation.vue";
-import NotificationBell from "@/components/NotificationBell.vue";
+// import NotificationBell from "@/components/NotificationBell.vue";
 import LearningProgressTracker from "@/components/LearningProgressTracker.vue";
 import LearningTipsModal from "@/components/LearningTipsModal.vue";
 import AnimalInfoModal from "@/components/AnimalInfoModal.vue";
@@ -806,6 +835,15 @@ const weather = ref({
   condition: "",
   humidity: null,
   wind: null,
+  feelsLike: null,
+  uvIndex: null,
+  visibility: null,
+  windDirection: null,
+  pressure: null,
+  cloudCover: null,
+  precipitationChance: null,
+  isDay: true,
+  lastUpdated: null,
   date: new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -1142,6 +1180,11 @@ const showNotificationModal = ref(false);
 // Contact modal state
 const showContactModal = ref(false);
 
+// Weather loading state
+const isWeatherLoading = ref(true);
+const weatherError = ref(null);
+const userLocation = ref(null);
+
 // Background Music state
 const backgroundMusic = ref(null);
 const isMusicPlaying = ref(false);
@@ -1314,8 +1357,13 @@ const voiceReady = ref(false);
 // User greeting state
 const firstName = ref("Guest");
 
-// Cloud animation speed
-const cloudSpeed = ref(25); // Default cloud animation speed
+// Cloud animation speed (dynamically adjusted based on wind)
+const cloudSpeed = computed(() => {
+  if (!weather.value.wind) return 25;
+  // Scale cloud speed based on wind: 5 km/h = 15s, 30 km/h = 8s
+  const speed = Math.max(8, 30 - weather.value.wind);
+  return Math.round(speed);
+});
 
 // Tama character state
 const showTama = ref(false);
@@ -1529,25 +1577,48 @@ const weatherClass = computed(() => {
   const condition = weather.value.condition.toLowerCase();
   console.log("Current weather condition:", condition);
 
-  if (
+  // Thunderstorm (most severe)
+  if (condition.includes("thunder") || condition.includes("storm")) {
+    return "rainy-weather"; // Use rainy animation for storms
+  }
+  // Rain and precipitation
+  else if (
     condition.includes("rain") ||
     condition.includes("drizzle") ||
-    condition.includes("shower") ||
-    condition.includes("thunderstorm")
+    condition.includes("shower")
   ) {
     return "rainy-weather";
-  } else if (condition.includes("sun") || condition.includes("clear")) {
-    return "sunny-weather";
-  } else if (
-    condition.includes("cloud") ||
-    condition.includes("overcast") ||
-    condition.includes("broken") ||
-    condition.includes("scattered")
+  }
+  // Clear and sunny
+  else if (
+    condition.includes("clear") ||
+    condition.includes("sun") ||
+    condition.includes("mainly clear")
   ) {
+    return "sunny-weather";
+  }
+  // Partly cloudy (between clear and overcast)
+  else if (condition.includes("partly cloudy")) {
+    // Check wind speed to decide if windy
+    if (weather.value.wind && weather.value.wind > 15) {
+      return "windy-weather";
+    }
     return "cloudy-weather";
-  } else if (condition.includes("wind") || condition.includes("breeze")) {
+  }
+  // Overcast and heavily clouded
+  else if (condition.includes("overcast") || condition.includes("cloud")) {
+    return "cloudy-weather";
+  }
+  // Fog
+  else if (condition.includes("fog")) {
+    return "cloudy-weather"; // Use cloudy for foggy conditions
+  }
+  // Windy (check wind speed)
+  else if (weather.value.wind && weather.value.wind > 20) {
     return "windy-weather";
-  } else {
+  }
+  // Default
+  else {
     return "cloudy-weather";
   }
 });
@@ -1657,7 +1728,15 @@ onMounted(async () => {
   checkWeatherReminder();
 
   // Load weather data
-  getWeather();
+  await getWeather();
+
+  // Update weather every 10 minutes for accuracy
+  const weatherUpdateInterval = setInterval(() => {
+    getWeather();
+  }, 10 * 60 * 1000); // 10 minutes
+
+  // Store interval ID for cleanup
+  window.weatherUpdateInterval = weatherUpdateInterval;
 
   // Auto-play background music with user interaction fallback
   if (backgroundMusic.value) {
@@ -1767,6 +1846,13 @@ onUnmounted(() => {
   } catch (e) {
     // ignore
   }
+
+  // Clear weather update interval
+  if (window.weatherUpdateInterval) {
+    clearInterval(window.weatherUpdateInterval);
+    window.weatherUpdateInterval = null;
+  }
+
   // Don't stop background music - let it continue playing across pages
 });
 
@@ -2690,30 +2776,191 @@ async function loadUserLearningStreak() {
 
 // Weather API function
 async function getWeather() {
+  isWeatherLoading.value = true;
+  weatherError.value = null;
+
   try {
-    const apiKey = "64b4ab73cd533e2a0a33c48c9cd93ee5";
-    const city = "Calapan,PH";
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+    // Try to get user's actual location first
+    const location = await getUserLocation();
+    userLocation.value = location;
+
+    // Fetch weather from Open-Meteo (more accurate and detailed)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=precipitation_probability,uv_index,visibility&forecast_days=1&timezone=auto`;
 
     const response = await fetch(url);
-    if (!response.ok) throw new Error("Network response was not ok");
+    if (!response.ok) throw new Error(`Weather API error: ${response.status}`);
 
     const data = await response.json();
 
-    if (data && data.main) {
-      weather.value.temp = Math.round(data.main.temp);
-      weather.value.condition = data.weather[0].description;
-      weather.value.humidity = data.main.humidity;
-      weather.value.wind = data.wind.speed;
+    if (data && data.current) {
+      const current = data.current;
+
+      // Temperature with one decimal precision
+      weather.value.temp = Math.round(current.temperature_2m * 10) / 10;
+      weather.value.feelsLike =
+        Math.round(current.apparent_temperature * 10) / 10;
+
+      // Map WMO weather codes to precise conditions
+      weather.value.condition = getWeatherCondition(
+        current.weather_code,
+        current.is_day
+      );
+
+      // Other metrics
+      weather.value.humidity = Math.round(current.relative_humidity_2m);
+      weather.value.wind = Math.round(current.wind_speed_10m * 10) / 10;
+      weather.value.windDirection = getWindDirection(
+        current.wind_direction_10m
+      );
+      weather.value.pressure = Math.round(current.pressure_msl);
+      weather.value.cloudCover = Math.round(current.cloud_cover);
+      weather.value.isDay = current.is_day === 1;
+
+      // Get UV index from hourly data (current hour)
+      if (data.hourly && data.hourly.uv_index) {
+        const currentHour = new Date().getHours();
+        weather.value.uvIndex = data.hourly.uv_index[currentHour] || null;
+      }
+
+      // Get visibility from hourly data
+      if (data.hourly && data.hourly.visibility) {
+        const currentHour = new Date().getHours();
+        const visibilityMeters = data.hourly.visibility[currentHour];
+        weather.value.visibility = visibilityMeters
+          ? Math.round((visibilityMeters / 1000) * 10) / 10
+          : null; // Convert to km
+      }
+
+      // Get precipitation probability from hourly data
+      if (data.hourly && data.hourly.precipitation_probability) {
+        const currentHour = new Date().getHours();
+        weather.value.precipitationChance =
+          data.hourly.precipitation_probability[currentHour] || 0;
+      }
+
+      weather.value.lastUpdated = new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      console.log("Weather updated:", weather.value);
     }
   } catch (error) {
     console.error("Error fetching weather:", error);
-    // Set default values if API fails
-    weather.value.temp = 25;
+    weatherError.value = error.message;
+
+    // Set fallback values based on typical Calapan climate
+    weather.value.temp = 28;
+    weather.value.feelsLike = 32;
     weather.value.condition = "Partly cloudy";
-    weather.value.humidity = 65;
-    weather.value.wind = 5;
+    weather.value.humidity = 70;
+    weather.value.wind = 8;
+    weather.value.windDirection = "E";
+    weather.value.cloudCover = 50;
+    weather.value.uvIndex = 7;
+    weather.value.visibility = 10;
+    weather.value.isDay = true;
+  } finally {
+    isWeatherLoading.value = false;
   }
+}
+
+// Get user's geolocation or fallback to default coordinates
+async function getUserLocation() {
+  // Default to Calapan, Oriental Mindoro coordinates
+  const defaultLat = Number(import.meta.env.VITE_DEFAULT_LAT) || 13.4119;
+  const defaultLon = Number(import.meta.env.VITE_DEFAULT_LON) || 121.1803;
+
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      console.warn("Geolocation not supported, using default location");
+      resolve({ lat: defaultLat, lon: defaultLon });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.warn(
+          "Geolocation error, using default location:",
+          error.message
+        );
+        resolve({ lat: defaultLat, lon: defaultLon });
+      },
+      {
+        timeout: 5000,
+        maximumAge: 300000, // Cache for 5 minutes
+        enableHighAccuracy: true,
+      }
+    );
+  });
+}
+
+// Map WMO Weather codes to descriptive conditions
+function getWeatherCondition(code, isDay) {
+  const weatherCodes = {
+    0: isDay ? "Clear sky" : "Clear night",
+    1: isDay ? "Mainly clear" : "Mainly clear night",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Foggy",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Dense freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Heavy freezing rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Slight rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    85: "Slight snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with slight hail",
+    99: "Thunderstorm with heavy hail",
+  };
+
+  return weatherCodes[code] || "Unknown";
+}
+
+// Convert wind direction degrees to cardinal direction
+function getWindDirection(degrees) {
+  if (degrees === null || degrees === undefined) return "N/A";
+
+  const directions = [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW",
+  ];
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
 }
 
 // Scroll to contact/reservation section on page

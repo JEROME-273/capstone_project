@@ -130,10 +130,22 @@
                 <div class="voice-controls">
                   <button
                     @click="toggleVoiceReading(tip)"
-                    :class="['voice-btn', { active: isReading && currentReadingTip?.id === tip.id }]"
+                    :class="[
+                      'voice-btn',
+                      { active: isReading && currentReadingTip?.id === tip.id },
+                    ]"
                     :disabled="!speechSupported">
-                    <i :class="isReading && currentReadingTip?.id === tip.id ? 'bx bx-stop' : 'bx bx-volume-full'"></i>
-                    {{ isReading && currentReadingTip?.id === tip.id ? 'Stop Reading' : 'Read Details' }}
+                    <i
+                      :class="
+                        isReading && currentReadingTip?.id === tip.id
+                          ? 'bx bx-stop'
+                          : 'bx bx-volume-full'
+                      "></i>
+                    {{
+                      isReading && currentReadingTip?.id === tip.id
+                        ? "Stop Reading"
+                        : "Read Details"
+                    }}
                   </button>
                   <span v-if="!speechSupported" class="voice-unsupported">
                     Voice reading not supported in this browser
@@ -313,6 +325,7 @@ import {
   limit,
   onSnapshot,
 } from "firebase/firestore";
+import VoiceService from "@/services/VoiceService";
 
 // Props
 const props = defineProps({
@@ -353,7 +366,9 @@ const recentAchievements = ref([]);
 // Voice reading state
 const isReading = ref(false);
 const currentReadingTip = ref(null);
-const speechSupported = ref(typeof window !== 'undefined' && 'speechSynthesis' in window);
+const speechSupported = ref(
+  typeof window !== "undefined" && "speechSynthesis" in window
+);
 
 // Real-time listeners storage
 const unsubscribeFunctions = ref([]);
@@ -457,7 +472,7 @@ onUnmounted(() => {
     }
   });
   unsubscribeFunctions.value = [];
-  
+
   // Stop any ongoing speech synthesis
   stopVoiceReading();
 });
@@ -465,7 +480,7 @@ onUnmounted(() => {
 // Voice Reading Methods
 function toggleVoiceReading(tip) {
   if (!speechSupported.value) {
-    console.warn('Speech synthesis not supported in this browser');
+    console.warn("Speech synthesis not supported in this browser");
     return;
   }
 
@@ -476,52 +491,37 @@ function toggleVoiceReading(tip) {
   }
 }
 
-function startVoiceReading(tip) {
+async function startVoiceReading(tip) {
   // Stop any current reading
   stopVoiceReading();
-  
+
   // Only read the detailed content if it exists
   if (!tip.detailedContent) {
-    console.warn('No detailed content available to read');
+    console.warn("No detailed content available to read");
     return;
   }
-  
-  // Prepare only the detailed information to read
-  let textToRead = tip.detailedContent;
 
-  // Create and configure speech utterance
-  const utterance = new SpeechSynthesisUtterance(textToRead);
-  utterance.rate = 0.9; // Slightly slower for better comprehension
-  utterance.pitch = 1;
-  utterance.volume = 1;
-  
-  // Set up event listeners
-  utterance.onstart = () => {
-    isReading.value = true;
-    currentReadingTip.value = tip;
-    console.log('Voice reading started for:', tip.title);
-  };
-  
-  utterance.onend = () => {
+  // Update state
+  isReading.value = true;
+  currentReadingTip.value = tip;
+  console.log("Voice reading started for:", tip.title);
+
+  // Use VoiceService to handle reading with automatic background music control
+  try {
+    await VoiceService.speak(tip.detailedContent);
+    // Speech completed successfully
     isReading.value = false;
     currentReadingTip.value = null;
-    console.log('Voice reading completed');
-  };
-  
-  utterance.onerror = (event) => {
-    console.error('Speech synthesis error:', event.error);
+    console.log("Voice reading completed");
+  } catch (error) {
+    console.error("Speech synthesis error:", error);
     isReading.value = false;
     currentReadingTip.value = null;
-  };
-
-  // Start speaking
-  window.speechSynthesis.speak(utterance);
+  }
 }
 
 function stopVoiceReading() {
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
+  VoiceService.stop();
   isReading.value = false;
   currentReadingTip.value = null;
 }
@@ -1706,7 +1706,8 @@ watch(
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(-2px) scale(1);
   }
   50% {
