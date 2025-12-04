@@ -28,6 +28,32 @@
         </div>
       </div>
     </div>
+    <!-- Quiz Progress Stats -->
+    <div class="quiz-stats">
+      <div class="quiz-stat-item">
+        <i class="bx bxs-graduation"></i>
+        <div class="quiz-stat-info">
+          <span class="quiz-stat-number">{{ quizStats.totalQuizzes }}</span>
+          <span class="quiz-stat-label">Quizzes Taken</span>
+        </div>
+      </div>
+      <div class="quiz-stat-item">
+        <i class="bx bxs-trophy"></i>
+        <div class="quiz-stat-info">
+          <span class="quiz-stat-number">{{ quizStats.averageScore }}%</span>
+          <span class="quiz-stat-label">Avg Score</span>
+        </div>
+      </div>
+      <div class="quiz-stat-item">
+        <i class="bx bxs-badge-check"></i>
+        <div class="quiz-stat-info">
+          <span class="quiz-stat-number"
+            >{{ quizStats.passedQuizzes }}/{{ quizStats.totalQuizzes }}</span
+          >
+          <span class="quiz-stat-label">Passed</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Progress Bar -->
     <div class="progress-container">
@@ -306,6 +332,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Quiz Modal -->
+  <QuizModal
+    v-if="quizContent"
+    :visible="showQuizModal"
+    :content="quizContent"
+    @close="closeQuizModal"
+    @complete="handleQuizComplete"
+    @skip="handleQuizSkip" />
 </template>
 
 <script setup>
@@ -326,6 +361,8 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import VoiceService from "@/services/VoiceService";
+import QuizModal from "@/components/QuizModal.vue";
+import { getUserQuizStats } from "@/services/QuizService";
 
 // Props
 const props = defineProps({
@@ -362,6 +399,18 @@ const isDailyChallengeCompleted = ref(false);
 
 // Achievement tracking
 const recentAchievements = ref([]);
+
+// Quiz state
+const showQuizModal = ref(false);
+const quizContent = ref(null);
+const pendingContentId = ref(null);
+const quizStats = ref({
+  totalQuizzes: 0,
+  averageScore: 0,
+  passedQuizzes: 0,
+  perfectScores: 0,
+  passRate: 0,
+});
 
 // Voice reading state
 const isReading = ref(false);
@@ -451,6 +500,17 @@ const filteredTips = computed(() => {
   return sorted;
 });
 
+// Load Quiz Statistics
+async function loadQuizStats() {
+  try {
+    const stats = await getUserQuizStats();
+    quizStats.value = stats;
+    console.log("Quiz stats loaded:", stats);
+  } catch (error) {
+    console.error("Error loading quiz stats:", error);
+  }
+}
+
 // Methods
 onMounted(async () => {
   if (props.listen) {
@@ -460,6 +520,7 @@ onMounted(async () => {
   if (props.visible) {
     await loadUserProgress();
     await loadDailyChallenge();
+    await loadQuizStats();
   }
   isLoading.value = false;
 });
@@ -911,6 +972,31 @@ async function markAsLearned(contentId) {
       throw new Error("Content not found");
     }
 
+    // Store content ID for quiz
+    pendingContentId.value = contentId;
+
+    // Show quiz modal before marking as learned
+    quizContent.value = content;
+    showQuizModal.value = true;
+  } catch (error) {
+    console.error("Error preparing quiz:", error);
+    isMarkingLearned.value = false;
+  }
+}
+
+async function completeMarkAsLearned(contentId) {
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User not authenticated");
+    }
+
+    const content = learningContent.value.find((item) => item.id === contentId);
+    if (!content) {
+      throw new Error("Content not found");
+    }
+
     // Add to learning progress
     const progressData = {
       userId: currentUser.uid,
@@ -938,6 +1024,7 @@ async function markAsLearned(contentId) {
     console.error("Error marking as learned:", error);
   } finally {
     isMarkingLearned.value = false;
+    pendingContentId.value = null;
   }
 }
 
@@ -1148,6 +1235,49 @@ function showChallengeFeedback() {
   console.log("Daily challenge completed! You earned points!");
 }
 
+// Quiz Modal Functions
+function closeQuizModal() {
+  showQuizModal.value = false;
+  quizContent.value = null;
+  isMarkingLearned.value = false;
+  pendingContentId.value = null;
+}
+
+async function handleQuizComplete(results) {
+  console.log("Quiz completed with results:", results);
+
+  // Mark content as learned regardless of quiz score
+  if (pendingContentId.value) {
+    await completeMarkAsLearned(pendingContentId.value);
+  }
+
+  // Reload quiz stats to update the display
+  await loadQuizStats();
+
+  // Don't close modal immediately - let the auto-close timer handle it
+  // The modal will auto-close after 10 seconds or user can close manually
+
+  // Show appropriate feedback based on score
+  if (results.passed) {
+    console.log(`Great job! You scored ${results.score}%`);
+  } else {
+    console.log(
+      `You scored ${results.score}%. Review the content and try again later!`
+    );
+  }
+}
+
+function handleQuizSkip() {
+  console.log("Quiz skipped by user");
+
+  // Mark content as learned even if quiz is skipped
+  if (pendingContentId.value) {
+    completeMarkAsLearned(pendingContentId.value);
+  }
+
+  closeQuizModal();
+}
+
 // Modal Functions for New Tips
 function closeNewTipsModal() {
   showNewTipsModal.value = false;
@@ -1296,6 +1426,53 @@ watch(
 
 .stat-label {
   font-size: 11px;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+/* Quiz Stats */
+.quiz-stats {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.quiz-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 10px 15px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.quiz-stat-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.quiz-stat-item i {
+  font-size: 24px;
+  color: #ffd700;
+}
+
+.quiz-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.quiz-stat-number {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.quiz-stat-label {
+  font-size: 10px;
   opacity: 0.9;
   margin-top: 2px;
 }
@@ -1869,6 +2046,17 @@ watch(
 
   .learning-stats {
     gap: 15px;
+  }
+
+  .quiz-stats {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .quiz-stat-item {
+    width: 100%;
+    justify-content: center;
   }
 
   .category-filters {

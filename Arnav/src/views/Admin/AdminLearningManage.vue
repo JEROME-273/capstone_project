@@ -212,6 +212,110 @@
               </div>
             </div>
 
+            <!-- Quiz Questions Section -->
+            <div class="quiz-section">
+              <div class="quiz-header">
+                <h3><i class="bx bxs-graduation"></i> Quiz Questions</h3>
+                <button
+                  type="button"
+                  @click="generateQuizQuestions"
+                  class="btn-generate"
+                  :disabled="isGeneratingQuiz">
+                  <i
+                    class="bx"
+                    :class="
+                      isGeneratingQuiz
+                        ? 'bx-loader-alt bx-spin'
+                        : 'bx-magic-wand'
+                    "></i>
+                  {{
+                    isGeneratingQuiz
+                      ? "Generating..."
+                      : "Auto-Generate Questions"
+                  }}
+                </button>
+              </div>
+              <p class="quiz-description">
+                Add 2 quiz questions to validate user learning. Fill in the
+                title and content first for better results.
+              </p>
+
+              <div
+                v-for="(question, qIndex) in trivia.quizQuestions"
+                :key="qIndex"
+                class="quiz-question-card">
+                <div class="question-header">
+                  <h4>Question {{ qIndex + 1 }}</h4>
+                  <button
+                    type="button"
+                    @click="removeQuestion(qIndex)"
+                    class="btn-remove"
+                    v-if="trivia.quizQuestions.length > 2">
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </div>
+
+                <div class="form-group">
+                  <label>Question Text</label>
+                  <textarea
+                    v-model="question.question"
+                    rows="2"
+                    placeholder="Enter the quiz question"
+                    required></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Answer Options</label>
+                  <div
+                    v-for="(option, oIndex) in question.options"
+                    :key="oIndex"
+                    class="option-input">
+                    <span class="option-label"
+                      >{{ String.fromCharCode(65 + oIndex) }}.</span
+                    >
+                    <input
+                      v-model="question.options[oIndex]"
+                      type="text"
+                      :placeholder="`Option ${String.fromCharCode(
+                        65 + oIndex
+                      )}`"
+                      required />
+                    <label class="radio-label">
+                      <input
+                        type="radio"
+                        :name="`correct-${qIndex}`"
+                        :checked="question.correctAnswer === oIndex"
+                        @change="setCorrectAnswer(qIndex, oIndex)"
+                        style="cursor: pointer; pointer-events: all" />
+                      <span
+                        @click="setCorrectAnswer(qIndex, oIndex)"
+                        style="cursor: pointer"
+                        >Correct</span
+                      >
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Explanation</label>
+                  <textarea
+                    v-model="question.explanation"
+                    rows="2"
+                    placeholder="Explain why this answer is correct"
+                    required></textarea>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                @click="addQuestion"
+                class="btn-add-question"
+                v-if="trivia.quizQuestions.length < 5">
+                <i class="bx bx-plus"></i>
+                Add Another Question
+              </button>
+            </div>
+
             <div class="form-actions">
               <button type="submit" class="btn-primary" :disabled="isSaving">
                 <i class="bx bx-save"></i>
@@ -483,6 +587,11 @@ import {
   where,
 } from "firebase/firestore";
 import { initializeLearningSystem as initLearningData } from "@/services/LearningInitService";
+import {
+  generateQuestionsFromContent,
+  validateQuizQuestions,
+  getDefaultQuizQuestions,
+} from "@/services/AIQuizGenerator";
 
 // Component state
 const isLoading = ref(true);
@@ -523,9 +632,24 @@ const defaultTrivia = {
   isActive: true,
   isFeatured: false,
   showOnFirstVisit: false,
+  quizQuestions: [
+    {
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: 0,
+      explanation: "",
+    },
+    {
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: 0,
+      explanation: "",
+    },
+  ],
 };
 
 const trivia = ref({ ...defaultTrivia });
+const isGeneratingQuiz = ref(false);
 
 // Computed properties
 const uniqueCategories = computed(() => {
@@ -839,31 +963,64 @@ async function handleSubmit() {
   isSaving.value = true;
 
   try {
-    const triviaData = {
-      ...trivia.value,
-      tags: trivia.value.tags
-        ? trivia.value.tags.split(",").map((tag) => tag.trim())
-        : [],
-      learnedCount: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
+    // Validate quiz questions before saving
+    const validation = validateQuizQuestions(trivia.value.quizQuestions);
+    if (!validation.valid) {
+      alert(`Quiz validation error: ${validation.error}`);
+      isSaving.value = false;
+      return;
+    }
 
     if (isEditMode.value) {
-      await updateDoc(doc(db, "learningContent", currentEditId.value), {
-        ...triviaData,
-        createdAt: undefined, // Don't update created date
+      // For updates, don't include createdAt or learnedCount
+      const updateData = {
+        title: trivia.value.title,
+        content: trivia.value.content,
+        detailedContent: trivia.value.detailedContent,
+        category: trivia.value.category,
+        difficulty: trivia.value.difficulty,
+        priority: trivia.value.priority,
+        estimatedReadTime: trivia.value.estimatedReadTime,
+        isActive: trivia.value.isActive,
+        isFeatured: trivia.value.isFeatured,
+        showOnFirstVisit: trivia.value.showOnFirstVisit,
+        tags: trivia.value.tags
+          ? trivia.value.tags.split(",").map((tag) => tag.trim())
+          : [],
+        quizQuestions:
+          trivia.value.quizQuestions ||
+          getDefaultQuizQuestions(trivia.value.category),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      await updateDoc(
+        doc(db, "learningContent", currentEditId.value),
+        updateData
+      );
+      console.log("✅ Learning content updated with quiz questions");
     } else {
+      // For new documents, include all fields with createdAt
+      const triviaData = {
+        ...trivia.value,
+        tags: trivia.value.tags
+          ? trivia.value.tags.split(",").map((tag) => tag.trim())
+          : [],
+        quizQuestions:
+          trivia.value.quizQuestions ||
+          getDefaultQuizQuestions(trivia.value.category),
+        learnedCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
       const docRef = await addDoc(
         collection(db, "learningContent"),
         triviaData
       );
-      console.log("✅ New learning content created:", {
+      console.log("✅ New learning content created with quiz questions:", {
         id: docRef.id,
         title: triviaData.title,
-        createdAt: triviaData.createdAt,
+        quizQuestions: triviaData.quizQuestions.length,
       });
     }
 
@@ -872,6 +1029,7 @@ async function handleSubmit() {
     activeTab.value = "list";
   } catch (error) {
     console.error("Error saving trivia:", error);
+    alert("Failed to save content. Please try again.");
   } finally {
     isSaving.value = false;
   }
@@ -881,10 +1039,91 @@ function editTrivia(item) {
   trivia.value = {
     ...item,
     tags: Array.isArray(item.tags) ? item.tags.join(", ") : item.tags || "",
+    quizQuestions: item.quizQuestions || getDefaultQuizQuestions(item.category),
   };
   currentEditId.value = item.id;
   isEditMode.value = true;
   activeTab.value = "add";
+}
+
+// Quiz Question Functions
+async function generateQuizQuestions() {
+  // Provide helpful guidance for empty fields
+  if (!trivia.value.title && !trivia.value.content) {
+    alert(
+      "⚠️ Please fill in both the TITLE and CONTENT fields first.\n\nThe AI needs this information to generate relevant quiz questions."
+    );
+    return;
+  }
+  if (!trivia.value.title) {
+    alert("⚠️ Please add a TITLE first before generating quiz questions.");
+    return;
+  }
+  if (!trivia.value.content) {
+    alert(
+      "⚠️ Please add CONTENT first.\n\nThe AI analyzes the content to create meaningful quiz questions."
+    );
+    return;
+  }
+
+  isGeneratingQuiz.value = true;
+
+  try {
+    // Generate questions based on content
+    const generatedQuestions = generateQuestionsFromContent(trivia.value);
+
+    // Update the trivia quiz questions
+    trivia.value.quizQuestions = generatedQuestions;
+
+    alert(
+      "✅ Successfully generated 2 quiz questions!\n\nYou can review and edit them below before saving."
+    );
+    console.log("Quiz questions generated successfully");
+  } catch (error) {
+    console.error("Error generating quiz questions:", error);
+    alert(
+      "❌ Failed to generate quiz questions.\n\nPlease try again or add them manually below."
+    );
+  } finally {
+    isGeneratingQuiz.value = false;
+  }
+}
+
+function addQuestion() {
+  trivia.value.quizQuestions.push({
+    question: "",
+    options: ["", "", "", ""],
+    correctAnswer: 0,
+    explanation: "",
+  });
+}
+
+function removeQuestion(index) {
+  if (trivia.value.quizQuestions.length > 2) {
+    trivia.value.quizQuestions.splice(index, 1);
+  }
+}
+
+function setCorrectAnswer(questionIndex, optionIndex) {
+  console.log(
+    "🔵 CLICK DETECTED! Question:",
+    questionIndex,
+    "Option:",
+    optionIndex
+  );
+
+  // Direct assignment - Vue 3 should track this
+  trivia.value.quizQuestions[questionIndex].correctAnswer = optionIndex;
+
+  console.log(
+    "✅ Updated! New value:",
+    trivia.value.quizQuestions[questionIndex].correctAnswer
+  );
+  console.log(
+    `Selected: Question ${questionIndex + 1}, Option ${String.fromCharCode(
+      65 + optionIndex
+    )}`
+  );
 }
 
 async function toggleTriviaStatus(item) {
@@ -1791,5 +2030,163 @@ async function initializeLearningSystem() {
   .btn-secondary {
     justify-content: center;
   }
+}
+
+/* Quiz Question Styles */
+.quiz-section {
+  margin-top: 30px;
+  padding: 25px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e3e7f0 100%);
+  border-radius: 12px;
+  border: 2px solid #667eea;
+}
+
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.quiz-header h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quiz-header h3 i {
+  color: #667eea;
+  font-size: 24px;
+}
+
+.quiz-description {
+  color: #4a5568;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.btn-generate {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quiz-question-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.question-header h4 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 16px;
+}
+
+.btn-remove {
+  padding: 6px 12px;
+  background: #fc8181;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s;
+}
+
+.btn-remove:hover {
+  background: #f56565;
+}
+
+.option-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.option-label {
+  font-weight: 600;
+  color: #667eea;
+  min-width: 25px;
+}
+
+.option-input input[type="text"] {
+  flex: 1;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+}
+
+.radio-label span {
+  font-size: 13px;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.btn-add-question {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.btn-add-question:hover {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+.btn-add-question i {
+  font-size: 20px;
 }
 </style>

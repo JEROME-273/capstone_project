@@ -14,6 +14,34 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: true,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question:
+          "What is the best way to hold your phone when using AR navigation?",
+        options: [
+          "Hold it steady and upright",
+          "Hold it sideways",
+          "Hold it upside down",
+          "It doesn't matter how you hold it",
+        ],
+        correctAnswer: 0,
+        explanation:
+          "Holding your phone steady and upright ensures the camera has a clear view and the AR system can accurately determine your orientation.",
+      },
+      {
+        question:
+          "Why should you avoid sudden movements while using AR navigation?",
+        options: [
+          "It saves battery",
+          "It can affect positioning accuracy",
+          "It makes the phone heavier",
+          "It reduces internet speed",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "The system uses your phone's sensors to determine orientation and position, so sudden movements can affect the accuracy of AR navigation.",
+      },
+    ],
   },
   {
     title: "Voice Commands During Navigation",
@@ -29,6 +57,33 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: true,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question:
+          "Which voice command tells you the distance to your destination?",
+        options: [
+          "How far?",
+          "Where am I?",
+          "Next instruction",
+          "End navigation",
+        ],
+        correctAnswer: 0,
+        explanation:
+          "The 'How far?' voice command provides the distance remaining to your destination.",
+      },
+      {
+        question: "What should you do when speaking voice commands?",
+        options: [
+          "Speak very fast",
+          "Speak clearly and wait for processing",
+          "Speak multiple commands at once",
+          "Speak while moving the phone",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "You should speak clearly and wait for the system to process your command before speaking again for best results.",
+      },
+    ],
   },
   {
     title: "Campus Safety Guidelines",
@@ -44,6 +99,32 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question: "What should you prioritize in emergency situations?",
+        options: [
+          "Following digital directions",
+          "Real-world awareness",
+          "Checking your phone",
+          "Taking photos",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "In emergency situations, always prioritize real-world awareness over digital directions for your safety.",
+      },
+      {
+        question: "When walking in a group, what is recommended?",
+        options: [
+          "Everyone should look at their phones",
+          "No one should use navigation",
+          "Designate one person as the navigator",
+          "Walk separately",
+        ],
+        correctAnswer: 2,
+        explanation:
+          "It's best to designate one person as the navigator to avoid everyone looking at their phones simultaneously.",
+      },
+    ],
   },
   {
     title: "Understanding GPS Accuracy",
@@ -59,6 +140,32 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question: "Why do indoor environments have poor GPS reception?",
+        options: [
+          "Too many people",
+          "Satellite signals are blocked by roofs and walls",
+          "Internet is slow",
+          "Phones don't work indoors",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "Indoor environments have poor GPS reception because satellite signals are blocked by roofs and walls.",
+      },
+      {
+        question: "What should you do if experiencing GPS accuracy issues?",
+        options: [
+          "Buy a new phone",
+          "Turn off the GPS",
+          "Move to a more open area or restart navigation",
+          "Close all apps",
+        ],
+        correctAnswer: 2,
+        explanation:
+          "If experiencing accuracy issues, try moving to a more open area with a clear view of the sky or restart the navigation.",
+      },
+    ],
   },
   {
     title: "Accessibility Features",
@@ -74,6 +181,33 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question:
+          "What accessibility features are included in the AR navigation system?",
+        options: [
+          "Only high contrast modes",
+          "Voice guidance, high contrast modes, and text-to-speech",
+          "Only voice guidance",
+          "No accessibility features",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "The system includes voice guidance, high contrast modes, and text-to-speech functionality to make navigation accessible for everyone.",
+      },
+      {
+        question: "What can you adjust in the accessibility settings?",
+        options: [
+          "Only colors",
+          "Voice volume and speech rate",
+          "Only font size",
+          "Nothing can be adjusted",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "You can adjust voice volume and speech rate in the settings to customize your experience.",
+      },
+    ],
   },
   {
     title: "Campus Building Layout Tips",
@@ -89,6 +223,33 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question:
+          "What does the first digit in a room number typically indicate?",
+        options: [
+          "The building number",
+          "The floor level",
+          "The section",
+          "The department",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "The first digit in a room number often indicates the floor level (e.g., room 201 is on the 2nd floor).",
+      },
+      {
+        question: "Where are odd-numbered rooms typically located?",
+        options: [
+          "In the basement",
+          "On one side of the hallway",
+          "Near the entrance",
+          "In the center",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "Odd-numbered rooms are typically on one side of the hallway, while even-numbered rooms are on the opposite side.",
+      },
+    ],
   },
   {
     title: "Battery Conservation During Navigation",
@@ -104,6 +265,32 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question: "Why is AR navigation battery-intensive?",
+        options: [
+          "It only uses GPS",
+          "It uses camera, GPS, display, and sensors continuously",
+          "It downloads a lot of data",
+          "It makes phone calls",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "AR navigation is battery-intensive because it continuously uses multiple device sensors and features including camera, GPS, display, and orientation sensors.",
+      },
+      {
+        question: "What is one way to conserve battery during AR navigation?",
+        options: [
+          "Use maximum brightness",
+          "Lower screen brightness",
+          "Keep all apps open",
+          "Disable GPS",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "Lowering screen brightness is an effective way to conserve battery during AR navigation sessions.",
+      },
+    ],
   },
   {
     title: "Advanced AR Features",
@@ -119,6 +306,32 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question: "What does waypoint marking allow you to do?",
+        options: [
+          "Delete locations",
+          "Save frequently visited locations for quick access",
+          "Share your location",
+          "Block certain areas",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "Waypoint marking lets you save frequently visited locations for quick and easy access later.",
+      },
+      {
+        question: "What can you customize in the AR navigation settings?",
+        options: [
+          "Only the language",
+          "Arrow size, color themes, and information display density",
+          "Only the volume",
+          "Nothing can be customized",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "You can customize AR visual elements like arrow size, color themes, and information display density in the settings.",
+      },
+    ],
   },
   {
     title: "Navigation in Different Weather",
@@ -134,6 +347,33 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: false,
+    quizQuestions: [
+      {
+        question: "How does rain affect AR navigation?",
+        options: [
+          "It improves accuracy",
+          "It can obstruct the camera lens, making AR overlays less accurate",
+          "It has no effect",
+          "It speeds up the GPS",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "Rain or snow can obstruct your camera lens, making AR overlays less accurate, so it's important to keep your lens clean and dry.",
+      },
+      {
+        question:
+          "What should you do in severe weather while using AR navigation?",
+        options: [
+          "Continue using AR at all costs",
+          "Prioritize safety and consider traditional navigation methods",
+          "Turn off your phone",
+          "Walk faster",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "In severe weather, always prioritize safety and consider using traditional navigation methods if AR functionality is compromised.",
+      },
+    ],
   },
   {
     title: "Understanding Location Markers",
@@ -149,6 +389,22 @@ export const sampleLearningContent = [
     isActive: true,
     isFeatured: false,
     showOnFirstVisit: true,
+    quizQuestions: [
+      {
+        question: "What color markers are used for emergency locations?",
+        options: ["Blue", "Green", "Red", "Purple"],
+        correctAnswer: 2,
+        explanation:
+          "Emergency locations use red markers with warning symbols to make them easily identifiable.",
+      },
+      {
+        question: "What color markers indicate food locations?",
+        options: ["Orange", "Blue", "Green", "Gray"],
+        correctAnswer: 0,
+        explanation:
+          "Food locations have orange markers with utensil icons to help you quickly identify dining areas.",
+      },
+    ],
   },
 ];
 
