@@ -119,29 +119,27 @@
 
         <!-- Background Music Control -->
         <div class="section-block">
-          <div class="profile-link music-control">
+          <div class="profile-link">
             <div class="flex items-center">
               <i class="fas fa-music icon-section"></i>
               <span class="ml-4 text-lg">Background Music</span>
             </div>
-            <div class="music-controls-group">
+            <div class="music-controls-inline">
               <button
                 @click="toggleMusic"
                 class="music-toggle-btn"
                 :class="{ playing: isMusicPlaying }">
                 <i :class="isMusicPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
               </button>
-              <div class="volume-inline">
-                <i class="fas fa-volume-down"></i>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  v-model="musicVolume"
-                  @input="updateVolume"
-                  class="volume-slider-inline" />
-                <i class="fas fa-volume-up"></i>
-              </div>
+              <i class="fas fa-volume-down"></i>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                v-model="musicVolume"
+                @input="updateVolume"
+                class="volume-slider-inline" />
+              <i class="fas fa-volume-up"></i>
             </div>
           </div>
         </div>
@@ -789,6 +787,7 @@
 <script>
 import AuthManager from "@/components/AuthManager.vue";
 import NotificationBell from "@/components/NotificationBell.vue";
+import BackgroundMusicService from "@/services/BackgroundMusicService";
 import { auth } from "@/firebase/config";
 import {
   getFirestore,
@@ -862,7 +861,7 @@ export default {
       // === Background Music ===
       isMusicPlaying: false,
       musicVolume: 50,
-      backgroundAudio: null,
+      unsubscribe: null,
 
       // === HelpCenter Support ===
       supportForm: { email: "", message: "" },
@@ -977,9 +976,9 @@ export default {
         this.arrivalHistory = [];
       }
     }
-    // Initialize and sync background music
+    // Initialize background music service
     this.$nextTick(() => {
-      this.syncBackgroundMusic();
+      this.initBackgroundMusicService();
     });
   },
   beforeUnmount() {
@@ -987,88 +986,31 @@ export default {
     document.removeEventListener("keydown", this.handleKeydown);
     // Clean up any open modals
     document.body.classList.remove("modal-open");
+    // Unsubscribe from music service
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
   },
   methods: {
     // === Background Music Methods ===
-    syncBackgroundMusic() {
-      // Get the local audio element
-      this.backgroundAudio = this.$refs.backgroundMusic;
+    initBackgroundMusicService() {
+      const audioElement = this.$refs.backgroundMusic;
+      if (audioElement) {
+        // Initialize the service with the audio element
+        BackgroundMusicService.init(audioElement);
 
-      if (this.backgroundAudio) {
-        // Check if music should be playing from localStorage
-        const musicState = localStorage.getItem("backgroundMusicPlaying");
-        const musicVolume = localStorage.getItem("backgroundMusicVolume");
-        const musicTime = localStorage.getItem("backgroundMusicTime");
-
-        if (musicVolume) {
-          this.musicVolume = parseInt(musicVolume);
-          this.backgroundAudio.volume = this.musicVolume / 100;
-        }
-
-        if (musicTime) {
-          this.backgroundAudio.currentTime = parseFloat(musicTime);
-        }
-
-        // Auto-play if it was playing before
-        if (musicState === "true") {
-          this.backgroundAudio
-            .play()
-            .then(() => {
-              this.isMusicPlaying = true;
-            })
-            .catch((err) => {
-              console.log("Auto-play prevented:", err);
-            });
-        }
-
-        // Save state periodically
-        setInterval(() => {
-          if (this.backgroundAudio) {
-            localStorage.setItem("backgroundMusicPlaying", this.isMusicPlaying);
-            localStorage.setItem("backgroundMusicVolume", this.musicVolume);
-            localStorage.setItem(
-              "backgroundMusicTime",
-              this.backgroundAudio.currentTime
-            );
-          }
-        }, 1000);
-      }
-    },
-    initBackgroundMusic() {
-      this.backgroundAudio = this.$refs.backgroundMusic;
-      if (this.backgroundAudio) {
-        this.isMusicPlaying = !this.backgroundAudio.paused;
-        this.musicVolume = Math.round(this.backgroundAudio.volume * 100);
+        // Subscribe to state changes
+        this.unsubscribe = BackgroundMusicService.subscribe((state) => {
+          this.isMusicPlaying = state.isPlaying;
+          this.musicVolume = state.volume;
+        });
       }
     },
     toggleMusic() {
-      if (!this.backgroundAudio) {
-        this.initBackgroundMusic();
-      }
-
-      if (!this.backgroundAudio) return;
-
-      if (this.isMusicPlaying) {
-        this.backgroundAudio.pause();
-        this.isMusicPlaying = false;
-        localStorage.setItem("backgroundMusicPlaying", "false");
-      } else {
-        this.backgroundAudio.play().catch((err) => {
-          console.warn("Music playback failed:", err);
-        });
-        this.isMusicPlaying = true;
-        localStorage.setItem("backgroundMusicPlaying", "true");
-      }
+      BackgroundMusicService.toggle();
     },
     updateVolume() {
-      if (!this.backgroundAudio) {
-        this.initBackgroundMusic();
-      }
-
-      if (this.backgroundAudio) {
-        this.backgroundAudio.volume = this.musicVolume / 100;
-        localStorage.setItem("backgroundMusicVolume", this.musicVolume);
-      }
+      BackgroundMusicService.setVolume(this.musicVolume);
     },
     // === Keyboard Handler ===
     handleKeydown(event) {
@@ -1310,19 +1252,15 @@ export default {
 @import "@/assets/responsive.css";
 
 /* Background Music Control Styles */
-.music-control {
-  padding: 15px 20px !important;
-}
-
-.music-controls-group {
+.music-controls-inline {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 8px;
 }
 
 .music-toggle-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 2px solid #3b82f6;
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
@@ -1332,7 +1270,9 @@ export default {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 16px;
+  font-size: 14px;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .music-toggle-btn:hover {
@@ -1356,23 +1296,14 @@ export default {
   }
 }
 
-.volume-inline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(59, 130, 246, 0.08);
-  border-radius: 20px;
-  min-width: 150px;
-}
-
-.volume-inline i {
+.music-controls-inline i {
   color: #3b82f6;
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .volume-slider-inline {
-  flex: 1;
+  width: 100px;
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(to right, #bfdbfe, #3b82f6);
@@ -1380,6 +1311,7 @@ export default {
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+  margin: 0 4px;
 }
 
 .volume-slider-inline::-webkit-slider-thumb {
@@ -1417,15 +1349,22 @@ export default {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .music-controls-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+  .music-controls-inline {
+    gap: 6px;
   }
 
-  .volume-inline {
-    width: 100%;
-    min-width: unset;
+  .volume-slider-inline {
+    width: 80px;
+  }
+
+  .music-toggle-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .music-controls-inline i {
+    font-size: 12px;
   }
 }
 

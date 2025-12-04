@@ -125,8 +125,19 @@
           <span v-for="n in 10" :key="n"></span>
         </div>
 
-        <!-- ☀️ Sun -->
-        <div v-if="weatherClass === 'sunny-weather'" class="sun"></div>
+        <!-- ☀️ Sun (daytime only) -->
+        <div
+          v-if="weatherClass === 'sunny-weather' && weather.isDay"
+          class="sun"></div>
+
+        <!-- 🌙 Moon (nighttime when clear) -->
+        <div
+          v-if="
+            !weather.isDay &&
+            (weather.condition.toLowerCase().includes('clear') ||
+              weather.condition.toLowerCase().includes('night'))
+          "
+          class="moon"></div>
       </div>
 
       <!-- Weather Content -->
@@ -137,8 +148,8 @@
             <span class="temp">{{
               weather.temp !== null ? weather.temp + "°C" : "--"
             }}</span>
-            <!-- BACK TO NORMAL WEATHER ICON -->
-            <span class="condition-icon">
+            <!-- Weather Icon (Day/Night Aware) -->
+            <span class="condition-icon" :title="weather.condition">
               {{
                 weather.condition.toLowerCase().includes("rain") ||
                 weather.condition.toLowerCase().includes("shower") ||
@@ -147,17 +158,24 @@
                   : weather.condition.toLowerCase().includes("thunder") ||
                     weather.condition.toLowerCase().includes("storm")
                   ? "⛈️"
-                  : weather.condition.toLowerCase().includes("sun") ||
-                    weather.condition.toLowerCase().includes("clear")
-                  ? weather.isDay
+                  : weather.condition.toLowerCase().includes("clear") ||
+                    weather.condition.toLowerCase().includes("mainly clear")
+                  ? weather.isDay === true
                     ? "☀️"
                     : "🌙"
+                  : weather.condition.toLowerCase().includes("night")
+                  ? "🌙"
                   : weather.condition.toLowerCase().includes("cloud") ||
-                    weather.condition.toLowerCase().includes("overcast")
-                  ? "☁️"
+                    weather.condition.toLowerCase().includes("overcast") ||
+                    weather.condition.toLowerCase().includes("partly")
+                  ? weather.isDay === true
+                    ? "☁️"
+                    : "☁️"
                   : weather.condition.toLowerCase().includes("fog")
                   ? "🌫️"
-                  : "🌡️"
+                  : weather.isDay === true
+                  ? "🌡️"
+                  : "🌙"
               }}
             </span>
           </div>
@@ -220,7 +238,7 @@
     </button>
 
     <!-- Hidden audio element for background music -->
-    <audio ref="backgroundMusic" loop preload="auto" autoplay>
+    <audio ref="backgroundMusic" loop preload="auto">
       <source src="@/assets/Bluewave_Achievement.mp3" type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
@@ -793,6 +811,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { fetchRemoteTips } from "@/services/LocalTipsService";
+import BackgroundMusicService from "@/services/BackgroundMusicService";
 import {
   getFirestore,
   collection,
@@ -1189,7 +1208,7 @@ const userLocation = ref(null);
 const backgroundMusic = ref(null);
 const isMusicPlaying = ref(false);
 const musicVolume = ref(50);
-const showVolumeControl = ref(false);
+let musicUnsubscribe = null;
 
 // Voice Search state
 const voiceSearchRecognition = ref(null);
@@ -1589,12 +1608,16 @@ const weatherClass = computed(() => {
   ) {
     return "rainy-weather";
   }
-  // Clear and sunny
+  // Clear and sunny (only during daytime)
   else if (
     condition.includes("clear") ||
     condition.includes("sun") ||
     condition.includes("mainly clear")
   ) {
+    // Check if it's actually daytime before showing sun
+    if (weather.value.isDay === false || condition.includes("night")) {
+      return "cloudy-weather"; // Show clouds/stars at night instead of sun
+    }
     return "sunny-weather";
   }
   // Partly cloudy (between clear and overcast)
@@ -1738,61 +1761,15 @@ onMounted(async () => {
   // Store interval ID for cleanup
   window.weatherUpdateInterval = weatherUpdateInterval;
 
-  // Auto-play background music with user interaction fallback
+  // Initialize background music service
   if (backgroundMusic.value) {
-    // Check if there's saved music state
-    const savedVolume = localStorage.getItem("backgroundMusicVolume");
-    const savedTime = localStorage.getItem("backgroundMusicTime");
+    BackgroundMusicService.init(backgroundMusic.value);
 
-    if (savedVolume) {
-      musicVolume.value = parseInt(savedVolume);
-    }
-
-    backgroundMusic.value.volume = musicVolume.value / 100;
-
-    if (savedTime) {
-      backgroundMusic.value.currentTime = parseFloat(savedTime);
-    }
-
-    backgroundMusic.value
-      .play()
-      .then(() => {
-        isMusicPlaying.value = true;
-        localStorage.setItem("backgroundMusicPlaying", "true");
-      })
-      .catch((err) => {
-        console.log("Auto-play prevented, waiting for user interaction:", err);
-        // Try playing on first user interaction
-        const playOnInteraction = () => {
-          if (backgroundMusic.value) {
-            backgroundMusic.value
-              .play()
-              .then(() => {
-                isMusicPlaying.value = true;
-                localStorage.setItem("backgroundMusicPlaying", "true");
-              })
-              .catch(() => {});
-          }
-          document.removeEventListener("click", playOnInteraction);
-          document.removeEventListener("touchstart", playOnInteraction);
-        };
-        document.addEventListener("click", playOnInteraction, { once: true });
-        document.addEventListener("touchstart", playOnInteraction, {
-          once: true,
-        });
-      });
-
-    // Save state periodically
-    setInterval(() => {
-      if (backgroundMusic.value) {
-        localStorage.setItem("backgroundMusicPlaying", isMusicPlaying.value);
-        localStorage.setItem("backgroundMusicVolume", musicVolume.value);
-        localStorage.setItem(
-          "backgroundMusicTime",
-          backgroundMusic.value.currentTime
-        );
-      }
-    }, 1000);
+    // Subscribe to music state changes
+    musicUnsubscribe = BackgroundMusicService.subscribe((state) => {
+      isMusicPlaying.value = state.isPlaying;
+      musicVolume.value = state.volume;
+    });
   }
 
   // Add resize handler for 360 viewer
@@ -1818,6 +1795,10 @@ onUnmounted(() => {
   // Clean up 360 viewer
   if (animationId) {
     cancelAnimationFrame(animationId);
+  }
+  // Unsubscribe from music service
+  if (musicUnsubscribe) {
+    musicUnsubscribe();
   }
   // Clear tip rotation interval if set
   try {
@@ -2795,6 +2776,25 @@ async function getWeather() {
     if (data && data.current) {
       const current = data.current;
 
+      // Verify isDay status (Open-Meteo's is_day is based on actual sunrise/sunset)
+      const isDay = current.is_day === 1;
+
+      // Debug logging
+      const localTime = new Date().toLocaleString("en-PH", {
+        timeZone: "Asia/Manila",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      console.log("Weather API Response:", {
+        time: localTime,
+        isDay: isDay,
+        weatherCode: current.weather_code,
+        temp: current.temperature_2m,
+        condition: getWeatherCondition(current.weather_code, isDay),
+      });
+
       // Temperature with one decimal precision
       weather.value.temp = Math.round(current.temperature_2m * 10) / 10;
       weather.value.feelsLike =
@@ -2803,7 +2803,7 @@ async function getWeather() {
       // Map WMO weather codes to precise conditions
       weather.value.condition = getWeatherCondition(
         current.weather_code,
-        current.is_day
+        isDay
       );
 
       // Other metrics
@@ -2814,7 +2814,7 @@ async function getWeather() {
       );
       weather.value.pressure = Math.round(current.pressure_msl);
       weather.value.cloudCover = Math.round(current.cloud_cover);
-      weather.value.isDay = current.is_day === 1;
+      weather.value.isDay = isDay;
 
       // Get UV index from hourly data (current hour)
       if (data.hourly && data.hourly.uv_index) {
@@ -2850,16 +2850,19 @@ async function getWeather() {
     weatherError.value = error.message;
 
     // Set fallback values based on typical Calapan climate
+    const hour = new Date().getHours();
+    const isDayTime = hour >= 6 && hour < 18; // Day is 6 AM to 6 PM
+
     weather.value.temp = 28;
     weather.value.feelsLike = 32;
-    weather.value.condition = "Partly cloudy";
+    weather.value.condition = isDayTime ? "Partly cloudy" : "Clear night";
     weather.value.humidity = 70;
     weather.value.wind = 8;
     weather.value.windDirection = "E";
     weather.value.cloudCover = 50;
-    weather.value.uvIndex = 7;
+    weather.value.uvIndex = isDayTime ? 7 : 0;
     weather.value.visibility = 10;
-    weather.value.isDay = true;
+    weather.value.isDay = isDayTime;
   } finally {
     isWeatherLoading.value = false;
   }
