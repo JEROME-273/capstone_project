@@ -134,6 +134,28 @@
         <p>Getting your location...</p>
       </div>
     </div>
+
+    <!-- Geofence Status Indicator -->
+    <div
+      v-if="!isWithinParkBounds && !isCheckingLocation"
+      class="geofence-locked">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-message">
+        <h3>AR Navigation Locked</h3>
+        <p>
+          You must be at <strong>Bulusan Park, Calapan City</strong> to access
+          AR Navigation
+        </p>
+        <small>Current location is outside the permitted area</small>
+      </div>
+    </div>
+
+    <div v-if="isCheckingLocation" class="geofence-checking">
+      <div class="checking-animation">
+        <i class="fas fa-map-marker-alt fa-pulse"></i>
+      </div>
+      <p>Verifying your location...</p>
+    </div>
   </div>
 </template>
 
@@ -167,6 +189,16 @@ const currentLocation = ref(null);
 const destinationLocation = ref(null);
 const userHeading = ref(0);
 const distanceToDestination = ref(0);
+
+// Geofencing for Bulusan Park, Calapan City, Oriental Mindoro
+const BULUSAN_PARK_CENTER = {
+  lat: 13.4117, // Bulusan Park center coordinates
+  lng: 121.1821, // Bulusan Park center coordinates
+};
+const PARK_RADIUS_METERS = 10000; // 10km radius for testing - allows access from wider area
+const isWithinParkBounds = ref(false);
+const isCheckingLocation = ref(true);
+const geofenceError = ref("");
 // Raw latest accuracy from geolocation
 const latestAccuracy = ref(null); // meters
 // Whether we already have an accuracy good enough to trust distance
@@ -702,6 +734,7 @@ async function startARNavigation() {
   try {
     if (!props.destination) return;
 
+    // Set destination first
     destinationLocation.value = {
       lat: props.destination.coordinates.x,
       lng: props.destination.coordinates.y,
@@ -713,7 +746,65 @@ async function startARNavigation() {
     hasLoggedArrival.value = false;
 
     isARNavigationActive.value = true;
+    isCheckingLocation.value = true; // Show "Verifying location..." UI
 
+    console.log("🚀 Starting AR Navigation initialization...");
+
+    // Get user's location first to verify they're in the park
+    if (!navigator.geolocation) {
+      throw new Error("Geolocation not supported");
+    }
+
+    // Get initial position with high accuracy
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        console.log("📍 Got initial location, checking geofence...");
+
+        // Check if user is within Bulusan Park
+        const geofenceStatus = checkGeofence(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+
+        if (!geofenceStatus.isWithinBounds) {
+          alert(
+            "🚫 AR Navigation is locked.\n\nYou must be physically present at Bulusan Park, Calapan City, Oriental Mindoro to use AR Navigation.\n\nPlease visit the park to unlock this feature."
+          );
+          stopARNavigation();
+          return;
+        }
+
+        console.log("✅ Location verified! Initializing AR components...");
+        isCheckingLocation.value = false;
+
+        // Now proceed with AR initialization
+        await continueARInitialization();
+      },
+      (error) => {
+        console.error("Location error:", error);
+        isCheckingLocation.value = false;
+        alert(
+          "Unable to get your location. Please enable location services and try again."
+        );
+        stopARNavigation();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  } catch (error) {
+    console.error("Error starting AR navigation:", error);
+    alert(
+      "Unable to start AR navigation. Please check camera and location permissions."
+    );
+    stopARNavigation();
+  }
+}
+
+async function continueARInitialization() {
+  try {
     // Wait for DOM to update
     await nextTick();
 
@@ -734,8 +825,10 @@ async function startARNavigation() {
 
     // Announce navigation start
     announceNavigationStart(destinationLocation.value.name);
+
+    console.log("✅ AR Navigation fully initialized!");
   } catch (error) {
-    console.error("Error starting AR navigation:", error);
+    console.error("Error initializing AR components:", error);
     alert(
       "Unable to start AR navigation. Please check camera and location permissions."
     );
@@ -921,6 +1014,16 @@ function updateCurrentLocation(position) {
     speed: position.coords.speed,
     timestamp: Date.now(),
   };
+
+  // Check geofence - CRITICAL for location-based access control
+  const geofenceStatus = checkGeofence(newLocation.lat, newLocation.lng);
+
+  // If user leaves the park during active navigation, stop it
+  if (!geofenceStatus.isWithinBounds && isARNavigationActive.value) {
+    console.warn("⚠️ User left park boundaries during navigation");
+    stopARNavigation();
+    return;
+  }
 
   // Apply stabilization before updating current location
   // Accuracy gating logic
@@ -1163,6 +1266,59 @@ function calculatePreciseDistance(lat1, lng1, lat2, lng2) {
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in meters
+}
+
+// Check if user is within Bulusan Park geofence
+function checkGeofence(userLat, userLng) {
+  const distanceFromParkCenter = calculatePreciseDistance(
+    userLat,
+    userLng,
+    BULUSAN_PARK_CENTER.lat,
+    BULUSAN_PARK_CENTER.lng
+  );
+
+  // Debug: Always log current position and distance
+  console.log(`📍 Your location: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`);
+  console.log(
+    `📏 Distance from park center: ${distanceFromParkCenter.toFixed(
+      0
+    )}m (limit: ${PARK_RADIUS_METERS}m)`
+  );
+  console.log(
+    `🎯 Park center: ${BULUSAN_PARK_CENTER.lat}, ${BULUSAN_PARK_CENTER.lng}`
+  );
+
+  const wasWithinBounds = isWithinParkBounds.value;
+  isWithinParkBounds.value = distanceFromParkCenter <= PARK_RADIUS_METERS;
+  isCheckingLocation.value = false;
+
+  // Log geofence status changes
+  if (wasWithinBounds !== isWithinParkBounds.value) {
+    if (isWithinParkBounds.value) {
+      console.log("✅ User entered Bulusan Park - AR Navigation unlocked");
+      geofenceError.value = "";
+      queueAnnouncement(
+        "Welcome to Bulusan Park. AR Navigation is now available."
+      );
+    } else {
+      console.log("🚫 User left Bulusan Park - AR Navigation locked");
+      geofenceError.value = "You must be in Bulusan Park to use AR Navigation";
+      queueAnnouncement(
+        "You have left Bulusan Park. AR Navigation is now locked."
+      );
+
+      // Stop AR navigation if active
+      if (isARNavigationActive.value) {
+        stopARNavigation();
+      }
+    }
+  }
+
+  return {
+    isWithinBounds: isWithinParkBounds.value,
+    distance: distanceFromParkCenter,
+    parkName: "Bulusan Park, Calapan City",
+  };
 }
 
 // Enhanced bearing calculation with stabilization
@@ -2550,6 +2706,116 @@ function formatNavigationTime() {
 
   input[type="range"] {
     min-height: 44px;
+  }
+}
+
+/* Geofence Lock Styles */
+.geofence-locked {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 40px 30px;
+  text-align: center;
+  z-index: 10002;
+  max-width: 400px;
+  width: 90%;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 20px 60px rgba(239, 68, 68, 0.3);
+}
+
+.lock-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  animation: lockPulse 2s infinite;
+}
+
+@keyframes lockPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.lock-message h3 {
+  color: #ef4444;
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.lock-message p {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.lock-message strong {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.lock-message small {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  display: block;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.geofence-checking {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  z-index: 10002;
+  min-width: 250px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.checking-animation {
+  font-size: 3rem;
+  color: #3b82f6;
+  margin-bottom: 15px;
+}
+
+.geofence-checking p {
+  color: #fff;
+  margin: 0;
+  font-size: 1rem;
+}
+
+@media (max-width: 480px) {
+  .geofence-locked {
+    padding: 30px 20px;
+    max-width: 95%;
+  }
+
+  .lock-icon {
+    font-size: 3rem;
+  }
+
+  .lock-message h3 {
+    font-size: 1.2rem;
+  }
+
+  .lock-message p {
+    font-size: 0.9rem;
   }
 }
 </style>

@@ -340,16 +340,6 @@
           <div class="card-header">
             <h2>Learning Content Management</h2>
             <div class="header-actions">
-              <button
-                @click="initializeLearningSystem"
-                class="btn-init"
-                :disabled="isInitializing"
-                title="Initialize with sample learning content">
-                <i class="bx bx-download"></i>
-                {{
-                  isInitializing ? "Initializing..." : "Initialize Sample Data"
-                }}
-              </button>
               <div class="search-box">
                 <i class="bx bx-search"></i>
                 <input
@@ -463,9 +453,23 @@
                 {{
                   searchQuery || filterCategory
                     ? "Try adjusting your filters"
-                    : "Start by adding some learning content"
+                    : "Get started by adding learning content"
                 }}
               </p>
+              <button
+                v-if="
+                  !searchQuery && !filterCategory && triviaList.length === 0
+                "
+                @click="initializeLearningSystem"
+                class="btn-init-empty"
+                :disabled="isInitializing">
+                <i class="bx bx-download"></i>
+                {{
+                  isInitializing
+                    ? "Loading..."
+                    : "Quick Start: Add Sample Content"
+                }}
+              </button>
             </div>
           </div>
         </div>
@@ -1551,9 +1555,10 @@ async function initializeLearningSystem() {
   background: #edf2f7;
 }
 
-.btn-init {
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #48bb78, #38a169);
+.btn-init-empty {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1562,17 +1567,16 @@ async function initializeLearningSystem() {
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  margin-right: 15px;
+  gap: 8px;
+  font-size: 14px;
 }
 
-.btn-init:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3);
+.btn-init-empty:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
 }
 
-.btn-init:disabled {
+.btn-init-empty:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
