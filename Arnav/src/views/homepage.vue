@@ -725,7 +725,7 @@
                   <i class="fas fa-envelope"></i>
                   <div class="label">Email</div>
                 </div>
-                <div class="value">arnavigation25@gmail.com</div>
+                <div class="value">ceedcalapan@gmail.com</div>
               </div>
             </a>
           </div>
