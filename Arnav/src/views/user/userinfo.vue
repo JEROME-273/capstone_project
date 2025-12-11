@@ -679,9 +679,10 @@
                 <div class="form-group">
                   <label>Gender:</label>
                   <select v-model="editableInfo.gender" required>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
+                    <option value="" disabled>Select Gender</option>
+                    <option value="male">male</option>
+                    <option value="female">female</option>
+                    <option value="other">other</option>
                   </select>
                 </div>
                 <div class="form-group">

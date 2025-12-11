@@ -660,13 +660,14 @@ button,
 
 .admin-nav-bar .nav-link {
   font-size: 20px; /* Reduced for mobile-first */
-  font-weight: 600;
+  font-weight: bold;
   color: var(--text-primary);
   text-decoration: none;
   white-space: nowrap;
   padding: 8px 16px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  text-transform: uppercase;
 }
 
 .admin-nav-bar .nav-link:hover {

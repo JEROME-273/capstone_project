@@ -127,15 +127,7 @@
               <p class="tip-preview">{{ tip.content }}</p>
             </div>
             <div class="tip-actions">
-              <button
-                v-if="!isLearned(tip.id)"
-                @click.stop="markAsLearned(tip.id)"
-                class="learn-btn"
-                :disabled="isMarkingLearned">
-                <i class="bx bx-check"></i>
-                Mark as Learned
-              </button>
-              <div v-else class="learned-indicator">
+              <div v-if="isLearned(tip.id)" class="learned-indicator">
                 <i class="bx bxs-check-circle"></i>
                 <span>Learned</span>
               </div>
@@ -199,6 +191,18 @@
             <div v-if="isLearned(tip.id)" class="learned-info">
               <i class="bx bx-calendar"></i>
               <span>Learned on {{ formatLearnedDate(tip.id) }}</span>
+            </div>
+
+            <!-- Mark as Learned Button at the end -->
+            <div class="tip-action-footer">
+              <button
+                v-if="!isLearned(tip.id)"
+                @click.stop="markAsLearned(tip.id)"
+                class="learn-btn"
+                :disabled="isMarkingLearned">
+                <i class="bx bx-check"></i>
+                Mark as Learned
+              </button>
             </div>
           </div>
         </div>
@@ -961,6 +965,11 @@ async function markAsLearned(contentId) {
   try {
     isMarkingLearned.value = true;
 
+    // Stop voice reading immediately when marking as learned
+    if (isReading.value) {
+      stopVoiceReading();
+    }
+
     const auth = getAuth();
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -1357,7 +1366,7 @@ watch(
   align-items: center;
   margin-bottom: 20px;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
   border-radius: 12px;
   color: white;
 }
@@ -1720,10 +1729,13 @@ watch(
 /* Tip Actions */
 .tip-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-end;
   flex-shrink: 0;
+  margin-left: auto;
+  min-width: fit-content;
 }
 
 .learn-btn {
@@ -1773,6 +1785,7 @@ watch(
   justify-content: center;
   transition: all 0.2s ease;
   color: #718096;
+  flex-shrink: 0;
 }
 
 .expand-btn:hover {
@@ -1936,6 +1949,22 @@ watch(
   border: 1px solid #c6f6d5;
 }
 
+.tip-action-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+}
+
+.tip-action-footer .learn-btn {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 /* Daily Challenge */
 .daily-challenge {
   background: linear-gradient(135deg, #ff6b6b, #feca57);
@@ -2049,14 +2078,29 @@ watch(
   }
 
   .quiz-stats {
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 8px;
     width: 100%;
+    overflow-x: auto;
   }
 
   .quiz-stat-item {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     justify-content: center;
+    padding: 8px 10px;
+  }
+
+  .quiz-stat-item i {
+    font-size: 20px;
+  }
+
+  .quiz-stat-number {
+    font-size: 14px;
+  }
+
+  .quiz-stat-label {
+    font-size: 9px;
   }
 
   .category-filters {

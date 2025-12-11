@@ -1,7 +1,7 @@
 <template>
   <AdminLayout>
     <template #nav>
-      <a href="#" class="nav-link">Analytics Dashboard</a>
+      <a href="#" class="nav-link">ANALYTICS DASHBOARD</a>
     </template>
 
     <div class="analytics-dashboard">
@@ -2335,9 +2335,15 @@ export default {
 
 <style scoped>
 .nav-link {
+  font-size: 24px;
+  font-weight: bold;
   color: var(--text-primary);
   text-decoration: none;
-  font-weight: 500;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
 }
 
 .analytics-dashboard {

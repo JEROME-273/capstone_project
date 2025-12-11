@@ -180,9 +180,6 @@
             </span>
           </div>
           <div class="condition">{{ weather.condition || "--" }}</div>
-          <div class="feels-like" v-if="weather.feelsLike !== null">
-            Feels like {{ weather.feelsLike }}°C
-          </div>
         </div>
 
         <!-- Right Section -->
@@ -708,14 +705,14 @@
           <div class="contact-cards modal-cards">
             <a
               class="contact-card phone"
-              href="tel:+639123456789"
+              href="tel:+639305895200"
               aria-label="Call or WhatsApp">
               <div class="info">
                 <div class="icon-text">
                   <i class="fas fa-phone"></i>
                   <div class="label">Call / WhatsApp</div>
                 </div>
-                <div class="value">+63 912 345 6789</div>
+                <div class="value">+639305895200</div>
               </div>
             </a>
 
@@ -854,7 +851,6 @@ const weather = ref({
   condition: "",
   humidity: null,
   wind: null,
-  feelsLike: null,
   uvIndex: null,
   visibility: null,
   windDirection: null,

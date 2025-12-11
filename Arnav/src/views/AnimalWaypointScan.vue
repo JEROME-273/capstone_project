@@ -4,7 +4,7 @@
       <button class="back-button" @click="goBack">
         <span class="back-icon">←</span> Back
       </button>
-      <h1>Scan Animal or Waypoint QR</h1>
+      <h1>Scan Animal QR</h1>
     </div>
 
     <div class="scanner-wrapper">

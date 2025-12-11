@@ -195,7 +195,7 @@ const BULUSAN_PARK_CENTER = {
   lat: 13.4117, // Bulusan Park center coordinates
   lng: 121.1821, // Bulusan Park center coordinates
 };
-const PARK_RADIUS_METERS = 10000; // 10km radius for testing - allows access from wider area
+const PARK_RADIUS_METERS = 2000; // 2km radius for testing - allows access from wider area
 const isWithinParkBounds = ref(false);
 const isCheckingLocation = ref(true);
 const geofenceError = ref("");
@@ -227,10 +227,10 @@ const headingHistory = ref([]);
 const stabilizedHeading = ref(0);
 const stabilizedLocation = ref(null);
 const lastUpdateTime = ref(0);
-const STABILIZATION_FACTOR = 0.15; // Lower = more stable, higher = more responsive
-const MIN_UPDATE_INTERVAL = 100; // Minimum milliseconds between updates
-const HEADING_THRESHOLD = 2; // Degrees - ignore small heading changes
-const LOCATION_THRESHOLD = 0.5; // Meters - ignore small location changes
+const STABILIZATION_FACTOR = 0.08; // Lower = more stable, higher = more responsive (reduced from 0.15)
+const MIN_UPDATE_INTERVAL = 150; // Minimum milliseconds between updates (increased for stability)
+const HEADING_THRESHOLD = 5; // Degrees - ignore small heading changes (increased from 2)
+const LOCATION_THRESHOLD = 1.5; // Meters - ignore small location changes (increased from 0.5)
 
 // Settings (no settings panel UI; keep runtime flags)
 const settings = ref({
@@ -1483,7 +1483,7 @@ function update3DElements() {
     if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI;
 
     // Apply smooth rotation with higher precision
-    arrowModel.rotation.y = currentRotationY + rotationDiff * 0.08; // Smooth interpolation factor
+    arrowModel.rotation.y = currentRotationY + rotationDiff * 0.05; // Smooth interpolation factor (reduced from 0.08)
 
     // Enhanced floating animation with distance-based amplitude
     const time = Date.now() * 0.001;
@@ -1493,7 +1493,7 @@ function update3DElements() {
     // Dynamic arrow scaling based on distance with smoother transitions
     const targetScale = Math.max(0.25, Math.min(0.9, distance / 80));
     const currentScale = arrowModel.scale.x;
-    const scaleDiff = (targetScale - currentScale) * 0.05; // Smooth scaling
+    const scaleDiff = (targetScale - currentScale) * 0.03; // Smooth scaling (reduced from 0.05)
 
     const newScale = currentScale + scaleDiff;
     arrowModel.scale.set(newScale, newScale, newScale);
@@ -1522,7 +1522,7 @@ function update3DElements() {
     const currentX = markerModel.position.x;
     const currentZ = markerModel.position.z;
 
-    const positionDampening = 0.12; // Smooth position updates
+    const positionDampening = 0.08; // Smooth position updates (reduced from 0.12)
     const targetX = rotatedX;
     const targetZ = rotatedZ;
 

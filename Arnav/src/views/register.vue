@@ -559,7 +559,7 @@ export default {
         });
 
         this.showToast(
-          "Registration successful! Please check your email for verification.",
+          "Registration successful! Please check your email (including spam) for verification. Add arnavigation25@gmail.com to your contacts to avoid spam.",
           "success"
         );
         this.clearFields();

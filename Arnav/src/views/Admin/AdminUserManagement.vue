@@ -1024,12 +1024,13 @@ button {
 }
 
 .admin-nav-bar .nav-link {
-  font-weight: 600;
+  font-weight: bold;
   color: var(--text-primary);
   text-decoration: none;
   margin-right: 20px;
   white-space: nowrap;
   font-size: 24px; /* Reduced from 32px for better mobile fit */
+  text-transform: uppercase;
 }
 
 /* Responsive Design for All Screen Sizes */

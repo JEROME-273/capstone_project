@@ -2,7 +2,7 @@
   <AdminLayout @logout="logout">
     <template #nav>
       <div class="admin-nav-bar">
-        <a href="#" class="nav-link">Animal Management</a>
+        <a href="#" class="nav-link">ANIMAL MANAGEMENT</a>
       </div>
     </template>
 
@@ -1071,6 +1071,31 @@ export default {
 </script>
 
 <style scoped>
+/* Admin Nav Bar Styles */
+.admin-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-nav-bar .nav-link {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.admin-nav-bar .nav-link:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
 .animal-management {
   padding: 20px;
 }

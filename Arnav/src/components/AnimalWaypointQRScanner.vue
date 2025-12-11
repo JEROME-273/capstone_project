@@ -1,8 +1,8 @@
 <template>
   <div class="qr-scanner-container">
     <div class="scanner-header">
-      <h3>Animal & Waypoint QR Scanner</h3>
-      <p>Scan QR codes for animals and waypoints</p>
+      <h3>Animal QR Scanner</h3>
+      <p>Scan QR codes for animals</p>
     </div>
 
     <!-- Video Display -->
@@ -179,7 +179,7 @@ export default {
 
       const video = this.$refs.video;
       const canvas = this.$refs.canvas;
-      const context = canvas.getContext("2d");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
 
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.height = video.videoHeight;
@@ -204,7 +204,7 @@ export default {
       }
     },
 
-    processQRCode(data) {
+    async processQRCode(data) {
       try {
         // 1) Try JSON first
         let parsed = null;
@@ -237,17 +237,51 @@ export default {
 
         // 2) Determine ANIMAL by JSON keys
         const jsonAnimalId =
-          p.animalId || p.animal_id || p.animal || (p.type === "animal" ? p.id : null);
-        if (jsonAnimalId || p.species || p.animal_name || p.animal_species) {
+          p.animalId ||
+          p.animal_id ||
+          p.animal ||
+          (p.type === "animal" ? p.id : null);
+
+        if (
+          jsonAnimalId ||
+          p.species ||
+          p.animal_name ||
+          p.animal_species ||
+          p.name ||
+          p.habitat
+        ) {
           result.type = "animal";
-          const animalIdStr = String(jsonAnimalId || p.id || "");
-          result.data = {
-            id: animalIdStr,
-            name: p.name || p.animal_name || (animalIdStr || "Unknown Animal"),
-            species: p.species || p.animal_species || "Unknown Species",
-            location: p.location || p.habitat || "Unknown Location",
-            description: p.description || p.info || "",
-          };
+          const animalIdStr = String(jsonAnimalId || p.id || p.name || "");
+
+          // If we only have an ID, fetch full animal data from Firestore
+          if (jsonAnimalId && !p.name && !p.species && !p.habitat) {
+            const animalData = await this.fetchAnimalData(animalIdStr);
+            if (animalData) {
+              result.data = animalData;
+            } else {
+              result.data = {
+                id: animalIdStr,
+                name: "Animal not found",
+                species: "Unknown Species",
+                location: "Unknown Location",
+                description: "",
+              };
+            }
+          } else {
+            // We have full data in the QR code
+            result.data = {
+              id: animalIdStr,
+              name: p.name || p.animal_name || p.commonName || "Unknown Animal",
+              species:
+                p.species ||
+                p.animal_species ||
+                p.scientificName ||
+                "Unknown Species",
+              location:
+                p.habitat || p.location || p.enclosure || "Unknown Location",
+              description: p.description || p.info || p.details || "",
+            };
+          }
         }
 
         // 3) Determine WAYPOINT by JSON keys (if not already animal)
@@ -262,7 +296,9 @@ export default {
             p.longitude !== undefined ||
             p.lat !== undefined ||
             p.lng !== undefined ||
-            (p.coordinates && (p.coordinates.lat !== undefined || p.coordinates.lng !== undefined));
+            (p.coordinates &&
+              (p.coordinates.lat !== undefined ||
+                p.coordinates.lng !== undefined));
 
           if (jsonWaypointId || hasCoords || p.type === "waypoint") {
             result.type = "waypoint";
@@ -272,7 +308,8 @@ export default {
               latitude: p.latitude ?? p.lat ?? p.coordinates?.lat ?? 0,
               longitude: p.longitude ?? p.lng ?? p.coordinates?.lng ?? 0,
               description: p.description || p.info || "",
-              category: p.category || (p.type === "waypoint" ? "waypoint" : "general"),
+              category:
+                p.category || (p.type === "waypoint" ? "waypoint" : "general"),
             };
           }
         }
@@ -280,16 +317,35 @@ export default {
         // 4) Plain-text patterns if still unknown
         if (result.type === "unknown") {
           // animal:ID or animal-ID or animal_ID (case-insensitive)
-          const animalMatch = asString.match(/^animal[:\-_]([A-Za-z0-9_\-]+)$/i);
+          const animalMatch = asString.match(
+            /^animal[:\-_]([A-Za-z0-9_\-]+)$/i
+          );
           if (animalMatch) {
             result.type = "animal";
-            result.data = {
-              id: animalMatch[1],
-              name: animalMatch[1],
-              species: "",
-              location: "",
+            const animalId = animalMatch[1];
+            // Fetch animal data from Firestore
+            const animalData = await this.fetchAnimalData(animalId);
+            result.data = animalData || {
+              id: animalId,
+              name: animalId,
+              species: "Unknown Species",
+              location: "Unknown Location",
               description: "",
             };
+          }
+        }
+
+        // 4.5) If it's just a plain ID (common case), try to fetch as animal
+        if (
+          result.type === "unknown" &&
+          asString.length > 10 &&
+          /^[A-Za-z0-9_\-]+$/.test(asString)
+        ) {
+          // Looks like a Firestore ID, try fetching as animal
+          const animalData = await this.fetchAnimalData(asString);
+          if (animalData) {
+            result.type = "animal";
+            result.data = animalData;
           }
         }
 
@@ -329,10 +385,23 @@ export default {
               const prev = segments[segments.length - 2] || "";
               if (/animals?/i.test(prev) && last) {
                 result.type = "animal";
-                result.data = { id: last, name: last, species: "", location: "", description: "" };
+                result.data = {
+                  id: last,
+                  name: last,
+                  species: "",
+                  location: "",
+                  description: "",
+                };
               } else if (/locations?|waypoints?/i.test(prev) && last) {
                 result.type = "waypoint";
-                result.data = { id: last, name: "Waypoint", latitude: 0, longitude: 0, description: "", category: "general" };
+                result.data = {
+                  id: last,
+                  name: "Waypoint",
+                  latitude: 0,
+                  longitude: 0,
+                  description: "",
+                  category: "general",
+                };
               }
             }
           }
@@ -345,12 +414,18 @@ export default {
 
         this.lastScanResult = result;
         this.setStatus(
-          `${result.type === "animal" ? "Animal" : result.type === "waypoint" ? "Waypoint" : "QR Code"} detected!`,
+          `${
+            result.type === "animal"
+              ? "Animal"
+              : result.type === "waypoint"
+              ? "Waypoint"
+              : "QR Code"
+          } detected!`,
           "success"
         );
-  this.$emit("qr-scanned", result);
-  // Stop scanning to release camera (prevents conflicts with AR)
-  this.stopScanner();
+        this.$emit("qr-scanned", result);
+        // Stop scanning to release camera (prevents conflicts with AR)
+        this.stopScanner();
       } catch (error) {
         this.setStatus("Error processing QR code: " + error.message, "error");
       }
@@ -370,6 +445,36 @@ export default {
 
       this.scanning = false;
       this.setStatus("Scanner stopped", "info");
+    },
+
+    async fetchAnimalData(animalId) {
+      try {
+        const { getFirestore, doc, getDoc } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const animalRef = doc(db, "animals", animalId);
+        const animalSnap = await getDoc(animalRef);
+
+        if (animalSnap.exists()) {
+          const data = animalSnap.data();
+          return {
+            id: animalId,
+            name: data.name || data.commonName || "Unknown Animal",
+            species: data.species || data.scientificName || "Unknown Species",
+            location:
+              data.location ||
+              data.habitat ||
+              data.enclosure ||
+              "Unknown Location",
+            description: data.description || data.info || data.details || "",
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error("Error fetching animal data:", error);
+        return null;
+      }
     },
 
     setStatus(message, type = "info") {

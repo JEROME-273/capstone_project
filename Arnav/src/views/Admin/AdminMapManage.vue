@@ -2,7 +2,7 @@
   <AdminLayout>
     <template #nav>
       <div class="page-header">
-        <h1 class="page-title">AR Navigation Management</h1>
+        <h1 class="page-title">AR NAVIGATION MANAGEMENT</h1>
       </div>
     </template>
 

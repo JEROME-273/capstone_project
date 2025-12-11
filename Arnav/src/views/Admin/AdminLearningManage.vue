@@ -2,7 +2,7 @@
   <AdminLayout>
     <template #nav>
       <div class="page-header">
-        <h1 class="page-title">Learning Content Management</h1>
+        <h1 class="page-title">LEARNING CONTENT MANAGEMENT</h1>
       </div>
     </template>
 
@@ -49,11 +49,11 @@
           </div>
           <div class="stat-card">
             <div class="stat-icon">
-              <i class="bx bxs-user-check"></i>
+              <i class="bx bxs-check-circle"></i>
             </div>
             <div class="stat-content">
               <h3>{{ totalLearnerCount }}</h3>
-              <p>Active Learners</p>
+              <p>Completed Learning</p>
             </div>
           </div>
         </div>

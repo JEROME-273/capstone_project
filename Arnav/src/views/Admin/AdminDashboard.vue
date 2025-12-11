@@ -2,7 +2,7 @@
   <AdminLayout @logout="logout">
     <template #nav>
       <div class="admin-nav-bar">
-        <a href="#" class="nav-link">Dashboard Overview</a>
+        <a href="#" class="nav-link">DASHBOARD OVERVIEW</a>
       </div>
     </template>
     <div>
@@ -987,13 +987,14 @@ button,
 
 .admin-nav-bar .nav-link {
   font-size: 24px; /* Reduced from 32px for better mobile fit */
-  font-weight: 600;
+  font-weight: bold;
   color: var(--text-primary);
   text-decoration: none;
   white-space: nowrap;
   padding: 8px 16px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  text-transform: uppercase;
 }
 
 .admin-nav-bar .nav-link:hover {
