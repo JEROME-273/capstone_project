@@ -698,8 +698,8 @@
 
         <div class="contact-modal-body">
           <p class="section-subtitle">
-            Reserve the venue for your event — reach us by phone, Facebook, or
-            email. We'll get back to you quickly.
+            Reserve the venue for your event — reach us by phone or email. We'll
+            get back to you quickly.
           </p>
 
           <div class="contact-cards modal-cards">
@@ -717,30 +717,15 @@
             </a>
 
             <a
-              class="contact-card fb"
-              href="https://facebook.com/YourPage"
-              target="_blank"
-              rel="noopener"
-              aria-label="Facebook page">
-              <div class="info">
-                <div class="icon-text">
-                  <i class="fab fa-facebook-f"></i>
-                  <div class="label">Facebook</div>
-                </div>
-                <div class="value">@InavParkOfficial</div>
-              </div>
-            </a>
-
-            <a
               class="contact-card email"
-              href="mailto:reservations@inavpark.ph"
+              href="mailto:arnavigation25@gmail.com"
               aria-label="Send email">
               <div class="info">
                 <div class="icon-text">
                   <i class="fas fa-envelope"></i>
                   <div class="label">Email</div>
                 </div>
-                <div class="value">reservations@inavpark.ph</div>
+                <div class="value">arnavigation25@gmail.com</div>
               </div>
             </a>
           </div>
