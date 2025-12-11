@@ -3,7 +3,7 @@
     <section id="sidebar">
       <a href="#" class="brand">
         <i class="bx bxs-smile"></i>
-        <span class="text">FarmGuide Admin</span>
+        <span class="text">iNavPark Guide Admin</span>
       </a>
       <ul class="side-menu top">
         <li

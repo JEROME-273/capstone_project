@@ -479,13 +479,13 @@ export default {
     async sendEmailToUser() {
       try {
         // Create email content
-        const subject = `FarmGuide Support: Reply to Your Feedback`;
+        const subject = `iNavPark Guide Support: Reply to Your Feedback`;
         const userFirstName = this.selectedFeedback.email.split("@")[0];
 
         const emailBody = `
 Dear ${userFirstName},
 
-Thank you for your feedback regarding FarmGuide AR Navigation. We have reviewed your message and here is our response:
+Thank you for your feedback regarding iNavPark Guide AR Navigation. We have reviewed your message and here is our response:
 
 Your Original Feedback:
 "${this.selectedFeedback.message}"
@@ -498,11 +498,11 @@ ${this.replyText.trim()}
 We appreciate your input and hope this addresses your concerns. If you have any further questions, please don't hesitate to contact us.
 
 Best regards,
-FarmGuide Support Team
+iNavPark Guide Support Team
 arnavigation25@gmail.com
 
 ---
-This is an automated response from FarmGuide Support System.
+This is an automated response from iNavPark Guide Support System.
         `.trim();
 
         // Initialize EmailJS
@@ -526,7 +526,7 @@ This is an automated response from FarmGuide Support System.
           name: userFirstName || "User",
           user_name: userFirstName || "User",
           recipient_name: userFirstName || "User",
-          from_name: "FarmGuide Support Team",
+          from_name: "iNavPark Guide Support Team",
           reply_to: "arnavigation25@gmail.com",
           subject: subject || "Reply to Your Feedback",
           email_subject: subject || "Reply to Your Feedback",

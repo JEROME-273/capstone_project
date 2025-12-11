@@ -435,13 +435,13 @@ export default {
         const db = getFirestore();
 
         // Create email content
-        const subject = `FarmGuide Support: Reply to Your Request`;
+        const subject = `iNavPark Guide Support: Reply to Your Request`;
         const userFirstName = this.selectedRequest.email.split("@")[0];
 
         const emailBody = `
 Dear ${userFirstName},
 
-Thank you for contacting FarmGuide Support. We have reviewed your request and here is our response:
+Thank you for contacting iNavPark Guide Support. We have reviewed your request and here is our response:
 
 Your Original Message:
 "${this.selectedRequest.message}"
@@ -452,7 +452,7 @@ ${this.replyText.trim()}
 We hope this addresses your concerns. If you have any further questions, please don't hesitate to contact us.
 
 Best regards,
-FarmGuide Support Team
+iNavPark Guide Support Team
 arnavigation25@gmail.com
         `.trim();
 
@@ -484,7 +484,7 @@ arnavigation25@gmail.com
           recipient_name: userFirstName || "User",
 
           // Sender information
-          from_name: "FarmGuide Support Team",
+          from_name: "iNavPark Guide Support Team",
           reply_to: "arnavigation25@gmail.com",
 
           // Subject variations
