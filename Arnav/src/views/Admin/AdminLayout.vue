@@ -2,8 +2,11 @@
   <div class="admin-layout" :class="{ 'dark-mode': isDarkMode }">
     <section id="sidebar">
       <router-link to="/admin-dashboard" class="brand">
-        <i class="bx bxs-smile"></i>
-        <span class="text">AR Path Admin</span>
+        <img
+          src="@/assets/inavparklogo1.png"
+          alt="iNavPark Logo"
+          class="brand-logo" />
+        <span class="text">iNavPark Admin</span>
       </router-link>
       <ul class="side-menu top">
         <li :class="{ active: $route.name === 'AdminDashboard' }">
@@ -239,9 +242,12 @@ export default {
   text-decoration: none;
 }
 
-#sidebar .brand i {
-  font-size: 24px;
+#sidebar .brand .brand-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
   margin-right: 10px;
+  border-radius: 8px;
 }
 
 #sidebar .brand .text {
