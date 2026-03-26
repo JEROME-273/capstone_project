@@ -16,20 +16,17 @@ import { initializeApp, getApps } from "firebase/app";
 // Firebase configuration
 const firebaseConfig = {
   apiKey:
-    import.meta.env.VITE_FIREBASE_API_KEY ||
-    "AIzaSyBTylfFz4_JcbvSlDof4YTf-yDVHPY_swk",
+    import.meta.env.VITE_FIREBASE_API_KEY ,
   authDomain:
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    "ar-path-3eb94.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "ar-path-3eb94",
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ,
   storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "ar-path-3eb94.appspot.com",
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ,
   messagingSenderId:
-    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "314906875610",
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ,
   appId:
-    import.meta.env.VITE_FIREBASE_APP_ID ||
-    "1:314906875610:web:02edf761141fa1aa8677e3",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-V7PCV8YV9P",
+    import.meta.env.VITE_FIREBASE_APP_ID ,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ,
 };
 
 class NotificationService {
