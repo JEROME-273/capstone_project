@@ -2857,73 +2857,189 @@ body.dark-mode .location-info-btn-image:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, 0.55);
   z-index: 10000;
-  padding: 12px;
+  padding: 16px;
 }
 
 .contact-modal {
   width: 100%;
-  max-width: 720px;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  /* allow modal to size to content, limit height to viewport and scroll internally if needed */
-  max-height: calc(100vh - 120px);
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  max-height: calc(100vh - 80px);
   height: auto;
-  overflow: auto;
-  border: 1px solid #e6e6e6;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .contact-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 22px 24px 18px;
   gap: 8px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1.5px solid #f0f0f0;
   background: #ffffff;
 }
 .contact-modal-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1a1a1a;
 }
 .contact-modal .close-modal-btn {
   background: transparent;
-  border: 2px solid #ef4444;
-  font-size: 18px;
+  border: none;
+  font-size: 22px;
   cursor: pointer;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  color: #ef4444;
-  box-shadow: none;
-  transition: transform 160ms ease, background-color 160ms ease,
-    box-shadow 160ms ease;
+  border-radius: 50%;
+  color: #555;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 .contact-modal .close-modal-btn:hover {
-  background: rgba(239, 68, 68, 0.08);
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.08);
-  transform: translateY(-2px);
+  background: #f2f2f2;
+  color: #111;
 }
 
 .contact-modal-body {
-  padding: 12px 14px 14px;
+  padding: 20px 24px 8px;
+  flex: 1;
+  overflow-y: auto;
 }
+
+/* Subtitle text in the modal */
+.contact-modal-body .section-subtitle {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+/* Grouped info card (white box with border) */
 .contact-cards.modal-cards {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0;
+  background: #f8f8f8;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 22px;
 }
+
 .contact-cards.modal-cards .contact-card {
-  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: inherit;
+  background: #f8f8f8;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  transition: background 160ms ease;
   min-height: auto;
+}
+.contact-cards.modal-cards .contact-card:not(:last-child) {
+  border-bottom: 1.5px solid #e8e8e8;
+}
+.contact-cards.modal-cards .contact-card:hover {
+  background: #f0f0f0;
+}
+
+/* Icon inside each card row */
+.contact-cards.modal-cards .contact-card .icon-text {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 0;
+}
+.contact-cards.modal-cards .contact-card .icon-text i {
+  font-size: 22px;
+  margin-bottom: 0;
+  margin-right: 0;
+  width: auto;
+  flex-shrink: 0;
+}
+.contact-cards.modal-cards .contact-card.phone .icon-text i {
+  color: #3a7d44;
+}
+.contact-cards.modal-cards .contact-card.email .icon-text i {
+  color: #3a7d44;
+}
+
+/* Reposition: icon left, text right */
+.contact-cards.modal-cards .contact-card .info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.contact-cards.modal-cards .contact-card .label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.contact-cards.modal-cards .contact-card .value {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Row layout: icon | info */
+.contact-cards.modal-cards .contact-card {
+  flex-direction: row;
+}
+.contact-cards.modal-cards .contact-card .icon-text {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+.contact-cards.modal-cards .contact-card .icon-text i {
+  font-size: 24px;
+}
+
+/* Action buttons row at the bottom */
+.contact-modal-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 24px;
+}
+.contact-modal-actions a {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 13px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: #3a7d44;
+  transition: background 160ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+.contact-modal-actions a:hover {
+  background: #2f6637;
+  transform: translateY(-1px);
+}
+.contact-modal-actions a i {
+  font-size: 15px;
 }
 
 /* prevent body scroll when modal open */
